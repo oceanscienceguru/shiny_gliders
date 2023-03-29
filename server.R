@@ -1,0 +1,865 @@
+server <- function(input, output, session) {
+  # glider = reactive({
+  #   #req(input$mission)
+  #   readRDS(paste0("./Data/", input$mission, ".rds"))
+  # })
+  
+  
+  #### live mission plotting #####
+  scienceList_liveInfo <- file.info(list.files(path = "/echos/science/",
+                                               full.names = TRUE)) %>%
+    filter(size > 0)
+  
+  scienceList_live <- rownames(scienceList_liveInfo) %>%
+    basename()
+  
+  flightList_liveInfo <- file.info(list.files(path = "/echos/flight/",
+                                              full.names = TRUE)) %>%
+    filter(size > 0)
+  
+  flightList_live <- rownames(flightList_liveInfo) %>%
+    basename()
+  
+  flightTotal <- length(flightList_live)
+  #if flightList changed ... then ... do df creation
+  
+  flist <- list()
+  slist <- list()
+  for (i in flightList_live) {
+    flist[[i]] <- ssv_to_df(paste0("/echos/flight/", i))
+  }
+  for (j in scienceList_live) {
+    slist[[j]] <- ssv_to_df(paste0("/echos/science/", j))
+  }
+  
+  fdf <- bind_rows(flist, .id = "segment") %>%
+    filter(m_present_time > 1677646800)
+  
+  sdf <- bind_rows(slist, .id = "segment") %>%
+    filter(sci_m_present_time > 1677646800)
+  
+  #pull out science variables
+  scivarsLive <- sdf %>%
+    select(!(c(segment))) %>%
+    colnames()
+  
+  #pull out flight variables
+  flightvarsLive <- fdf %>%
+    #select(!starts_with("sci")) %>%
+    colnames()
+  
+  #mission date range variables
+  startDateLive <- min(fdf$m_present_time)
+  endDateLive <- max(fdf$m_present_time)
+  
+  #get start/end days and update data filters
+  updateDateInput(session, "date1Live", NULL, min = min(fdf$m_present_time), max = max(fdf$m_present_time), value = startDateLive)
+  updateDateInput(session, "date2Live", NULL, min = min(fdf$m_present_time), max = max(fdf$m_present_time), value = endDateLive)
+  
+  updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
+  updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
+  
+  
+  glider_live <- list(science = sdf, flight = fdf)
+  
+  
+  scienceChunk_live <- reactive({
+    req(input$display_varLive)
+    
+    scienceLive <- glider_live[["science"]] %>%
+      arrange(sci_m_present_time)
+    
+    startDateLive_sci <- which.min(abs(as.numeric(scienceLive$sci_m_present_time) - as.numeric(as.POSIXct(input$date1Live))))
+    endDateLive_sci <- which.min(abs(as.numeric(scienceLive$sci_m_present_time) - as.numeric(as.POSIXct(input$date2Live))))
+    
+    # print(startDateLive_sci)
+    # print(endDateLive_sci)
+    
+    qf <- scienceLive %>%
+      dplyr::select(c(sci_m_present_time, sci_water_pressure, any_of(input$display_varLive))) %>%
+      slice(startDateLive_sci:endDateLive_sci) %>%
+      filter(!is.na(across(!c(sci_m_present_time:sci_water_pressure))))
+    
+    # if (!is.null(input$min_depthLive | input$max_depthLive)){
+    #   filter(qf, sci_water_pressure >= input$min_depthLive & sci_water_pressure <= input$max_depthLive)
+    # }
+    
+    qf
+    
+  })
+  
+  flightChunk_live <- reactive({
+    req(input$date1Live)
+    
+    df <- glider_live[["flight"]] %>%
+      arrange(m_present_time) %>%
+      dplyr::select(c(m_present_time, all_of(input$flight_varLive))) %>%
+      filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live) %>%
+      pivot_longer(
+        cols = !m_present_time,
+        names_to = "variable",
+        values_to = "count") %>%
+      filter(!is.na(count))
+    
+    df
+    
+  })
+  
+  gg1Live <- reactive({
+    sciLive <- ggplot(
+      data = 
+        scienceChunk_live(),#dynamically filter the sci variable of interest
+      aes(x=sci_m_present_time,
+          y=sci_water_pressure,
+          #z=.data[[input$display_varLive]],
+          colour = .data[[input$display_varLive]],
+      )) +
+      geom_point(
+        size = 3,
+        na.rm = TRUE
+      ) +
+      # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
+      #geom_hline(yintercept = 0) +
+      scale_y_reverse() +
+      scale_colour_viridis_c(limits = c(input$minLive, input$maxLive)) +
+      # geom_point(data = filter(glider_live(), m_water_depth > 0),
+      #            aes(y = m_water_depth),
+      #            size = 0.1,
+      #            na.rm = TRUE
+      # ) +
+      theme_bw() +
+      labs(#title = paste0(missionNum, " Science Data"),
+        y = "Pressure (bar)",
+        x = "Date") +
+      theme(plot.title = element_text(size = 32)) +
+      theme(axis.title = element_text(size = 16)) +
+      theme(axis.text = element_text(size = 12))
+    
+    sciLive
+    
+  })
+  
+  output$sciPlotLive <- renderPlot({gg1Live()})
+  
+  #flight plot
+  gg2Live <- reactive({
+    # if (input$flight_var == "m_roll") {
+    #   flightxlabel <- "roll"
+    # } else if (input$flight_var == "m_heading") {
+    #   flightxlabel <- "heading"
+    # }
+    #req(input$load)
+    ggplot(
+      data =
+        flightChunk_live(),
+      aes(x = m_present_time,
+          y = count,
+          color = variable,
+          shape = variable)) +
+      geom_point(size = 3) +
+      #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
+      theme_grey() +
+      labs(#title = paste0(missionNum, " Flight Data"),
+        x = "Date") +
+      theme(plot.title = element_text(size = 32)) +
+      theme(axis.title = element_text(size = 16)) +
+      theme(axis.text = element_text(size = 12))
+    
+    # plotup <- list()
+    # for (i in input$flight_var){
+    #   plotup[[i]] = ggplot(data = select(chunk(), m_present_time, all_of(i)) %>%
+    #     pivot_longer(
+    #       cols = !m_present_time,
+    #       names_to = "variable",
+    #       values_to = "count") %>%
+    #     filter(!is.na(count)),
+    #     aes(x = m_present_time,
+    #         y = count,
+    #         color = variable,
+    #         shape = variable)) +
+    #     geom_point() +
+    #     coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
+    #     theme_minimal()
+    # }
+    # wrap_plots(plotup, ncol = 1)
+  })
+  
+  output$fliPlotLive <- renderPlot({gg2Live()})
+  
+  fileList_archive <- list.files(path = "./Data/",
+                                 pattern = "*.rds")
+  
+  missionList_archive <- str_remove(fileList_archive, pattern = ".rds")
+  
+  updateSelectInput(session, "mission", NULL, choices = c(missionList_archive))
+  
+  #mission map 
+  output$missionmap <- renderLeaflet({
+    #grab .kml per mission number
+    raw_sf <- st_read(paste0("./KML/", input$mission, ".kml"),
+                      layer = "Surfacings")
+    
+    #pull out only relevant portion
+    KML_sf <- raw_sf %>%
+      select(Name) #timestamps
+    
+    #get map from sf
+    map_sf <- KML_sf[2:(nrow(KML_sf) - 1),]
+    
+    #convert to long form for start/end markers later
+    mapUp <- KML_sf %>%
+      mutate(long = st_coordinates(.)[,1],
+             lat = st_coordinates(.)[,2]) %>%
+      st_drop_geometry()
+    
+    leaflet() %>%
+      #base provider layers
+      addProviderTiles("Esri.OceanBasemap", 
+                       group = "Ocean Basemap") %>%
+      addProviderTiles("Esri.WorldImagery", 
+                       group = "World Imagery") %>%
+      addLayersControl(baseGroups = c('Ocean Basemap', 'World Imagery')) %>%
+      #timestamps for surfacings
+      addCircles(data = map_sf,
+                 color = "gold",
+                 popup = map_sf$Name
+      ) %>%
+      #start marker
+      addAwesomeMarkers(
+        lat = mapUp[1, 3],
+        lng = mapUp[1, 2],
+        label = "Starting point",
+        icon = icon.start
+      ) %>%
+      #end marker
+      addAwesomeMarkers(
+        lat = mapUp[nrow(mapUp), 3],
+        lng = mapUp[nrow(mapUp), 2],
+        label = "Ending point",
+        icon = icon.end
+      )
+  })
+  
+  observeEvent(input$load, {
+    #on load, globally save glider df and add salinty + SV
+    glider <<- readRDS(paste0("./Data/", input$mission, ".rds")) %>%
+      mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
+      mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
+      mutate(soundvel1 = c_Coppens1981(m_depth,
+                                       osg_salinity,
+                                       sci_water_temp))
+    #possible add ... from masterdata
+    #mutate(new_water_depth = m_water_depth * (1500/soundvel1))
+    
+    #pull out science variables
+    scivars <- glider %>%
+      select(starts_with(c("sci","osg"))) %>%
+      colnames()
+    
+    #pull out flight variables
+    flightvars <- glider %>%
+      select(!starts_with("sci")) %>%
+      colnames()
+    
+    #commit mission number to global variable upon mission selection
+    missionNum <<- input$mission
+    
+    #mission date range variables
+    startDate <- min(glider$m_present_time)
+    endDate <- max(glider$m_present_time)
+    
+    #get start/end days and update data filters
+    updateDateInput(session, "date1", NULL, min = min(glider$m_present_time), max = max(glider$m_present_time), value = startDate)
+    updateDateInput(session, "date2", NULL, min = min(glider$m_present_time), max = max(glider$m_present_time), value = endDate)
+    updateSelectInput(session, "display_var", NULL, choices = c(scivars))
+    updateSelectizeInput(session, "flight_var", NULL, choices = c(flightvars), selected = "m_roll")
+    showNotification("Data loaded", type = "message")
+    
+  })
+  
+  #dynamically filter for plotting
+  chunk <- reactive({
+    filter(glider, m_present_time >= input$date1 & m_present_time <= input$date2) %>%
+      #filter(status %in% c(input$status)) %>%
+      #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
+      filter(m_depth >= input$min_depth & m_depth <= input$max_depth)
+  })
+  
+  #ranges for plot zooms
+  rangefli <- reactiveValues(x = NULL, y = NULL)
+  rangesci <- reactiveValues(x = NULL, y = NULL)
+  
+  ########## science plot #########
+  
+  scienceChunk <- reactive({
+    req(input$load)
+    
+    select(chunk(), m_present_time, m_depth, input$display_var) %>%
+      filter(!is.na(across(!c(m_present_time:m_depth))))
+  })
+  
+  gg1 <- reactive({
+    req(input$load)
+    ggplot(data = 
+             scienceChunk(),#dynamically filter the sci variable of interest
+           aes(x=m_present_time,
+               y=m_depth,
+               z=.data[[input$display_var]])) +
+      geom_point(
+        aes(color = .data[[input$display_var]]),
+        na.rm = TRUE
+      ) +
+      coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
+      #geom_hline(yintercept = 0) +
+      scale_y_reverse() +
+      scale_colour_viridis_c(limits = c(input$min, input$max)) +
+      geom_point(data = filter(chunk(), m_water_depth > 0),
+                 aes(y = m_water_depth),
+                 size = 0.1,
+                 na.rm = TRUE
+      ) +
+      theme_bw() +
+      labs(title = paste0(missionNum, " Science Data"),
+           y = "Depth (m)",
+           x = "Date") +
+      theme(plot.title = element_text(size = 32)) +
+      theme(axis.title = element_text(size = 16)) +
+      theme(axis.text = element_text(size = 12))
+  })
+  
+  output$sciPlot <- renderPlot({gg1()})
+  
+  #science plot zoom/click
+  observeEvent(input$sciPlot_dblclick, {
+    brush <- input$sciPlot_brush
+    if (!is.null(brush)) {
+      rangesci$x <- as.POSIXct(c(brush$xmin, brush$xmax), origin = "1970-01-01")
+      #REVERSED RANGE DUE TO REVERSED Y see: https://github.com/tidyverse/ggplot2/issues/4021
+      rangesci$y <- c(brush$ymax, brush$ymin)
+      
+    } else {
+      rangesci$x <- NULL
+      rangesci$y <- NULL
+    }
+  })
+  
+  ##### flight plot #####
+  
+  flightChunk <- reactive({
+    req(input$load)
+    select(chunk(), m_present_time, all_of(input$flight_var)) %>%
+      pivot_longer(
+        cols = !m_present_time,
+        names_to = "variable",
+        values_to = "count") %>%
+      filter(!is.na(count))
+  })
+  
+  # output$summary <- renderPrint({
+  #   head(flightChunk())
+  # })
+  
+  #flight plot
+  gg2 <- reactive({
+    # if (input$flight_var == "m_roll") {
+    #   flightxlabel <- "roll"
+    # } else if (input$flight_var == "m_heading") {
+    #   flightxlabel <- "heading"
+    # }
+    req(input$load)
+    ggplot(
+      data =
+        flightChunk(),
+      aes(x = m_present_time,
+          y = count,
+          color = variable,
+          shape = variable)) +
+      geom_point() +
+      coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
+      theme_grey() +
+      labs(title = paste0(missionNum, " Flight Data"),
+           x = "Date") +
+      theme(plot.title = element_text(size = 32)) +
+      theme(axis.title = element_text(size = 16)) +
+      theme(axis.text = element_text(size = 12))
+    
+    # plotup <- list()
+    # for (i in input$flight_var){
+    #   plotup[[i]] = ggplot(data = select(chunk(), m_present_time, all_of(i)) %>%
+    #     pivot_longer(
+    #       cols = !m_present_time,
+    #       names_to = "variable",
+    #       values_to = "count") %>%
+    #     filter(!is.na(count)),
+    #     aes(x = m_present_time,
+    #         y = count,
+    #         color = variable,
+    #         shape = variable)) +
+    #     geom_point() +
+    #     coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
+    #     theme_minimal()
+    # }
+    # wrap_plots(plotup, ncol = 1)
+  })
+  
+  output$fliPlot <- renderPlot({gg2()})
+  
+  #flight plot zoom/click
+  observeEvent(input$fliPlot_dblclick, {
+    brush <- input$fliPlot_brush
+    if (!is.null(brush)) {
+      rangefli$x <- as.POSIXct(c(brush$xmin, brush$xmax), origin = "1970-01-01")
+      rangefli$y <- c(brush$ymin, brush$ymax)
+      
+    } else {
+      rangefli$x <- NULL
+      rangefli$y <- NULL
+    }
+  })
+  
+  ######### sound velocity plot ##########
+  
+  gg3 <- reactive({
+    req(input$load)
+    # create plot
+    ggplot(data = filter(chunk(), !is.nan(soundvel1)),
+           aes(x=m_present_time,
+               y=m_depth,
+               z=soundvel1)) +
+      geom_point(
+        aes(color = soundvel1)
+      ) +
+      geom_point(data = filter(chunk(), m_water_depth > 0),
+                 aes(y = m_water_depth),
+                 size = 0.1,
+                 na.rm = TRUE
+      ) +
+      #geom_hline(yintercept = 0) +
+      scale_y_reverse() +
+      scale_colour_viridis_c(limits = c(limits = c(input$soundmin, input$soundmax))) +
+      theme_bw() +
+      labs(title = paste0(missionNum, " Sound Velocity"),
+           caption = "Calculated using Coppens <i>et al.</i> (1981)",
+           y = "Depth (m)",
+           x = "Date") +
+      theme(plot.title = element_text(size = 32)) +
+      theme(axis.title = element_text(size = 16)) +
+      theme(axis.text = element_text(size = 12)) +
+      theme(plot.caption = element_markdown())
+    
+  })
+  
+  output$souPlot <- renderPlot({gg3()})
+  
+  
+  ###### download handlers #########
+  
+  output$downloadSciPlot <- downloadHandler(
+    filename = function(){paste(input$mission, "_sci.png")},
+    content = function(file){
+      ggsave(file,
+             gg1(),
+             width = 16,
+             height = 9)
+    }
+  )
+  
+  output$downloadFliPlot <- downloadHandler(
+    filename = function(){paste(input$mission, "_fli.png")},
+    content = function(file){
+      ggsave(file,
+             gg2(),
+             width = 16,
+             height = 9)
+    }
+  )
+  
+  output$downloadSouPlot <- downloadHandler(
+    filename = function(){paste(input$mission, "_SV.png")},
+    content = function(file){
+      ggsave(file,
+             gg3(),
+             width = 16,
+             height = 9)
+    }
+  )
+  
+  output$downloadEchoPlot <- downloadHandler(
+    filename = function(){paste(input$echo, "_pseudo.png")},
+    content = function(file){
+      ggsave(file,
+             gg4(),
+             width = 16,
+             height = 9)
+    }
+  )
+  
+  output$downloadEchoHist <- downloadHandler(
+    filename = function(){paste(input$echo, "_pseudo.png")},
+    content = function(file){
+      ggsave(file,
+             gg5(),
+             width = 16,
+             height = 9)
+    }
+  )
+  
+  output$downloadEchoHist2 <- downloadHandler(
+    filename = function(){paste(input$echo, "_pseudo.png")},
+    content = function(file){
+      ggsave(file,
+             gg6(),
+             width = 16,
+             height = 9)
+    }
+  )
+  
+  ####### File Upload/Processing #########
+  observeEvent(input$upload, {
+    #get file extension
+    ext <- tools::file_ext(input$upload$name)
+    
+    #if SSV
+    if (ext == "ssv") {
+      print("SSV!")
+      newGlider <- ssv_to_rds(inputFile = input$upload$datapath,
+                              missionNum = input$upload$name)
+      #if kml
+    } else if (ext == "kml"){
+      print("KML!")
+      file.copy(input$upload$datapath, "./KML")
+      #file.rename(f)
+    } else if (ext == "kmz"){
+      showModal(modalDialog(
+        title = "Warning",
+        ".kmz is not accepted, .kml ONLY",
+        easyClose = TRUE
+      ))
+      #otherwise, error
+    } else {
+      showModal(modalDialog(
+        title = "Warning",
+        "Please upload .ssv or .kml only",
+        easyClose = TRUE
+      ))
+    }
+    
+    #topGlider <- head(newGlider)
+    
+    #showNotification(paste0(outputName, " saved"))
+  })
+  # output$uploadTable <- renderTable({
+  #   req(input$upload)
+  #   
+  #   topGlider
+  # })
+  
+  #### psuedograms ########
+  
+  #color palette source:
+  #https://rdrr.io/github/hvillalo/echogram/src/R/palette.echogram.R
+  velInfo <- file.info(list.files(path = "/echos/layers/",
+                                  full.names = TRUE)) %>%
+    filter(size > 0)
+  
+  velList <- rownames(velInfo) %>%
+    basename()
+  
+  depthInfo <- file.info(list.files(path = "/echos/depths/",
+                                    full.names = TRUE))
+  
+  depthList <- rownames(depthInfo) %>%
+    basename()
+  
+  echoListraw <- intersect(velList, depthList) %>%
+    str_remove(pattern = ".ssv") %>%
+    enframe() %>%
+    mutate(ID = str_extract(value, "(?<=-)[0-9]*$")) %>%
+    mutate(ID = as.numeric(ID)) %>%
+    arrange(ID)
+  
+  echoList <- echoListraw$value
+  
+  #reactive pseudogram plot identifier for scrolling
+  selectPgram <- reactiveValues(seg = NULL, id = NULL)
+  
+  updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value))
+  
+  #attach IDs to psuedogram plot reactives
+  observeEvent(input$echo, {
+    selectPgram$seg <- input$echo
+    selectPgram$id <- match(input$echo, echoListraw$value)
+  })
+  
+  #process the requested pseudogram
+  ehunk <- reactive({
+    req(input$echo)
+    
+    ehunk <- pseudogram(paste0("/echos/layers/", selectPgram$seg, ".ssv"),
+                        paste0("/echos/depths/", selectPgram$seg, ".ssv"))
+  })
+  
+  ##### main pseudogram plot ####
+  gg4 <- reactive({
+    #plot
+    ggEcho <-
+      ggplot(data = 
+               ehunk(),
+             aes(x=m_present_time,
+                 y=p_depth,
+                 z=value)) +
+      # geom_tile(aes(
+      #   color = value,
+      #   size = 10
+      #   )
+      # ) +
+      # coord_fixed(ratio = 3.6) +
+      geom_point(
+        aes(color = value),
+        size = 6,
+        pch = 15,
+        na.rm = TRUE
+      ) +
+      #coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
+      # scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
+      #                                    "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
+      #                        limits = c(-75, -35)) +
+      scale_y_reverse() +
+      theme_bw() +
+      labs(title = paste0(selectPgram$seg, " Pseudogram"),
+           y = "Depth (m)",
+           x = "Date/Time (UTC)",
+           colour = "dB") +
+      theme(plot.title = element_text(size = 32),
+            axis.title = element_text(size = 16),
+            axis.text = element_text(size = 12),
+            legend.key = element_blank(),
+            plot.caption = element_markdown()) +
+      guides(size="none") +
+      scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
+    
+    if (input$echoColor == "EK") {
+      ggEcho +
+        scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
+                                                    "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
+                                                    limits = c(-75, -30))
+    } else if (input$echoColor == "magma") {
+      ggEcho +
+        scale_colour_viridis_c(limits = c(-75, -30),
+                               option = "C"
+        )
+    } else {
+      ggEcho +
+        scale_colour_viridis_c(limits = c(-75, -30),
+                               option = "D"
+        )
+    }
+    
+    
+  })
+  
+  output$echoPlot <- renderPlot({gg4()})
+  
+  #### Buttons to scroll through pseudograms ####
+  observeEvent(input$oldestPgram, {
+    selectPgram$seg <- head(echoListraw$value, 1)
+    updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = head(echoListraw$value, 1))
+  })
+  observeEvent(input$prevPgram, {
+    if (selectPgram$id > 1) {
+      selectPgram$id <- selectPgram$id - 1
+      updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = echoListraw$value[selectPgram$id])
+    }
+  })
+  observeEvent(input$nextPgram, {
+    if (selectPgram$id < nrow(echoListraw)) {
+      selectPgram$id <- selectPgram$id + 1
+      updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = echoListraw$value[selectPgram$id])
+    }
+  })
+  observeEvent(input$latestPgram, {
+    selectPgram$seg <- tail(echoListraw$value, 1)
+    updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1))
+  })
+  
+  
+  #### pseudotimegram main setup ####
+  fullehunk <- reactive({
+    req(input$fullecho | input$fullecho2)
+    
+    elist <- list()
+    for (i in echoList) {
+      elist[[i]] <- pseudogram(paste0("/echos/layers/", i, ".ssv"),
+                               paste0("/echos/depths/", i, ".ssv"))
+    }
+    ef <- bind_rows(elist, .id = "segment") %>%
+      mutate(r_depth = round(q_depth, 0)) %>%
+      mutate(day = day(m_present_time)) %>%
+      mutate(hour = hour(m_present_time))
+    
+    ef
+    
+  })
+  
+  
+  #### updater for pseudotimegram inputs ####
+  observeEvent(input$fullecho | input$fullecho2, {
+    
+    updateDateRangeInput(session, "echohistrange", label = NULL, 
+                         start = (max(fullehunk()$m_present_time)-259200),
+                         end = max(fullehunk()$m_present_time), 
+                         min = min(fullehunk()$m_present_time), 
+                         max = max(fullehunk()$m_present_time))
+    
+    updateDateRangeInput(session, "echohistrange2", label = NULL, 
+                         start = min(fullehunk()$m_present_time),
+                         end = max(fullehunk()$m_present_time), 
+                         min = min(fullehunk()$m_present_time), 
+                         max = max(fullehunk()$m_present_time))
+  })
+  
+  plotehunk <- reactive({
+    req(input$echohistrange)
+    
+    pf <- filter(fullehunk(), m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
+      filter(hour >= input$echohour[1] & hour <= input$echohour[2]) %>%
+      group_by(segment, r_depth) %>%
+      mutate(avgDb = mean(value)) %>%
+      ungroup() %>%
+      group_by(segment) %>%
+      mutate(seg_time = mean(m_present_time)) %>%
+      ungroup() %>%
+      mutate(seg_hour = hour(seg_time)) %>%
+      mutate(cycle = case_when(seg_hour %in% c(11:23) ~ 'day',
+                               seg_hour %in% c(1:10, 24) ~ 'night')) # add day/night filter
+    
+    pf
+  })
+  
+  plotethunk <- reactive({
+    req(input$echohistrange2)
+    
+    pf <- filter(fullehunk(), m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
+      filter(hour >= input$echohour2[1] & hour <= input$echohour2[2]) %>%
+      group_by(segment, r_depth) %>%
+      mutate(avgDb = mean(value)) %>%
+      ungroup() %>%
+      group_by(segment) %>%
+      mutate(seg_time = mean(m_present_time)) %>%
+      ungroup() %>%
+      mutate(seg_hour = hour(seg_time)) %>%
+      mutate(cycle = case_when(seg_hour %in% c(11:23) ~ 'day',
+                               seg_hour %in% c(1:10, 24) ~ 'night')) # add day/night filter
+    
+    pf
+  })
+  
+  #### frequency polygon ####
+  gg5 <- reactive({
+    req(input$echohistrange)
+    
+    ggHist <- ggplot(data = plotehunk(),
+           aes(y = r_depth,
+           )) +
+      geom_freqpoly(aes(colour = as.factor(cycle)),
+                    binwidth = input$depthbin
+      ) +
+      scale_y_reverse() +
+      facet_wrap(as.factor(plotehunk()$value),
+                 scales = "free_x",
+                 ncol = 4) + 
+      theme_bw() +
+      labs(title = "Counts of Return Strength at Depth by Period",
+           y = "Depth (m)",
+           x = "Counts",
+           color = "Period",
+           caption = "Day = 1100-2300 UTC") +
+      theme(plot.title = element_text(size = 24),
+        axis.title = element_text(size = 16),
+        axis.text = element_text(size = 12),
+        legend.key = element_blank(),
+        plot.caption = element_markdown(),
+      ) +
+      guides(size="none")
+    
+    # ggHist <-
+    #   ggplot(data = plotehunk(),
+    #          aes(x = as.factor(value),
+    #              y = r_depth,
+    #              fill = hour,
+    #          )) +
+    #   geom_tile() +
+    #   #coord_equal() +
+    #   scale_fill_viridis_c() +
+    #   scale_y_reverse() +
+    #   theme_bw() +
+    #   labs(title = paste0("Frequency of Returns at Depth from ", input$echohistrange[1], " to ", input$echohistrange[2]),
+    #        y = "Depth (m)",
+    #        #x = "Date/Time (UTC)",
+    #        x = "dB",
+    #        fill = "Hour (UTC)") +
+    #   theme(plot.title = element_text(size = 32),
+    #         axis.title = element_text(size = 16),
+    #         axis.text = element_text(size = 12),
+    #         legend.key = element_blank(),
+    #         plot.caption = element_markdown()) +
+    #   guides(size="none")
+    #scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
+    
+    ggHist
+    
+  })
+  
+  output$echoHist <- renderPlot({gg5()})
+  
+  
+  #### pseudotimegram ####
+  gg6 <- reactive({
+    
+    ggEchoTime <- 
+      ggplot(data = plotethunk(),
+             aes(x = seg_time,
+                 y = r_depth,
+                 colour = avgDb,
+             )) +
+      geom_point(size = 4,
+                 pch = 15
+      ) +
+      #coord_equal() +
+      #scale_color_viridis_c() +
+      scale_y_reverse() +
+      theme_bw() +
+      labs(title = paste0("Avg dB returns (per meter) at depth from ", input$echohistrange2[1], " to ", input$echohistrange2[2]),
+           y = "Depth (m)",
+           #x = "Date/Time (UTC)",
+           x = "Date",
+           colour = "average dB") +
+      theme(plot.title = element_text(size = 32),
+            axis.title = element_text(size = 16),
+            axis.text = element_text(size = 12),
+            legend.key = element_blank(),
+            plot.caption = element_markdown()) +
+      guides(size="none")
+    
+    if (input$echoColor2 == "EK") {
+      ggEchoTime +
+        scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
+                                           "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
+                               limits = c(-75, -30)
+                               )
+    } else if (input$echoColor2 == "magma") {
+      ggEchoTime +
+        scale_colour_viridis_c(limits = c(-75, -30),
+                               option = "C"
+        )
+    } else {
+      ggEchoTime +
+        scale_colour_viridis_c(limits = c(-75, -30),
+                               option = "D")
+    }
+    
+  })
+  
+  output$echoTime <- renderPlot({gg6()})
+  
+}
