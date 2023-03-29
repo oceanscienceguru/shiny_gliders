@@ -88,6 +88,16 @@ server <- function(input, output, session) {
     
   })
   
+  derivedChunk_live <- reactive({
+    df <- scienceChunk_live  %>%
+      mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
+      mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
+      mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
+      mutate(soundvel1 = c_Coppens1981(m_depth,
+                                       osg_salinity,
+                                       sci_water_temp))
+  })
+  
   flightChunk_live <- reactive({
     req(input$date1Live)
     
@@ -186,12 +196,40 @@ server <- function(input, output, session) {
   
   output$fliPlotLive <- renderPlot({gg2Live()})
   
+  #flight plot
+  gg3Live <- reactive({
+    # if (input$flight_var == "m_roll") {
+    #   flightxlabel <- "roll"
+    # } else if (input$flight_var == "m_heading") {
+    #   flightxlabel <- "heading"
+    # }
+    #req(input$load)
+    ggplot(
+      data =
+        flightChunk_live(),
+      aes(x = sci_m_present_time,
+          y = count,
+          color = variable,
+          shape = variable)) +
+      geom_point(size = 3) +
+      #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
+      theme_grey() +
+      labs(#title = paste0(missionNum, " Flight Data"),
+        x = "Date") +
+      theme(plot.title = element_text(size = 32)) +
+      theme(axis.title = element_text(size = 16)) +
+      theme(axis.text = element_text(size = 12))
+    
+  })
+  
+  output$tsPlotLive <- renderPlot({gg3Live()})
+  
   fileList_archive <- list.files(path = "./Data/",
                                  pattern = "*.rds")
   
   missionList_archive <- str_remove(fileList_archive, pattern = ".rds")
   
-  updateSelectInput(session, "mission", NULL, choices = c(missionList_archive))
+  updateSelectInput(session, "mission", NULL, choices = c(missionList_archive), selected = tail(missionList_archive, 1))
   
   #mission map 
   output$missionmap <- renderLeaflet({
@@ -240,11 +278,17 @@ server <- function(input, output, session) {
       )
   })
   
-  observeEvent(input$load, {
-    #on load, globally save glider df and add salinty + SV
-    glider <<- readRDS(paste0("./Data/", input$mission, ".rds")) %>%
+  missionNum <- reactiveValues()
+  
+  glider <- reactiveValues()
+  
+observeEvent(input$load, {
+   #req(input$load)
+    #on load add salinty + SV
+    df <- readRDS(paste0("./Data/", isolate(input$mission), ".rds")) %>%
       mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
       mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
+      mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
       mutate(soundvel1 = c_Coppens1981(m_depth,
                                        osg_salinity,
                                        sci_water_temp))
@@ -252,37 +296,46 @@ server <- function(input, output, session) {
     #mutate(new_water_depth = m_water_depth * (1500/soundvel1))
     
     #pull out science variables
-    scivars <- glider %>%
+    scivars <- df %>%
       select(starts_with(c("sci","osg"))) %>%
       colnames()
     
     #pull out flight variables
-    flightvars <- glider %>%
+    flightvars <- df %>%
       select(!starts_with("sci")) %>%
       colnames()
     
-    #commit mission number to global variable upon mission selection
-    missionNum <<- input$mission
+    #commit mission number to reactive val at load
+    missionNum$id <- isolate(input$mission)
     
     #mission date range variables
-    startDate <- min(glider$m_present_time)
-    endDate <- max(glider$m_present_time)
+    startDate <- min(df$m_present_time)
+    endDate <- max(df$m_present_time)
     
     #get start/end days and update data filters
-    updateDateInput(session, "date1", NULL, min = min(glider$m_present_time), max = max(glider$m_present_time), value = startDate)
-    updateDateInput(session, "date2", NULL, min = min(glider$m_present_time), max = max(glider$m_present_time), value = endDate)
-    updateSelectInput(session, "display_var", NULL, choices = c(scivars))
+    updateDateInput(session, "date1", NULL, min = min(df$m_present_time), max = max(df$m_present_time), value = startDate)
+    updateDateInput(session, "date2", NULL, min = min(df$m_present_time), max = max(df$m_present_time), value = endDate)
+    updateSelectInput(session, "display_var", NULL, choices = c(scivars), selected = "sci_water_temp")
     updateSelectizeInput(session, "flight_var", NULL, choices = c(flightvars), selected = "m_roll")
+    
     showNotification("Data loaded", type = "message")
+    
+    print(paste0(missionNum$id, " data loaded"))
+    
+    glider$full <- df
     
   })
   
   #dynamically filter for plotting
   chunk <- reactive({
-    filter(glider, m_present_time >= input$date1 & m_present_time <= input$date2) %>%
+    df <- glider$full %>%
+      filter(m_present_time >= input$date1 & m_present_time <= input$date2) %>%
       #filter(status %in% c(input$status)) %>%
       #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
       filter(m_depth >= input$min_depth & m_depth <= input$max_depth)
+    
+    df
+
   })
   
   #ranges for plot zooms
@@ -292,14 +345,13 @@ server <- function(input, output, session) {
   ########## science plot #########
   
   scienceChunk <- reactive({
-    req(input$load)
+    #req(input$display_var)
     
     select(chunk(), m_present_time, m_depth, input$display_var) %>%
       filter(!is.na(across(!c(m_present_time:m_depth))))
   })
   
   gg1 <- reactive({
-    req(input$load)
     ggplot(data = 
              scienceChunk(),#dynamically filter the sci variable of interest
            aes(x=m_present_time,
@@ -319,7 +371,7 @@ server <- function(input, output, session) {
                  na.rm = TRUE
       ) +
       theme_bw() +
-      labs(title = paste0(missionNum, " Science Data"),
+      labs(title = paste0(missionNum$id, " Science Data"),
            y = "Depth (m)",
            x = "Date") +
       theme(plot.title = element_text(size = 32)) +
@@ -377,7 +429,7 @@ server <- function(input, output, session) {
       geom_point() +
       coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
       theme_grey() +
-      labs(title = paste0(missionNum, " Flight Data"),
+      labs(title = paste0(missionNum$id, " Flight Data"),
            x = "Date") +
       theme(plot.title = element_text(size = 32)) +
       theme(axis.title = element_text(size = 16)) +
@@ -438,7 +490,7 @@ server <- function(input, output, session) {
       scale_y_reverse() +
       scale_colour_viridis_c(limits = c(limits = c(input$soundmin, input$soundmax))) +
       theme_bw() +
-      labs(title = paste0(missionNum, " Sound Velocity"),
+      labs(title = paste0(missionNum$id, " Sound Velocity"),
            caption = "Calculated using Coppens <i>et al.</i> (1981)",
            y = "Depth (m)",
            x = "Date") +
@@ -524,10 +576,12 @@ server <- function(input, output, session) {
       print("SSV!")
       newGlider <- ssv_to_rds(inputFile = input$upload$datapath,
                               missionNum = input$upload$name)
+      session$reload()
       #if kml
     } else if (ext == "kml"){
       print("KML!")
       file.copy(input$upload$datapath, "./KML")
+      session$reload()
       #file.rename(f)
     } else if (ext == "kmz"){
       showModal(modalDialog(

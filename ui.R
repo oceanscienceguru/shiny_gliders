@@ -415,7 +415,7 @@ navbarPage(
                                   brush = brushOpts(id = "fliPlot_brush",
                                                     resetOnNew = TRUE),
                                   height = "600px"
-                                )
+                                ) %>% withSpinner(color="#0dc5c1")
                               )
                             )),
                    #sound velocity tab
