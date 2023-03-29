@@ -285,7 +285,7 @@ navbarPage(
              ))
   ),
   tabPanel(title = "Archived Mission Data",
-           fillPage(
+           fluidPage(
              column(2,
              #parameter input row
              #sidebarLayout(
