@@ -45,6 +45,7 @@ server <- function(input, output, session) {
   
   #pull out flight variables
   flightvarsLive <- fdf %>%
+    select(!(c(segment))) %>%
     #select(!starts_with("sci")) %>%
     colnames()
   
@@ -76,7 +77,7 @@ server <- function(input, output, session) {
     # print(endDateLive_sci)
     
     qf <- scienceLive %>%
-      dplyr::select(c(sci_m_present_time, sci_water_pressure, any_of(input$display_varLive))) %>%
+      dplyr::select(c(sci_m_present_time, segment, sci_water_pressure, any_of(input$display_varLive))) %>%
       slice(startDateLive_sci:endDateLive_sci) %>%
       filter(!is.na(across(!c(sci_m_present_time:sci_water_pressure))))
     
@@ -89,13 +90,26 @@ server <- function(input, output, session) {
   })
   
   derivedChunk_live <- reactive({
-    df <- scienceChunk_live  %>%
-      mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
-      mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
-      mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
-      mutate(soundvel1 = c_Coppens1981(m_depth,
-                                       osg_salinity,
-                                       sci_water_temp))
+    df <- glider_live[["science"]] %>%
+      arrange(sci_m_present_time)
+      
+      startDateLive_sci <- which.min(abs(as.numeric(df$sci_m_present_time) - as.numeric(as.POSIXct(input$date1Live))))
+      endDateLive_sci <- which.min(abs(as.numeric(df$sci_m_present_time) - as.numeric(as.POSIXct(input$date2Live))))
+      
+      df <- df %>%
+        slice(startDateLive_sci:endDateLive_sci) %>%
+        group_by(segment) %>%
+        mutate(ID = as.numeric(mean(sci_m_present_time))) %>%
+        ungroup() %>%
+        mutate(hour = hour(sci_m_present_time)) %>%
+        mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
+        mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
+        mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure))
+        # mutate(soundvel1 = c_Coppens1981(m_depth,
+        #                                  osg_salinity,
+        #                                  sci_water_temp))
+      
+      df
   })
   
   flightChunk_live <- reactive({
@@ -168,58 +182,50 @@ server <- function(input, output, session) {
           shape = variable)) +
       geom_point(size = 3) +
       #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
-      theme_grey() +
+      theme_bw() +
       labs(#title = paste0(missionNum, " Flight Data"),
         x = "Date") +
       theme(plot.title = element_text(size = 32)) +
       theme(axis.title = element_text(size = 16)) +
       theme(axis.text = element_text(size = 12))
     
-    # plotup <- list()
-    # for (i in input$flight_var){
-    #   plotup[[i]] = ggplot(data = select(chunk(), m_present_time, all_of(i)) %>%
-    #     pivot_longer(
-    #       cols = !m_present_time,
-    #       names_to = "variable",
-    #       values_to = "count") %>%
-    #     filter(!is.na(count)),
-    #     aes(x = m_present_time,
-    #         y = count,
-    #         color = variable,
-    #         shape = variable)) +
-    #     geom_point() +
-    #     coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
-    #     theme_minimal()
-    # }
-    # wrap_plots(plotup, ncol = 1)
   })
   
   output$fliPlotLive <- renderPlot({gg2Live()})
   
-  #flight plot
+  #derived Live plots
   gg3Live <- reactive({
-    # if (input$flight_var == "m_roll") {
-    #   flightxlabel <- "roll"
-    # } else if (input$flight_var == "m_heading") {
-    #   flightxlabel <- "heading"
-    # }
-    #req(input$load)
-    ggplot(
-      data =
-        flightChunk_live(),
-      aes(x = sci_m_present_time,
-          y = count,
-          color = variable,
-          shape = variable)) +
-      geom_point(size = 3) +
-      #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
-      theme_grey() +
-      labs(#title = paste0(missionNum, " Flight Data"),
-        x = "Date") +
-      theme(plot.title = element_text(size = 32)) +
-      theme(axis.title = element_text(size = 16)) +
-      theme(axis.text = element_text(size = 12))
     
+    df <- filter(derivedChunk_live(), osg_salinity > 0)
+    
+    ggplot(
+      data = df,
+      aes(x = osg_salinity,
+          y = osg_theta,
+          color = ID,
+          #shape = variable
+          )) +
+      geom_point(size = 3,
+                 pch = 1) +
+      scale_color_gradient(
+        low = "red",
+        high = "blue",
+      ) +
+      #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
+      theme_bw() +
+      labs(title = "TS Plot",
+        x = "Salinity",
+        y = "Potential Temperature",
+        #color = "Time",
+        caption = "Red = older ... Blue = more recent"
+        ) +
+      theme(plot.title = element_text(size = 32),
+            axis.title = element_text(size = 16),
+            axis.text = element_text(size = 12),
+            plot.caption = element_text(size = 16),
+            legend.position ="none",
+            ) 
+  
   })
   
   output$tsPlotLive <- renderPlot({gg3Live()})

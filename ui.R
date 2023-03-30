@@ -126,20 +126,20 @@ navbarPage(
                                    )
                                  )),
                         #sound velocity tab
-                        tabPanel(title = "Sound Velocity",
+                        tabPanel(title = "Derived Data",
                                  fluidRow(
-                                   column(3,
-                                          wellPanel(
-                                            numericInput(inputId = "soundminLive",
-                                                         label = "Sound Axis Minimum",
-                                                         NULL),
-                                            numericInput(inputId = "soundmaxLive",
-                                                         label = "Sound Axis Maximum",
-                                                         NULL),
-                                            #downloadButton('downloadSouPlot')
-                                          )),
-                                   column(9,
-                                          plotOutput(outputId = "souPlotLive",
+                                   # column(3,
+                                   #        wellPanel(
+                                   #          # numericInput(inputId = "derivedminLive",
+                                   #          #              label = "Axis Minimum",
+                                   #          #              NULL),
+                                   #          # numericInput(inputId = "derivedmaxLive",
+                                   #          #              label = "Axis Maximum",
+                                   #          #              NULL),
+                                   #          #downloadButton('downloadSouPlot')
+                                   #        )),
+                                   column(12,
+                                          plotOutput(outputId = "tsPlotLive",
                                                      #height = "600px"
                                           )
                                    )
