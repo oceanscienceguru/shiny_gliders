@@ -128,17 +128,17 @@ navbarPage(
                         #sound velocity tab
                         tabPanel(title = "Derived Data",
                                  fluidRow(
-                                   # column(3,
-                                   #        wellPanel(
-                                   #          # numericInput(inputId = "derivedminLive",
-                                   #          #              label = "Axis Minimum",
-                                   #          #              NULL),
-                                   #          # numericInput(inputId = "derivedmaxLive",
-                                   #          #              label = "Axis Maximum",
-                                   #          #              NULL),
-                                   #          #downloadButton('downloadSouPlot')
-                                   #        )),
-                                   column(12,
+                                   column(3,
+                                          wellPanel(
+                                            selectInput(inputId = "derivedTypeLive",
+                                                         label = "Which type of plot?",
+                                                         NULL),
+                                            # numericInput(inputId = "derivedmaxLive",
+                                            #              label = "Axis Maximum",
+                                            #              NULL),
+                                            #downloadButton('downloadSouPlot')
+                                          )),
+                                   column(9,
                                           plotOutput(outputId = "tsPlotLive",
                                                      #height = "600px"
                                           )

@@ -60,6 +60,7 @@ server <- function(input, output, session) {
   updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
   updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
   
+  updateSelectInput(session, "derivedTypeLive", NULL, choices = c("SV Plot", "TS Plot"), selected = "SV Plot")
   
   glider_live <- list(science = sdf, flight = fdf)
   
@@ -104,10 +105,11 @@ server <- function(input, output, session) {
         mutate(hour = hour(sci_m_present_time)) %>%
         mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
         mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
-        mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure))
-        # mutate(soundvel1 = c_Coppens1981(m_depth,
-        #                                  osg_salinity,
-        #                                  sci_water_temp))
+        mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
+        mutate(osg_depth = p2d(sci_water_pressure/10, lat=30)) %>%
+        mutate(osg_soundvel1 = c_Coppens1981(osg_depth,
+                                             osg_salinity,
+                                             sci_water_temp))
       
       df
   })
@@ -196,9 +198,11 @@ server <- function(input, output, session) {
   #derived Live plots
   gg3Live <- reactive({
     
+    if (input$derivedTypeLive == "TS Plot"){
     df <- filter(derivedChunk_live(), osg_salinity > 0)
     
-    ggplot(
+    plot <- 
+      ggplot(
       data = df,
       aes(x = osg_salinity,
           y = osg_theta,
@@ -225,7 +229,41 @@ server <- function(input, output, session) {
             plot.caption = element_text(size = 16),
             legend.position ="none",
             ) 
-  
+    }
+    
+    if (input$derivedTypeLive == "SV Plot"){
+      df <- filter(derivedChunk_live(), osg_salinity > 0)
+      
+      plot <- 
+        ggplot(data = filter(df, !is.nan(osg_soundvel1)),
+               aes(x=sci_m_present_time,
+                   y=osg_depth,
+                   #z=osg_soundvel1
+                   )) +
+        geom_point(
+          aes(color = osg_soundvel1)
+        ) +
+        # geom_point(data = filter(df, m_water_depth > 0),
+        #            aes(y = m_water_depth),
+        #            size = 0.1,
+        #            na.rm = TRUE
+        # ) +
+        #geom_hline(yintercept = 0) +
+        scale_y_reverse() +
+        scale_colour_viridis_c() +
+        theme_bw() +
+        labs(title = "Sound Velocity",
+             caption = "Calculated using Coppens <i>et al.</i> (1981)",
+             y = "Depth (m)",
+             x = "Date") +
+        theme(plot.title = element_text(size = 32)) +
+        theme(axis.title = element_text(size = 16)) +
+        theme(axis.text = element_text(size = 12)) +
+        theme(plot.caption = element_markdown())
+    }
+    
+    plot
+    
   })
   
   output$tsPlotLive <- renderPlot({gg3Live()})
