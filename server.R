@@ -60,7 +60,7 @@ server <- function(input, output, session) {
   updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
   updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
   
-  updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Density", "SV Plot", "TS Plot"), selected = "SV Plot")
+  updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
   
   glider_live <- list(science = sdf, flight = fdf)
   
@@ -195,11 +195,11 @@ server <- function(input, output, session) {
   
   output$fliPlotLive <- renderPlot({gg2Live()})
   
-  #derived Live plots
+  ##### derived Live plots #########
   gg3Live <- reactive({
     
     if (input$derivedTypeLive == "TS Plot"){
-    df <- filter(derivedChunk_live(), osg_salinity > 0)
+    df <- filter(derivedChunk_live(), !is.nan(osg_salinity))
     
     plot <- 
       ggplot(
@@ -232,10 +232,10 @@ server <- function(input, output, session) {
     }
     
     if (input$derivedTypeLive == "SV Plot"){
-      df <- filter(derivedChunk_live(), osg_salinity > 0)
+      df <- filter(derivedChunk_live(), !is.nan(osg_soundvel1))
       
       plot <- 
-        ggplot(data = filter(df, !is.nan(osg_soundvel1)),
+        ggplot(data = df,
                aes(x=sci_m_present_time,
                    y=osg_depth,
                    #z=osg_soundvel1
@@ -263,12 +263,12 @@ server <- function(input, output, session) {
     }
     
     if (input$derivedTypeLive == "Density"){
-      df <- filter(derivedChunk_live(), osg_salinity > 0)
+      df <- filter(derivedChunk_live(), !is.nan(osg_rho))
       
       plot <- 
         ggplot(
         data = 
-          df,#dynamically filter the sci variable of interest
+          df,
         aes(x=sci_m_present_time,
             y=osg_depth,
             #z=.data[[input$display_varLive]],
@@ -296,11 +296,47 @@ server <- function(input, output, session) {
         theme(axis.text = element_text(size = 12))
     }
     
+    if (input$derivedTypeLive == "Salinity"){
+      df <- filter(derivedChunk_live(), !is.nan(osg_salinity))
+      
+      plot <- 
+        ggplot(
+          data = 
+            df,
+          aes(x=sci_m_present_time,
+              y=osg_depth,
+              #z=.data[[input$display_varLive]],
+              colour = osg_salinity,
+          )) +
+        geom_point(
+          size = 3,
+          na.rm = TRUE
+        ) +
+        # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
+        #geom_hline(yintercept = 0) +
+        scale_y_reverse() +
+        scale_colour_viridis_c() +
+        # geom_point(data = filter(glider_live(), m_water_depth > 0),
+        #            aes(y = m_water_depth),
+        #            size = 0.1,
+        #            na.rm = TRUE
+        # ) +
+        theme_bw() +
+        labs(title = "Salinity at Depth",
+             y = "Depth (m)",
+             x = "Date") +
+        theme(plot.title = element_text(size = 32)) +
+        theme(axis.title = element_text(size = 16)) +
+        theme(axis.text = element_text(size = 12))
+    }
+    
     plot
     
   })
   
   output$tsPlotLive <- renderPlot({gg3Live()})
+  
+  ####### archived flight data ########
   
   fileList_archive <- list.files(path = "./Data/",
                                  pattern = "*.rds")
