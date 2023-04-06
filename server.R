@@ -40,7 +40,8 @@ server <- function(input, output, session) {
     mutate(m_present_time = sci_m_present_time)
   
   gliderdf <- fdf %>%
-    full_join(sdf, by = join_by(m_present_time)) %>%
+    select(!c(segment)) %>%
+    full_join(sdf) %>%
     #select(!c(segment)) %>%
     arrange(m_present_time) %>%
     mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
