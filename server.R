@@ -36,11 +36,24 @@ server <- function(input, output, session) {
     filter(m_present_time > 1677646800)
   
   sdf <- bind_rows(slist, .id = "segment") %>%
-    filter(sci_m_present_time > 1677646800)
+    filter(sci_m_present_time > 1677646800) %>%
+    mutate(m_present_time = sci_m_present_time)
+  
+  gliderdf <- fdf %>%
+    full_join(sdf, by = join_by(m_present_time)) %>%
+    #select(!c(segment)) %>%
+    arrange(m_present_time) %>%
+    mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
+    mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
+    mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
+    mutate(osg_depth = p2d(sci_water_pressure*10, lat=30)) %>%
+    mutate(osg_soundvel1 = c_Coppens1981(osg_depth,
+                                         osg_salinity,
+                                         sci_water_temp))
   
   #pull out science variables
   scivarsLive <- sdf %>%
-    select(!(c(segment))) %>%
+    select(!(c(segment, m_present_time))) %>%
     colnames()
   
   #pull out flight variables
@@ -64,61 +77,31 @@ server <- function(input, output, session) {
   
   glider_live <- list(science = sdf, flight = fdf)
   
+  gliderChunk_live <- reactive({
+    df <- gliderdf %>%
+      filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
+      #filter(status %in% c(input$status)) %>%
+      #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
+      #filter(m_depth >= input$min_depth & m_depth <= input$max_depth)
+    
+    df
+  })
   
   scienceChunk_live <- reactive({
     req(input$display_varLive)
     
-    scienceLive <- glider_live[["science"]] %>%
-      arrange(sci_m_present_time)
-    
-    startDateLive_sci <- which.min(abs(as.numeric(scienceLive$sci_m_present_time) - as.numeric(as.POSIXct(input$date1Live))))
-    endDateLive_sci <- which.min(abs(as.numeric(scienceLive$sci_m_present_time) - as.numeric(as.POSIXct(input$date2Live))))
-    
-    # print(startDateLive_sci)
-    # print(endDateLive_sci)
-    
-    qf <- scienceLive %>%
-      dplyr::select(c(sci_m_present_time, segment, sci_water_pressure, any_of(input$display_varLive))) %>%
-      slice(startDateLive_sci:endDateLive_sci) %>%
-      filter(!is.na(across(!c(sci_m_present_time:sci_water_pressure))))
-    
-    # if (!is.null(input$min_depthLive | input$max_depthLive)){
-    #   filter(qf, sci_water_pressure >= input$min_depthLive & sci_water_pressure <= input$max_depthLive)
-    # }
+    qf <- gliderChunk_live() %>%
+      select(c(m_present_time, osg_depth, any_of(input$display_varLive))) %>%
+      filter(!is.na(across(!c(m_present_time:osg_depth))))
     
     qf
     
   })
   
-  derivedChunk_live <- reactive({
-    df <- glider_live[["science"]] %>%
-      arrange(sci_m_present_time)
-      
-      startDateLive_sci <- which.min(abs(as.numeric(df$sci_m_present_time) - as.numeric(as.POSIXct(input$date1Live))))
-      endDateLive_sci <- which.min(abs(as.numeric(df$sci_m_present_time) - as.numeric(as.POSIXct(input$date2Live))))
-      
-      df <- df %>%
-        slice(startDateLive_sci:endDateLive_sci) %>%
-        group_by(segment) %>%
-        mutate(ID = as.numeric(mean(sci_m_present_time))) %>%
-        ungroup() %>%
-        mutate(hour = hour(sci_m_present_time)) %>%
-        mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
-        mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
-        mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
-        mutate(osg_depth = p2d(sci_water_pressure*10, lat=30)) %>%
-        mutate(osg_soundvel1 = c_Coppens1981(osg_depth,
-                                             osg_salinity,
-                                             sci_water_temp))
-      
-      df
-  })
-  
   flightChunk_live <- reactive({
     req(input$date1Live)
     
-    df <- glider_live[["flight"]] %>%
-      arrange(m_present_time) %>%
+    df <- gliderChunk_live() %>%
       dplyr::select(c(m_present_time, all_of(input$flight_varLive))) %>%
       filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live) %>%
       pivot_longer(
@@ -135,27 +118,28 @@ server <- function(input, output, session) {
     sciLive <- ggplot(
       data = 
         scienceChunk_live(),#dynamically filter the sci variable of interest
-      aes(x=sci_m_present_time,
-          y=sci_water_pressure,
+      aes(x=m_present_time,
+          y=osg_depth,
           #z=.data[[input$display_varLive]],
           colour = .data[[input$display_varLive]],
       )) +
       geom_point(
-        size = 3,
-        na.rm = TRUE
+        # size = 2,
+        # na.rm = TRUE
       ) +
       # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
       #geom_hline(yintercept = 0) +
       scale_y_reverse() +
       scale_colour_viridis_c(limits = c(input$minLive, input$maxLive)) +
-      # geom_point(data = filter(glider_live(), m_water_depth > 0),
-      #            aes(y = m_water_depth),
-      #            size = 0.1,
-      #            na.rm = TRUE
-      # ) +
+      geom_point(data = filter(gliderChunk_live(), m_water_depth > 0),
+                 aes(y = m_water_depth),
+                 size = 0.3,
+                 color = "black",
+                 na.rm = TRUE
+      ) +
       theme_bw() +
       labs(#title = paste0(missionNum, " Science Data"),
-        y = "Pressure (bar)",
+        y = "Depth (m)",
         x = "Date") +
       theme(plot.title = element_text(size = 32)) +
       theme(axis.title = element_text(size = 16)) +
@@ -182,7 +166,7 @@ server <- function(input, output, session) {
           y = count,
           color = variable,
           shape = variable)) +
-      geom_point(size = 3) +
+      geom_point() +
       #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
       theme_bw() +
       labs(#title = paste0(missionNum, " Flight Data"),
@@ -199,29 +183,30 @@ server <- function(input, output, session) {
   gg3Live <- reactive({
     
     if (input$derivedTypeLive == "TS Plot"){
-    df <- filter(derivedChunk_live(), !is.nan(osg_salinity))
+    df <- filter(gliderChunk_live(), osg_salinity > 0)
+    wf <- filter(gliderChunk_live(), m_water_depth > 0)
     
     plot <- 
       ggplot(
       data = df,
       aes(x = osg_salinity,
           y = osg_theta,
-          color = ID,
+          #color = ID,
           #shape = variable
           )) +
       geom_point(size = 3,
                  pch = 1) +
-      scale_color_gradient(
-        low = "red",
-        high = "blue",
-      ) +
+      # scale_color_gradient(
+      #   low = "red",
+      #   high = "blue",
+      # ) +
       #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
       theme_bw() +
       labs(title = "TS Plot",
         x = "Salinity",
         y = "Potential Temperature",
         #color = "Time",
-        caption = "Red = older ... Blue = more recent"
+        #caption = "Red = older ... Blue = more recent"
         ) +
       theme(plot.title = element_text(size = 32),
             axis.title = element_text(size = 16),
@@ -232,25 +217,27 @@ server <- function(input, output, session) {
     }
     
     if (input$derivedTypeLive == "SV Plot"){
-      df <- filter(derivedChunk_live(), !is.nan(osg_soundvel1))
+      df <- filter(gliderChunk_live(), osg_soundvel1 > 0)
+      wf <- filter(gliderChunk_live(), m_water_depth > 0)
       
       plot <- 
         ggplot(data = df,
-               aes(x=sci_m_present_time,
+               aes(x=m_present_time,
                    y=osg_depth,
                    #z=osg_soundvel1
                    )) +
         geom_point(
           aes(color = osg_soundvel1)
         ) +
-        # geom_point(data = filter(df, m_water_depth > 0),
-        #            aes(y = m_water_depth),
-        #            size = 0.1,
-        #            na.rm = TRUE
-        # ) +
         #geom_hline(yintercept = 0) +
         scale_y_reverse() +
         scale_colour_viridis_c() +
+        geom_point(data = wf,
+                   aes(y = m_water_depth),
+                   size = 0.3,
+                   color = "black",
+                   na.rm = TRUE
+        ) +
         theme_bw() +
         labs(title = "Sound Velocity",
              caption = "Calculated using Coppens <i>et al.</i> (1981)",
@@ -263,30 +250,32 @@ server <- function(input, output, session) {
     }
     
     if (input$derivedTypeLive == "Density"){
-      df <- filter(derivedChunk_live(), !is.nan(osg_rho))
+      df <- filter(gliderChunk_live(), osg_rho > 0)
+      wf <- filter(gliderChunk_live(), m_water_depth > 0)
       
       plot <- 
         ggplot(
         data = 
           df,
-        aes(x=sci_m_present_time,
+        aes(x=m_present_time,
             y=osg_depth,
             #z=.data[[input$display_varLive]],
             colour = osg_rho,
         )) +
         geom_point(
-          size = 3,
-          na.rm = TRUE
+          # size = 2,
+          # na.rm = TRUE
         ) +
         # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
         #geom_hline(yintercept = 0) +
         scale_y_reverse() +
         scale_colour_viridis_c() +
-        # geom_point(data = filter(glider_live(), m_water_depth > 0),
-        #            aes(y = m_water_depth),
-        #            size = 0.1,
-        #            na.rm = TRUE
-        # ) +
+        geom_point(data = wf,
+                   aes(y = m_water_depth),
+                   size = 0.3,
+                   color = "black",
+                   na.rm = TRUE
+        ) +
         theme_bw() +
         labs(title = "Density at Depth",
           y = "Depth (m)",
@@ -297,30 +286,32 @@ server <- function(input, output, session) {
     }
     
     if (input$derivedTypeLive == "Salinity"){
-      df <- filter(derivedChunk_live(), !is.nan(osg_salinity))
+      df <- filter(gliderChunk_live(), osg_salinity > 0)
+      wf <- filter(gliderChunk_live(), m_water_depth > 0)
       
       plot <- 
         ggplot(
           data = 
             df,
-          aes(x=sci_m_present_time,
+          aes(x=m_present_time,
               y=osg_depth,
               #z=.data[[input$display_varLive]],
               colour = osg_salinity,
           )) +
         geom_point(
-          size = 3,
-          na.rm = TRUE
+          # size = 2,
+          # na.rm = TRUE
         ) +
         # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
         #geom_hline(yintercept = 0) +
         scale_y_reverse() +
         scale_colour_viridis_c() +
-        # geom_point(data = filter(glider_live(), m_water_depth > 0),
-        #            aes(y = m_water_depth),
-        #            size = 0.1,
-        #            na.rm = TRUE
-        # ) +
+        geom_point(data = wf,
+                   aes(y = m_water_depth),
+                   size = 0.3,
+                   color = "black",
+                   na.rm = TRUE
+        ) +
         theme_bw() +
         labs(title = "Salinity at Depth",
              y = "Depth (m)",
