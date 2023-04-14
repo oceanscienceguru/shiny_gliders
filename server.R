@@ -6,77 +6,78 @@ server <- function(input, output, session) {
   
   
   #### live mission plotting #####
-  scienceList_liveInfo <- file.info(list.files(path = "/echos/science/",
-                                               full.names = TRUE)) %>%
-    filter(size > 0)
-  
-  scienceList_live <- rownames(scienceList_liveInfo) %>%
-    basename()
-  
-  flightList_liveInfo <- file.info(list.files(path = "/echos/flight/",
-                                              full.names = TRUE)) %>%
-    filter(size > 0)
-  
-  flightList_live <- rownames(flightList_liveInfo) %>%
-    basename()
-  
-  flightTotal <- length(flightList_live)
-  #if flightList changed ... then ... do df creation
-  
-  flist <- list()
-  slist <- list()
-  for (i in flightList_live) {
-    flist[[i]] <- ssv_to_df(paste0("/echos/flight/", i))
-  }
-  for (j in scienceList_live) {
-    slist[[j]] <- ssv_to_df(paste0("/echos/science/", j))
-  }
-  
-  fdf <- bind_rows(flist, .id = "segment") %>%
-    filter(m_present_time > 1677646800)
-  
-  sdf <- bind_rows(slist, .id = "segment") %>%
-    filter(sci_m_present_time > 1677646800) %>%
-    mutate(m_present_time = sci_m_present_time)
-  
-  gliderdf <- fdf %>%
-    select(!c(segment)) %>%
-    full_join(sdf) %>%
-    #select(!c(segment)) %>%
-    arrange(m_present_time) %>%
-    mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
-    mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
-    mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
-    mutate(osg_depth = p2d(sci_water_pressure*10, lat=30)) %>%
-    mutate(osg_soundvel1 = c_Coppens1981(osg_depth,
-                                         osg_salinity,
-                                         sci_water_temp))
-  
-  #pull out science variables
-  scivarsLive <- sdf %>%
-    select(!(c(segment, m_present_time))) %>%
-    colnames()
-  
-  #pull out flight variables
-  flightvarsLive <- fdf %>%
-    select(!(c(segment))) %>%
-    #select(!starts_with("sci")) %>%
-    colnames()
+  load("/echos/usf-stella/glider_live.RData")
+  # scienceList_liveInfo <- file.info(list.files(path = "/echos/science/",
+  #                                              full.names = TRUE)) %>%
+  #   filter(size > 0)
+  # 
+  # scienceList_live <- rownames(scienceList_liveInfo) %>%
+  #   basename()
+  # 
+  # flightList_liveInfo <- file.info(list.files(path = "/echos/flight/",
+  #                                             full.names = TRUE)) %>%
+  #   filter(size > 0)
+  # 
+  # flightList_live <- rownames(flightList_liveInfo) %>%
+  #   basename()
+  # 
+  # flightTotal <- length(flightList_live)
+  # #if flightList changed ... then ... do df creation
+  # 
+  # flist <- list()
+  # slist <- list()
+  # for (i in flightList_live) {
+  #   flist[[i]] <- ssv_to_df(paste0("/echos/flight/", i))
+  # }
+  # for (j in scienceList_live) {
+  #   slist[[j]] <- ssv_to_df(paste0("/echos/science/", j))
+  # }
+  # 
+  # fdf <- bind_rows(flist, .id = "segment") %>%
+  #   filter(m_present_time > 1677646800)
+  # 
+  # sdf <- bind_rows(slist, .id = "segment") %>%
+  #   filter(sci_m_present_time > 1677646800) %>%
+  #   mutate(m_present_time = sci_m_present_time)
+  # 
+  # gliderdf <- fdf %>%
+  #   select(!c(segment)) %>%
+  #   full_join(sdf) %>%
+  #   #select(!c(segment)) %>%
+  #   arrange(m_present_time) %>%
+  #   mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
+  #   mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
+  #   mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
+  #   mutate(osg_depth = p2d(sci_water_pressure*10, lat=30)) %>%
+  #   mutate(osg_soundvel1 = c_Coppens1981(osg_depth,
+  #                                        osg_salinity,
+  #                                        sci_water_temp))
+  # 
+  # #pull out science variables
+  # scivarsLive <- sdf %>%
+  #   select(!(c(segment, m_present_time))) %>%
+  #   colnames()
+  # 
+  # #pull out flight variables
+  # flightvarsLive <- fdf %>%
+  #   select(!(c(segment))) %>%
+  #   #select(!starts_with("sci")) %>%
+  #   colnames()
   
   #mission date range variables
-  startDateLive <- min(fdf$m_present_time)
-  endDateLive <- max(fdf$m_present_time)
+  startDateLive <- min(gliderdf$m_present_time)
+  endDateLive <- max(gliderdf$m_present_time)
   
   #get start/end days and update data filters
-  updateDateInput(session, "date1Live", NULL, min = min(fdf$m_present_time), max = max(fdf$m_present_time), value = startDateLive)
-  updateDateInput(session, "date2Live", NULL, min = min(fdf$m_present_time), max = max(fdf$m_present_time), value = endDateLive)
+  updateDateInput(session, "date1Live", NULL, min = min(gliderdf$m_present_time), max = max(gliderdf$m_present_time), value = startDateLive)
+  updateDateInput(session, "date2Live", NULL, min = min(gliderdf$m_present_time), max = max(gliderdf$m_present_time), value = endDateLive)
   
   updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
   updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
   
   updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
   
-  glider_live <- list(science = sdf, flight = fdf)
+  #glider_live <- list(science = sdf, flight = fdf)
   
   gliderChunk_live <- reactive({
     df <- gliderdf %>%
