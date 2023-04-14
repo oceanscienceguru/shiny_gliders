@@ -7,63 +7,8 @@ server <- function(input, output, session) {
   
   #### live mission plotting #####
   load("/echos/usf-stella/glider_live.RData")
-  # scienceList_liveInfo <- file.info(list.files(path = "/echos/science/",
-  #                                              full.names = TRUE)) %>%
-  #   filter(size > 0)
-  # 
-  # scienceList_live <- rownames(scienceList_liveInfo) %>%
-  #   basename()
-  # 
-  # flightList_liveInfo <- file.info(list.files(path = "/echos/flight/",
-  #                                             full.names = TRUE)) %>%
-  #   filter(size > 0)
-  # 
-  # flightList_live <- rownames(flightList_liveInfo) %>%
-  #   basename()
-  # 
-  # flightTotal <- length(flightList_live)
-  # #if flightList changed ... then ... do df creation
-  # 
-  # flist <- list()
-  # slist <- list()
-  # for (i in flightList_live) {
-  #   flist[[i]] <- ssv_to_df(paste0("/echos/flight/", i))
-  # }
-  # for (j in scienceList_live) {
-  #   slist[[j]] <- ssv_to_df(paste0("/echos/science/", j))
-  # }
-  # 
-  # fdf <- bind_rows(flist, .id = "segment") %>%
-  #   filter(m_present_time > 1677646800)
-  # 
-  # sdf <- bind_rows(slist, .id = "segment") %>%
-  #   filter(sci_m_present_time > 1677646800) %>%
-  #   mutate(m_present_time = sci_m_present_time)
-  # 
-  # gliderdf <- fdf %>%
-  #   select(!c(segment)) %>%
-  #   full_join(sdf) %>%
-  #   #select(!c(segment)) %>%
-  #   arrange(m_present_time) %>%
-  #   mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
-  #   mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
-  #   mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
-  #   mutate(osg_depth = p2d(sci_water_pressure*10, lat=30)) %>%
-  #   mutate(osg_soundvel1 = c_Coppens1981(osg_depth,
-  #                                        osg_salinity,
-  #                                        sci_water_temp))
-  # 
-  # #pull out science variables
-  # scivarsLive <- sdf %>%
-  #   select(!(c(segment, m_present_time))) %>%
-  #   colnames()
-  # 
-  # #pull out flight variables
-  # flightvarsLive <- fdf %>%
-  #   select(!(c(segment))) %>%
-  #   #select(!starts_with("sci")) %>%
-  #   colnames()
-  
+          #gliderdf, scivarsLive, flightvarsLive
+
   #mission date range variables
   startDateLive <- min(gliderdf$m_present_time)
   endDateLive <- max(gliderdf$m_present_time)
@@ -161,7 +106,7 @@ server <- function(input, output, session) {
     #   flightxlabel <- "heading"
     # }
     #req(input$load)
-    ggplot(
+    fliLive <- ggplot(
       data =
         flightChunk_live(),
       aes(x = m_present_time,
@@ -176,6 +121,8 @@ server <- function(input, output, session) {
       theme(plot.title = element_text(size = 32)) +
       theme(axis.title = element_text(size = 16)) +
       theme(axis.text = element_text(size = 12))
+    
+    fliLive 
     
   })
   
@@ -193,7 +140,7 @@ server <- function(input, output, session) {
       data = df,
       aes(x = osg_salinity,
           y = osg_theta,
-          #color = ID,
+          #color = segment,
           #shape = variable
           )) +
       geom_point(size = 3,
@@ -328,6 +275,67 @@ server <- function(input, output, session) {
   })
   
   output$tsPlotLive <- renderPlot({gg3Live()})
+  
+  
+  #live mission map
+  output$missionmapLive <- renderLeaflet({
+    
+    #massage gps data a lot
+    map_sf <- gliderdf %>%
+      select(m_present_time, m_gps_lon, m_gps_lat) %>%
+      filter(!is.na(m_gps_lat)) %>%
+      mutate(latt = format(m_gps_lat, nsmall = 4),
+             longg = format(m_gps_lon, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
+      separate(latt, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
+      separate(longg, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
+      mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
+             longd = substr(longgd, 1, nchar(longgd)-2)) %>%
+      mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
+             longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
+      mutate_if(is.character, as.numeric) %>% #coerce back to numeric
+      mutate(lat = latd + (latm/60),
+             long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
+    
+    leaflet() %>%
+      #base provider layers
+      addProviderTiles(providers$Esri.OceanBasemap, 
+                       group = "Ocean Basemap") %>%
+      addProviderTiles(providers$Esri.WorldImagery, 
+                       group = "World Imagery") %>%
+      addLayersControl(baseGroups = c('World Imagery', 'Ocean Basemap')) %>%
+      addPolylines(
+        lat = map_sf$lat,
+        lng = map_sf$long,
+        color = "grey",
+        weight = 3,
+        opacity = 1,
+      ) %>%
+      #timestamps for surfacings
+      addCircles(data = map_sf,
+                 lat = map_sf$lat,
+                 lng = map_sf$long,
+                 color = "gold",
+                 popup = map_sf$m_present_time,
+                 weight = 3
+      ) %>%
+      #start marker
+      addAwesomeMarkers(
+        lat = map_sf[1, "lat"],
+        lng = map_sf[1, "long"],
+        label = "Starting point",
+        icon = icon.start
+      ) %>%
+      #end marker
+      addAwesomeMarkers(
+        lat = map_sf[nrow(map_sf), "lat"],
+        lng = map_sf[nrow(map_sf), "long"],
+        label = "Latest position",
+        icon = icon.latest
+      ) %>%
+      addMeasure()
+  })
+  
+  
   
   ####### archived flight data ########
   

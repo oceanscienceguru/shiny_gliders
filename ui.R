@@ -59,9 +59,9 @@ navbarPage(
                column(10,
                       #mainPanel(#science variable settings
                       tabsetPanel(
-                        # tabPanel(title = "Map",
-                        #          leafletOutput(outputId = "missionmap",
-                        #                        height = "800px")),
+                        tabPanel(title = "Map",
+                                 leafletOutput(outputId = "missionmapLive",
+                                               height = "600px")),
                         tabPanel(title = "Science Data",
                                  column(3,
                                         wellPanel(
