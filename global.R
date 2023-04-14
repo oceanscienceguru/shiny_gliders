@@ -32,6 +32,12 @@ icon.end <- makeAwesomeIcon(
   iconColor = "black"
 )
 
+icon.latest <- makeAwesomeIcon(
+  icon = "flag", markerColor = "purple",
+  library = "fa",
+  iconColor = "black"
+)
+
 #https://rdrr.io/github/AustralianAntarcticDivision/ZooScatR/src/R/soundvelocity.R
 c_Coppens1981 <- function(D,S,T){
   t <- T/10
