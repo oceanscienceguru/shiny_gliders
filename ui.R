@@ -12,6 +12,47 @@ navbarPage(
              "
     )
   )),
+  tabPanel(title = "Piloting Dashboard",
+           dashboardPage(
+             dashboardHeader(),
+             dashboardSidebar(
+               sidebarMenu(
+                 menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard"))
+               )
+             ),
+             dashboardBody(
+               tabItems(
+                 tabItem(tabName = "dashboard",
+                         fluidRow(
+                         box(
+                           leafletOutput(outputId = "missionmapLive")
+                           ),
+                         box(
+                           slickROutput("slick_output")
+                         ),
+                         # box(
+                         #   plotOutput(
+                         #     outputId = "battplot",
+                         #   ) %>% withSpinner(color="#0dc5c1")
+                         # ),
+                         ),
+                         fluidRow(
+                         valueBoxOutput(
+                                        "LDBox"),
+                         valueBoxOutput(
+                                        "battBox")
+                         ),
+                         fluidRow(
+                           box(
+                             plotOutput(
+                               outputId = "leakplot",
+                             ),
+                           ),
+                         ),
+                 ),
+                 tabItem(tabName = "science data")
+                 ))
+           )),
   tabPanel(title = "Current Mission Data",
            fluidPage(
              tabsetPanel(
@@ -59,9 +100,9 @@ navbarPage(
                column(10,
                       #mainPanel(#science variable settings
                       tabsetPanel(
-                        tabPanel(title = "Map",
-                                 leafletOutput(outputId = "missionmapLive",
-                                               height = "600px")),
+                        # tabPanel(title = "Map",
+                        #          leafletOutput(outputId = "missionmapLive",
+                        #                        height = "600px")),
                         tabPanel(title = "Science Data",
                                  column(3,
                                         wellPanel(

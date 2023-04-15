@@ -12,6 +12,8 @@ library(sf)
 library(scales)
 library(seacarb)
 library(shinycssloaders)
+library(shinydashboard)
+library(slickR)
 
 source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")
