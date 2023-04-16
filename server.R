@@ -8,6 +8,8 @@ server <- function(input, output, session) {
   #### live mission plotting #####
   load("/echos/usf-stella/glider_live.RData")
           #gliderdf, scivarsLive, flightvarsLive
+  
+  #load in .RData with latest plots from Cron job
 
   #mission date range variables
   startDateLive <- min(gliderdf$m_present_time)
@@ -34,9 +36,6 @@ server <- function(input, output, session) {
     df
   })
   
-  gliderdfChunk <- gliderdf %>%
-    filter(m_present_time >= endDateLive-14400)
-  
   scienceChunk_live <- reactive({
     req(input$display_varLive)
     
@@ -45,7 +44,7 @@ server <- function(input, output, session) {
       filter(!is.na(across(!c(m_present_time:osg_depth))))
     
     qf
-    
+  
   })
   
   flightChunk_live <- reactive({
@@ -92,7 +91,7 @@ server <- function(input, output, session) {
   leakLive <- reactive({
     leakLive <- ggplot(
       data = 
-        gliderdfChunk,
+        filter(gliderdf, m_present_time >= endDateLive-14400),
       aes(x=m_present_time,
           y=m_leakdetect_voltage,
       )) +
@@ -115,8 +114,6 @@ server <- function(input, output, session) {
   output$leakplot <- renderPlot({leakLive()})
   
   output$LDBox <- renderValueBox({
-    LDmin <- min(gliderdfChunk$m_leakdetect_voltage, na.rm = TRUE)
-      
     if(LDmin >= 2.3){
       Mycolor = "green"
     } else if(LDmin >= 2 & LDmin < 2.3) {
@@ -125,13 +122,28 @@ server <- function(input, output, session) {
       Mycolor = "red"
     }
     valueBox(
-      LDmin, "LD min", icon = icon("tint", lib = "glyphicon"),
+      round(LDmin, 3), "LD min", icon = icon("tint", lib = "glyphicon"),
       color = Mycolor
     )
   })
-  output$battBox <- renderValueBox({
-    battLeft <- 100-(max(gliderdf$m_coulomb_amphr_total, na.rm = TRUE)/550)*100
+  
+  output$recoBox <- renderValueBox({
+    recoDays <- ((ahrCap*.9)-ahrUsed)/ahr3day
     
+    if(recoDays >= 14){
+      Mycolor = "green"
+    } else if(recoDays >= 7 & recoDays < 14) {
+      Mycolor = "yellow"
+    } else {
+      Mycolor = "red"
+    }
+    valueBox(
+      round(recoDays, 1), "Days til 10% charge abort", icon = icon("time", lib = "glyphicon"),
+      color = Mycolor
+    )
+  })
+  
+  output$battBox <- renderValueBox({
     if(battLeft >= 25){
       Mycolor = "green"
     } else if(battLeft >= 10 & battLeft < 25) {
@@ -140,13 +152,145 @@ server <- function(input, output, session) {
       Mycolor = "red"
     }
     valueBox(
-      battLeft, "Batt Percent", icon = icon("off", lib = "glyphicon"),
+      round(battLeft, 3), "Batt Percent", icon = icon("off", lib = "glyphicon"),
+      color = Mycolor
+    )
+  })
+  
+  output$powerBox3 <- renderValueBox({
+    
+    if(ahr3day <= 7){
+      Mycolor = "green"
+    } else if(ahr3day >= 7 & ahr3day < 10) {
+      Mycolor = "yellow"
+    } else {
+      Mycolor = "red"
+    }
+    valueBox(
+      round(ahr3day, 3), "3 Day Power Usage", icon = icon("off", lib = "glyphicon"),
+      color = Mycolor
+    )
+  })
+  
+  output$powerBox1 <- renderValueBox({
+    
+    if(ahr1day <= 7){
+      Mycolor = "green"
+    } else if(ahr1day >= 7 & ahr1day < 10) {
+      Mycolor = "yellow"
+    } else {
+      Mycolor = "red"
+    }
+    valueBox(
+      round(ahr1day, 3), "1 Day Power Usage", icon = icon("off", lib = "glyphicon"),
+      color = Mycolor
+    )
+  })
+  
+  output$powerBoxall <- renderValueBox({
+    
+    if(ahrAllday <= 7){
+      Mycolor = "green"
+    } else if(ahrAllday >= 7 & ahrAllday < 10) {
+      Mycolor = "yellow"
+    } else {
+      Mycolor = "red"
+    }
+    valueBox(
+      round(ahrAllday, 3), "Full Mission Power Usage", icon = icon("off", lib = "glyphicon"),
       color = Mycolor
     )
   })
   
   output$slick_output <- renderSlickR({
   })
+  
+  #live mission map
+  #massage gps data a lot
+  map_sf <- gliderdf %>%
+    select(m_present_time, m_gps_lon, m_gps_lat) %>%
+    filter(!is.na(m_gps_lat)) %>%
+    mutate(latt = format(m_gps_lat, nsmall = 4),
+           longg = format(m_gps_lon, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
+    separate(latt, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
+    separate(longg, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
+    mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
+           longd = substr(longgd, 1, nchar(longgd)-2)) %>%
+    mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
+           longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
+    mutate_if(is.character, as.numeric) %>% #coerce back to numeric
+    mutate(lat = latd + (latm/60),
+           long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
+  
+  wpt <- gliderdf %>%
+    select(m_present_time, c_wpt_lat, c_wpt_lon) %>%
+    filter(!is.na(c_wpt_lat)) %>%
+    select(!c(m_present_time)) %>%
+    format(., nsmall = 4) %>%
+    tail(1)  %>% #coerce to character keeping zeroes out to 4 decimals
+    separate(c_wpt_lat, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
+    separate(c_wpt_lon, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
+    mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
+           longd = substr(longgd, 1, nchar(longgd)-2)) %>%
+    mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
+           longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
+    mutate_if(is.character, as.numeric) %>% #coerce back to numeric
+    mutate(lat = latd + (latm/60),
+           long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
+  
+  
+  liveMissionMap <- leaflet() %>%
+    #base provider layers
+    addProviderTiles(providers$Esri.OceanBasemap, 
+                     group = "Ocean Basemap") %>%
+    addProviderTiles(providers$Esri.WorldImagery, 
+                     group = "World Imagery") %>%
+    addLayersControl(baseGroups = c('Ocean Basemap', 'World Imagery')) %>%
+    addPolylines(
+      lat = map_sf$lat,
+      lng = map_sf$long,
+      color = "grey",
+      weight = 3,
+      opacity = 1,
+    ) %>%
+    #timestamps for surfacings
+    addCircles(data = map_sf,
+               lat = map_sf$lat,
+               lng = map_sf$long,
+               color = "gold",
+               popup = map_sf$m_present_time,
+               weight = 3
+    ) %>%
+    #start marker
+    addAwesomeMarkers(
+      lat = map_sf[1, "lat"],
+      lng = map_sf[1, "long"],
+      label = "Initial position",
+      icon = icon.start
+    ) %>%
+    #end marker
+    addAwesomeMarkers(
+      lat = map_sf[nrow(map_sf), "lat"],
+      lng = map_sf[nrow(map_sf), "long"],
+      label = "Latest position",
+      icon = icon.latest
+    ) %>%
+    #waypoint
+    addMarkers(lat = wpt$lat,
+               lng = wpt$long,
+               label = "Waypoint") %>%
+    setView(lat = 27.75, lng = -83, zoom = 6)
+  
+  output$missionmapLive <- renderLeaflet({liveMissionMap})
+  
+  ######### current mission data ########
+  
+  observeEvent(input$tabs, {
+    
+    if(input$tabs == "currMissData"){
+      #Code for tab 2
+      print("Tab currMissData code is run")
+
   
   gg1Live <- reactive({
     sciLive <- ggplot(
@@ -159,7 +303,7 @@ server <- function(input, output, session) {
       )) +
       geom_point(
         # size = 2,
-        # na.rm = TRUE
+        na.rm = TRUE
       ) +
       # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
       #geom_hline(yintercept = 0) +
@@ -363,63 +507,320 @@ server <- function(input, output, session) {
   
   output$tsPlotLive <- renderPlot({gg3Live()})
   
+  #### psuedograms ########
   
-  #live mission map
-  #massage gps data a lot
-  map_sf <- gliderdf %>%
-    select(m_present_time, m_gps_lon, m_gps_lat) %>%
-    filter(!is.na(m_gps_lat)) %>%
-    mutate(latt = format(m_gps_lat, nsmall = 4),
-           longg = format(m_gps_lon, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
-    separate(latt, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
-    separate(longg, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
-    mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
-           longd = substr(longgd, 1, nchar(longgd)-2)) %>%
-    mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
-           longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
-    mutate_if(is.character, as.numeric) %>% #coerce back to numeric
-    mutate(lat = latd + (latm/60),
-           long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
+  #color palette source:
+  #https://rdrr.io/github/hvillalo/echogram/src/R/palette.echogram.R
+  velInfo <- file.info(list.files(path = "/echos/layers/",
+                                  full.names = TRUE)) %>%
+    filter(size > 0)
   
- liveMissionMap <- leaflet() %>%
-    #base provider layers
-    addProviderTiles(providers$Esri.OceanBasemap, 
-                     group = "Ocean Basemap") %>%
-    addProviderTiles(providers$Esri.WorldImagery, 
-                     group = "World Imagery") %>%
-    addLayersControl(baseGroups = c('Ocean Basemap', 'World Imagery')) %>%
-    addPolylines(
-      lat = map_sf$lat,
-      lng = map_sf$long,
-      color = "grey",
-      weight = 3,
-      opacity = 1,
-    ) %>%
-    #timestamps for surfacings
-    addCircles(data = map_sf,
-               lat = map_sf$lat,
-               lng = map_sf$long,
-               color = "gold",
-               popup = map_sf$m_present_time,
-               weight = 3
-    ) %>%
-    #start marker
-    addAwesomeMarkers(
-      lat = map_sf[1, "lat"],
-      lng = map_sf[1, "long"],
-      label = "Initial position",
-      icon = icon.start
-    ) %>%
-    #end marker
-    addAwesomeMarkers(
-      lat = map_sf[nrow(map_sf), "lat"],
-      lng = map_sf[nrow(map_sf), "long"],
-      label = "Latest position",
-      icon = icon.latest
-    ) %>%
-   setView(lat = 27.75, lng = -83, zoom = 6)
- 
-  output$missionmapLive <- renderLeaflet({liveMissionMap})
+  velList <- rownames(velInfo) %>%
+    basename()
+  
+  depthInfo <- file.info(list.files(path = "/echos/depths/",
+                                    full.names = TRUE))
+  
+  depthList <- rownames(depthInfo) %>%
+    basename()
+  
+  echoListraw <- intersect(velList, depthList) %>%
+    str_remove(pattern = ".ssv") %>%
+    enframe() %>%
+    mutate(ID = str_extract(value, "(?<=-)[0-9]*$")) %>%
+    mutate(ID = as.numeric(ID)) %>%
+    arrange(ID)
+  
+  echoList <- echoListraw$value
+  
+  #reactive pseudogram plot identifier for scrolling
+  selectPgram <- reactiveValues(seg = NULL, id = NULL)
+  
+  updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value))
+  
+  #attach IDs to psuedogram plot reactives
+  observeEvent(input$echo, {
+    selectPgram$seg <- input$echo
+    selectPgram$id <- match(input$echo, echoListraw$value)
+  })
+  
+  #process the requested pseudogram
+  ehunk <- reactive({
+    req(input$echo)
+    
+    ehunk <- pseudogram(paste0("/echos/layers/", selectPgram$seg, ".ssv"),
+                        paste0("/echos/depths/", selectPgram$seg, ".ssv"))
+  })
+  
+  ##### main pseudogram plot ####
+  gg4 <- reactive({
+    #plot
+    ggEcho <-
+      ggplot(data = 
+               ehunk(),
+             aes(x=m_present_time,
+                 y=p_depth,
+                 z=value)) +
+      # geom_tile(aes(
+      #   color = value,
+      #   size = 10
+      #   )
+      # ) +
+      # coord_fixed(ratio = 3.6) +
+      geom_point(
+        aes(color = value),
+        size = 6,
+        pch = 15,
+        na.rm = TRUE
+      ) +
+      #coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
+      # scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
+      #                                    "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
+      #                        limits = c(-75, -35)) +
+      scale_y_reverse() +
+      theme_bw() +
+      labs(title = paste0(selectPgram$seg, " Pseudogram"),
+           y = "Depth (m)",
+           x = "Date/Time (UTC)",
+           colour = "dB") +
+      theme(plot.title = element_text(size = 32),
+            axis.title = element_text(size = 16),
+            axis.text = element_text(size = 12),
+            legend.key = element_blank(),
+            plot.caption = element_markdown()) +
+      guides(size="none") +
+      scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
+    
+    if (input$echoColor == "EK") {
+      ggEcho +
+        scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
+                                                    "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
+                                                    limits = c(-75, -30))
+    } else if (input$echoColor == "magma") {
+      ggEcho +
+        scale_colour_viridis_c(limits = c(-75, -30),
+                               option = "C"
+        )
+    } else {
+      ggEcho +
+        scale_colour_viridis_c(limits = c(-75, -30),
+                               option = "D"
+        )
+    }
+    
+    
+  })
+  
+  output$echoPlot <- renderPlot({gg4()})
+  
+  #### Buttons to scroll through pseudograms ####
+  observeEvent(input$oldestPgram, {
+    selectPgram$seg <- head(echoListraw$value, 1)
+    updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = head(echoListraw$value, 1))
+  })
+  observeEvent(input$prevPgram, {
+    if (selectPgram$id > 1) {
+      selectPgram$id <- selectPgram$id - 1
+      updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = echoListraw$value[selectPgram$id])
+    }
+  })
+  observeEvent(input$nextPgram, {
+    if (selectPgram$id < nrow(echoListraw)) {
+      selectPgram$id <- selectPgram$id + 1
+      updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = echoListraw$value[selectPgram$id])
+    }
+  })
+  observeEvent(input$latestPgram, {
+    selectPgram$seg <- tail(echoListraw$value, 1)
+    updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1))
+  })
+  
+  
+  #### pseudotimegram main setup ####
+  fullehunk <- reactive({
+    req(input$fullecho | input$fullecho2)
+    
+    elist <- list()
+    for (i in echoList) {
+      elist[[i]] <- pseudogram(paste0("/echos/layers/", i, ".ssv"),
+                               paste0("/echos/depths/", i, ".ssv"))
+    }
+    ef <- bind_rows(elist, .id = "segment") %>%
+      mutate(r_depth = round(q_depth, 0)) %>%
+      mutate(day = day(m_present_time)) %>%
+      mutate(hour = hour(m_present_time))
+    
+    ef
+    
+  })
+  
+  
+  #### updater for pseudotimegram inputs ####
+  observeEvent(input$fullecho | input$fullecho2, {
+    
+    updateDateRangeInput(session, "echohistrange", label = NULL, 
+                         start = (max(fullehunk()$m_present_time)-259200),
+                         end = max(fullehunk()$m_present_time), 
+                         min = min(fullehunk()$m_present_time), 
+                         max = max(fullehunk()$m_present_time))
+    
+    updateDateRangeInput(session, "echohistrange2", label = NULL, 
+                         start = min(fullehunk()$m_present_time),
+                         end = max(fullehunk()$m_present_time), 
+                         min = min(fullehunk()$m_present_time), 
+                         max = max(fullehunk()$m_present_time))
+  })
+  
+  plotehunk <- reactive({
+    req(input$echohistrange)
+    
+    pf <- filter(fullehunk(), m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
+      filter(hour >= input$echohour[1] & hour <= input$echohour[2]) %>%
+      group_by(segment, r_depth) %>%
+      mutate(avgDb = mean(value)) %>%
+      ungroup() %>%
+      group_by(segment) %>%
+      mutate(seg_time = mean(m_present_time)) %>%
+      ungroup() %>%
+      mutate(seg_hour = hour(seg_time)) %>%
+      mutate(cycle = case_when(seg_hour %in% c(11:23) ~ 'day',
+                               seg_hour %in% c(1:10, 24) ~ 'night')) # add day/night filter
+    
+    pf
+  })
+  
+  plotethunk <- reactive({
+    req(input$echohistrange2)
+    
+    pf <- filter(fullehunk(), m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
+      filter(hour >= input$echohour2[1] & hour <= input$echohour2[2]) %>%
+      group_by(segment, r_depth) %>%
+      mutate(avgDb = mean(value)) %>%
+      ungroup() %>%
+      group_by(segment) %>%
+      mutate(seg_time = mean(m_present_time)) %>%
+      ungroup() %>%
+      mutate(seg_hour = hour(seg_time)) %>%
+      mutate(cycle = case_when(seg_hour %in% c(11:23) ~ 'day',
+                               seg_hour %in% c(1:10, 24) ~ 'night')) # add day/night filter
+    
+    pf
+  })
+  
+  #### frequency polygon ####
+  gg5 <- reactive({
+    req(input$echohistrange)
+    
+    ggHist <- ggplot(data = plotehunk(),
+                     aes(y = r_depth,
+                     )) +
+      geom_freqpoly(aes(colour = as.factor(cycle)),
+                    binwidth = input$depthbin
+      ) +
+      scale_y_reverse() +
+      facet_wrap(as.factor(plotehunk()$value),
+                 scales = "free_x",
+                 ncol = 4) + 
+      theme_bw() +
+      labs(title = "Counts of Return Strength at Depth by Period",
+           y = "Depth (m)",
+           x = "Counts",
+           color = "Period",
+           caption = "Day = 1100-2300 UTC") +
+      theme(plot.title = element_text(size = 24),
+            axis.title = element_text(size = 16),
+            axis.text = element_text(size = 12),
+            legend.key = element_blank(),
+            plot.caption = element_markdown(),
+      ) +
+      guides(size="none")
+    
+    # ggHist <-
+    #   ggplot(data = plotehunk(),
+    #          aes(x = as.factor(value),
+    #              y = r_depth,
+    #              fill = hour,
+    #          )) +
+    #   geom_tile() +
+    #   #coord_equal() +
+    #   scale_fill_viridis_c() +
+    #   scale_y_reverse() +
+    #   theme_bw() +
+    #   labs(title = paste0("Frequency of Returns at Depth from ", input$echohistrange[1], " to ", input$echohistrange[2]),
+    #        y = "Depth (m)",
+    #        #x = "Date/Time (UTC)",
+    #        x = "dB",
+    #        fill = "Hour (UTC)") +
+    #   theme(plot.title = element_text(size = 32),
+    #         axis.title = element_text(size = 16),
+    #         axis.text = element_text(size = 12),
+    #         legend.key = element_blank(),
+    #         plot.caption = element_markdown()) +
+    #   guides(size="none")
+    #scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
+    
+    ggHist
+    
+  })
+  
+  output$echoHist <- renderPlot({gg5()})
+  
+  
+  #### pseudotimegram ####
+  gg6 <- reactive({
+    
+    ggEchoTime <- 
+      ggplot(data = plotethunk(),
+             aes(x = seg_time,
+                 y = r_depth,
+                 colour = avgDb,
+             )) +
+      geom_point(size = 4,
+                 pch = 15
+      ) +
+      #coord_equal() +
+      #scale_color_viridis_c() +
+      scale_y_reverse() +
+      theme_bw() +
+      labs(title = paste0("Avg dB returns (per meter) at depth from ", input$echohistrange2[1], " to ", input$echohistrange2[2]),
+           y = "Depth (m)",
+           #x = "Date/Time (UTC)",
+           x = "Date",
+           colour = "average dB") +
+      theme(plot.title = element_text(size = 32),
+            axis.title = element_text(size = 16),
+            axis.text = element_text(size = 12),
+            legend.key = element_blank(),
+            plot.caption = element_markdown()) +
+      guides(size="none")
+    
+    if (input$echoColor2 == "EK") {
+      ggEchoTime +
+        scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
+                                                    "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
+                                                    limits = c(-75, -30)
+        )
+    } else if (input$echoColor2 == "magma") {
+      ggEchoTime +
+        scale_colour_viridis_c(limits = c(-75, -30),
+                               option = "C"
+        )
+    } else {
+      ggEchoTime +
+        scale_colour_viridis_c(limits = c(-75, -30),
+                               option = "D")
+    }
+    
+  })
+  
+  output$echoTime <- renderPlot({gg6()})
+  
+  
+    }
+    
+  })
+  
+  
   
   ####### archived flight data ########
   
@@ -432,6 +833,7 @@ server <- function(input, output, session) {
   
   #mission map 
   output$missionmap <- renderLeaflet({
+
     #grab .kml per mission number
     raw_sf <- st_read(paste0("./KML/", input$mission, ".kml"),
                       layer = "Surfacings")
@@ -807,312 +1209,6 @@ observeEvent(input$load, {
   #   topGlider
   # })
   
-  #### psuedograms ########
   
-  #color palette source:
-  #https://rdrr.io/github/hvillalo/echogram/src/R/palette.echogram.R
-  velInfo <- file.info(list.files(path = "/echos/layers/",
-                                  full.names = TRUE)) %>%
-    filter(size > 0)
-  
-  velList <- rownames(velInfo) %>%
-    basename()
-  
-  depthInfo <- file.info(list.files(path = "/echos/depths/",
-                                    full.names = TRUE))
-  
-  depthList <- rownames(depthInfo) %>%
-    basename()
-  
-  echoListraw <- intersect(velList, depthList) %>%
-    str_remove(pattern = ".ssv") %>%
-    enframe() %>%
-    mutate(ID = str_extract(value, "(?<=-)[0-9]*$")) %>%
-    mutate(ID = as.numeric(ID)) %>%
-    arrange(ID)
-  
-  echoList <- echoListraw$value
-  
-  #reactive pseudogram plot identifier for scrolling
-  selectPgram <- reactiveValues(seg = NULL, id = NULL)
-  
-  updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value))
-  
-  #attach IDs to psuedogram plot reactives
-  observeEvent(input$echo, {
-    selectPgram$seg <- input$echo
-    selectPgram$id <- match(input$echo, echoListraw$value)
-  })
-  
-  #process the requested pseudogram
-  ehunk <- reactive({
-    req(input$echo)
-    
-    ehunk <- pseudogram(paste0("/echos/layers/", selectPgram$seg, ".ssv"),
-                        paste0("/echos/depths/", selectPgram$seg, ".ssv"))
-  })
-  
-  ##### main pseudogram plot ####
-  gg4 <- reactive({
-    #plot
-    ggEcho <-
-      ggplot(data = 
-               ehunk(),
-             aes(x=m_present_time,
-                 y=p_depth,
-                 z=value)) +
-      # geom_tile(aes(
-      #   color = value,
-      #   size = 10
-      #   )
-      # ) +
-      # coord_fixed(ratio = 3.6) +
-      geom_point(
-        aes(color = value),
-        size = 6,
-        pch = 15,
-        na.rm = TRUE
-      ) +
-      #coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
-      # scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
-      #                                    "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
-      #                        limits = c(-75, -35)) +
-      scale_y_reverse() +
-      theme_bw() +
-      labs(title = paste0(selectPgram$seg, " Pseudogram"),
-           y = "Depth (m)",
-           x = "Date/Time (UTC)",
-           colour = "dB") +
-      theme(plot.title = element_text(size = 32),
-            axis.title = element_text(size = 16),
-            axis.text = element_text(size = 12),
-            legend.key = element_blank(),
-            plot.caption = element_markdown()) +
-      guides(size="none") +
-      scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
-    
-    if (input$echoColor == "EK") {
-      ggEcho +
-        scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
-                                                    "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
-                                                    limits = c(-75, -30))
-    } else if (input$echoColor == "magma") {
-      ggEcho +
-        scale_colour_viridis_c(limits = c(-75, -30),
-                               option = "C"
-        )
-    } else {
-      ggEcho +
-        scale_colour_viridis_c(limits = c(-75, -30),
-                               option = "D"
-        )
-    }
-    
-    
-  })
-  
-  output$echoPlot <- renderPlot({gg4()})
-  
-  #### Buttons to scroll through pseudograms ####
-  observeEvent(input$oldestPgram, {
-    selectPgram$seg <- head(echoListraw$value, 1)
-    updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = head(echoListraw$value, 1))
-  })
-  observeEvent(input$prevPgram, {
-    if (selectPgram$id > 1) {
-      selectPgram$id <- selectPgram$id - 1
-      updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = echoListraw$value[selectPgram$id])
-    }
-  })
-  observeEvent(input$nextPgram, {
-    if (selectPgram$id < nrow(echoListraw)) {
-      selectPgram$id <- selectPgram$id + 1
-      updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = echoListraw$value[selectPgram$id])
-    }
-  })
-  observeEvent(input$latestPgram, {
-    selectPgram$seg <- tail(echoListraw$value, 1)
-    updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1))
-  })
-  
-  
-  #### pseudotimegram main setup ####
-  fullehunk <- reactive({
-    req(input$fullecho | input$fullecho2)
-    
-    elist <- list()
-    for (i in echoList) {
-      elist[[i]] <- pseudogram(paste0("/echos/layers/", i, ".ssv"),
-                               paste0("/echos/depths/", i, ".ssv"))
-    }
-    ef <- bind_rows(elist, .id = "segment") %>%
-      mutate(r_depth = round(q_depth, 0)) %>%
-      mutate(day = day(m_present_time)) %>%
-      mutate(hour = hour(m_present_time))
-    
-    ef
-    
-  })
-  
-  
-  #### updater for pseudotimegram inputs ####
-  observeEvent(input$fullecho | input$fullecho2, {
-    
-    updateDateRangeInput(session, "echohistrange", label = NULL, 
-                         start = (max(fullehunk()$m_present_time)-259200),
-                         end = max(fullehunk()$m_present_time), 
-                         min = min(fullehunk()$m_present_time), 
-                         max = max(fullehunk()$m_present_time))
-    
-    updateDateRangeInput(session, "echohistrange2", label = NULL, 
-                         start = min(fullehunk()$m_present_time),
-                         end = max(fullehunk()$m_present_time), 
-                         min = min(fullehunk()$m_present_time), 
-                         max = max(fullehunk()$m_present_time))
-  })
-  
-  plotehunk <- reactive({
-    req(input$echohistrange)
-    
-    pf <- filter(fullehunk(), m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
-      filter(hour >= input$echohour[1] & hour <= input$echohour[2]) %>%
-      group_by(segment, r_depth) %>%
-      mutate(avgDb = mean(value)) %>%
-      ungroup() %>%
-      group_by(segment) %>%
-      mutate(seg_time = mean(m_present_time)) %>%
-      ungroup() %>%
-      mutate(seg_hour = hour(seg_time)) %>%
-      mutate(cycle = case_when(seg_hour %in% c(11:23) ~ 'day',
-                               seg_hour %in% c(1:10, 24) ~ 'night')) # add day/night filter
-    
-    pf
-  })
-  
-  plotethunk <- reactive({
-    req(input$echohistrange2)
-    
-    pf <- filter(fullehunk(), m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
-      filter(hour >= input$echohour2[1] & hour <= input$echohour2[2]) %>%
-      group_by(segment, r_depth) %>%
-      mutate(avgDb = mean(value)) %>%
-      ungroup() %>%
-      group_by(segment) %>%
-      mutate(seg_time = mean(m_present_time)) %>%
-      ungroup() %>%
-      mutate(seg_hour = hour(seg_time)) %>%
-      mutate(cycle = case_when(seg_hour %in% c(11:23) ~ 'day',
-                               seg_hour %in% c(1:10, 24) ~ 'night')) # add day/night filter
-    
-    pf
-  })
-  
-  #### frequency polygon ####
-  gg5 <- reactive({
-    req(input$echohistrange)
-    
-    ggHist <- ggplot(data = plotehunk(),
-           aes(y = r_depth,
-           )) +
-      geom_freqpoly(aes(colour = as.factor(cycle)),
-                    binwidth = input$depthbin
-      ) +
-      scale_y_reverse() +
-      facet_wrap(as.factor(plotehunk()$value),
-                 scales = "free_x",
-                 ncol = 4) + 
-      theme_bw() +
-      labs(title = "Counts of Return Strength at Depth by Period",
-           y = "Depth (m)",
-           x = "Counts",
-           color = "Period",
-           caption = "Day = 1100-2300 UTC") +
-      theme(plot.title = element_text(size = 24),
-        axis.title = element_text(size = 16),
-        axis.text = element_text(size = 12),
-        legend.key = element_blank(),
-        plot.caption = element_markdown(),
-      ) +
-      guides(size="none")
-    
-    # ggHist <-
-    #   ggplot(data = plotehunk(),
-    #          aes(x = as.factor(value),
-    #              y = r_depth,
-    #              fill = hour,
-    #          )) +
-    #   geom_tile() +
-    #   #coord_equal() +
-    #   scale_fill_viridis_c() +
-    #   scale_y_reverse() +
-    #   theme_bw() +
-    #   labs(title = paste0("Frequency of Returns at Depth from ", input$echohistrange[1], " to ", input$echohistrange[2]),
-    #        y = "Depth (m)",
-    #        #x = "Date/Time (UTC)",
-    #        x = "dB",
-    #        fill = "Hour (UTC)") +
-    #   theme(plot.title = element_text(size = 32),
-    #         axis.title = element_text(size = 16),
-    #         axis.text = element_text(size = 12),
-    #         legend.key = element_blank(),
-    #         plot.caption = element_markdown()) +
-    #   guides(size="none")
-    #scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
-    
-    ggHist
-    
-  })
-  
-  output$echoHist <- renderPlot({gg5()})
-  
-  
-  #### pseudotimegram ####
-  gg6 <- reactive({
-    
-    ggEchoTime <- 
-      ggplot(data = plotethunk(),
-             aes(x = seg_time,
-                 y = r_depth,
-                 colour = avgDb,
-             )) +
-      geom_point(size = 4,
-                 pch = 15
-      ) +
-      #coord_equal() +
-      #scale_color_viridis_c() +
-      scale_y_reverse() +
-      theme_bw() +
-      labs(title = paste0("Avg dB returns (per meter) at depth from ", input$echohistrange2[1], " to ", input$echohistrange2[2]),
-           y = "Depth (m)",
-           #x = "Date/Time (UTC)",
-           x = "Date",
-           colour = "average dB") +
-      theme(plot.title = element_text(size = 32),
-            axis.title = element_text(size = 16),
-            axis.text = element_text(size = 12),
-            legend.key = element_blank(),
-            plot.caption = element_markdown()) +
-      guides(size="none")
-    
-    if (input$echoColor2 == "EK") {
-      ggEchoTime +
-        scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
-                                           "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
-                               limits = c(-75, -30)
-                               )
-    } else if (input$echoColor2 == "magma") {
-      ggEchoTime +
-        scale_colour_viridis_c(limits = c(-75, -30),
-                               option = "C"
-        )
-    } else {
-      ggEchoTime +
-        scale_colour_viridis_c(limits = c(-75, -30),
-                               option = "D")
-    }
-    
-  })
-  
-  output$echoTime <- renderPlot({gg6()})
   
 }
