@@ -98,6 +98,42 @@ server <- function(input, output, session) {
   
   output$battplot <- renderPlot({battLive()})
   
+  rollLive <- reactive({
+    roll <- gliderdf %>%
+      select(c(m_present_time, m_roll)) %>%
+      filter(!is.na(m_roll > 0)) %>%
+      mutate(day = floor_date(m_present_time,
+                              unit = "days")) %>%
+      group_by(day) %>%
+      mutate(meanRoll = mean(m_roll)) %>%
+      #select(c(day, meanBatt)) %>%
+      distinct(day, meanRoll)
+    
+    rollLive <- ggplot(
+      data = 
+        roll,
+      aes(x=day,
+          y=meanRoll*180/pi,
+      )) +
+      geom_point(
+        size = 2,
+        na.rm = TRUE
+      ) +
+      scale_y_continuous(limits = symmetric_range) +
+      theme_bw() +
+      labs(title = "Daily Roll Average",
+           y = "Roll (deg)",
+           x = "Date") +
+      theme(plot.title = element_text(size = 32),
+            axis.title = element_text(size = 20),
+            axis.text = element_text(size = 16))
+    
+    rollLive
+    
+  })
+  
+  output$rollplot <- renderPlot({rollLive()})
+  
   leakLive <- reactive({
     vars <- c("m_leakdetect_voltage", "m_leakdetect_voltage_forward", "m_leakdetect_voltage_science")
     
@@ -225,7 +261,8 @@ server <- function(input, output, session) {
   output$img <- renderSlickR({
     
     test <- list(xmlSVG({show(battLive())},standalone=TRUE, width = 9.5),
-                 xmlSVG({show(leakLive())},standalone=TRUE, width = 9.5))
+                 xmlSVG({show(leakLive())},standalone=TRUE, width = 9.5),
+                 xmlSVG({show(rollLive())},standalone=TRUE, width = 9.5))
     
     slickR(obj = test,
            height = 400
