@@ -15,6 +15,7 @@ library(shinycssloaders)
 library(shinydashboard)
 library(slickR)
 library(svglite)
+library(lubridate)
 
 source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")
