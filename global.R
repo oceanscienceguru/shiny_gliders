@@ -16,6 +16,7 @@ library(shinydashboard)
 library(slickR)
 library(svglite)
 library(lubridate)
+library(egg)
 
 source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")
