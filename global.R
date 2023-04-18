@@ -14,6 +14,7 @@ library(seacarb)
 library(shinycssloaders)
 library(shinydashboard)
 library(slickR)
+library(svglite)
 
 source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")

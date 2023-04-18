@@ -20,15 +20,16 @@
                  menuItem("Current Mission Data", 
                           tabName = "currMissData", 
                           icon = icon("plane")),
-                 menuItem("Archived Mission Data", 
-                          tabName = "archMissData", 
-                          icon = icon("calendar")),
+                 # menuItem("Archived Mission Data", 
+                 #          tabName = "archMissData", 
+                 #          icon = icon("calendar")),
                  menuItem("Data Import", 
                           tabName = "dataImport", 
                           icon = icon("th"))
                )
              ),
              dashboardBody(
+               tags$div(tags$style(HTML( ".dropdown-menu{z-index:10000 !important;}"))),
                tabItems(
                  tabItem(tabName = "dashboard",
                          fluidRow(
@@ -36,9 +37,8 @@
                            leafletOutput(outputId = "missionmapLive")
                            ),
                          box(
-                           plotOutput(
-                             outputId = "leakplot",
-                           ),
+                           slickROutput("img")
+                         ),
                          # box(
                          #   plotOutput(
                          #     outputId = "battplot",
@@ -65,12 +65,13 @@
                            "powerBoxall",
                            width = 2),
                          ),
-                         fluidRow(
-                           box(
-                             slickROutput("slick_output")
-                           ),
-                           ),
-                         ),
+                         # fluidRow(
+                         #   box(
+                         #     plotOutput(
+                         #       outputId = "battplot",
+                         #     ),
+                         #   ),
+                         # ),
                  ),
                  tabItem(tabName = "currMissData",
                          fluidPage(
@@ -223,7 +224,7 @@
                                                  choices = c("EK", "magma", "viridis"),
                                                  selected =  "viridis"
                                                ),
-                                               downloadButton('downloadEchoPlot')
+                                               #downloadButton('downloadEchoPlot')
                                              )),
                                       column(10,
                                              plotOutput(
@@ -293,7 +294,7 @@
                                                  choices = c("EK", "magma", "viridis"),
                                                  selected =  "viridis"
                                                ),
-                                               downloadButton('downloadEchoHist2')
+                                               #downloadButton('downloadEchoHist2')
                                              )),
                                       column(10,
                                              plotOutput(
@@ -331,7 +332,7 @@
                                                sliderInput("echohour",
                                                            "Hour:",
                                                            min = 0,  max = 24, value = c(0, 24)),
-                                               downloadButton('downloadEchoHist')
+                                               #downloadButton('downloadEchoHist')
                                              )),
                                       column(10,
                                              plotOutput(

@@ -64,23 +64,33 @@ server <- function(input, output, session) {
   })
   
   battLive <- reactive({
+    bats <- gliderdf %>%
+      select(c(m_present_time, m_battery)) %>%
+      filter(m_battery > 0) %>%
+      mutate(day = floor_date(m_present_time,
+                              unit = "days")) %>%
+      group_by(day) %>%
+      mutate(meanBatt = mean(m_battery)) %>%
+      #select(c(day, meanBatt)) %>%
+      distinct(day, meanBatt)
+    
     battLive <- ggplot(
       data = 
-        gliderdf,
-      aes(x=m_present_time,
-          y=m_battery,
+        bats,
+      aes(x=day,
+          y=meanBatt,
       )) +
       geom_point(
-        # size = 2,
+        size = 2,
         na.rm = TRUE
       ) +
       theme_bw() +
-      labs(title = "Mission Voltage",
+      labs(title = "Daily Voltage Average",
         y = "Battery (V)",
         x = "Date") +
-      theme(plot.title = element_text(size = 32)) +
-      theme(axis.title = element_text(size = 16)) +
-      theme(axis.text = element_text(size = 12))
+      theme(plot.title = element_text(size = 32),
+            axis.title = element_text(size = 20),
+            axis.text = element_text(size = 16))
     
     battLive
     
@@ -89,23 +99,33 @@ server <- function(input, output, session) {
   output$battplot <- renderPlot({battLive()})
   
   leakLive <- reactive({
+    vars <- c("m_leakdetect_voltage", "m_leakdetect_voltage_forward", "m_leakdetect_voltage_science")
+    
+    leaks <- gliderdf %>%
+      select(c(m_present_time, any_of(vars))) %>%
+      filter(m_leakdetect_voltage > 0) %>%
+      filter(m_present_time >= endDateLive-14400) %>%
+      pivot_longer(cols = any_of(vars))
+    
     leakLive <- ggplot(
       data = 
-        filter(gliderdf, m_present_time >= endDateLive-14400),
+        leaks,
       aes(x=m_present_time,
-          y=m_leakdetect_voltage,
+          y=value,
+          color = name
       )) +
       geom_point(
-        # size = 2,
+        size = 2,
         na.rm = TRUE
       ) +
       theme_bw() +
       labs(title = "LD last 4hrs",
-           y = "LeakDetect",
+           y = "Voltage",
            x = "Date") +
-      theme(plot.title = element_text(size = 32)) +
-      theme(axis.title = element_text(size = 16)) +
-      theme(axis.text = element_text(size = 12))
+      theme(plot.title = element_text(size = 32),
+            axis.title = element_text(size = 20),
+            axis.text = element_text(size = 16),
+            legend.position   =  "bottom")
     
     leakLive
     
@@ -202,7 +222,15 @@ server <- function(input, output, session) {
     )
   })
   
-  output$slick_output <- renderSlickR({
+  output$img <- renderSlickR({
+    
+    test <- list(xmlSVG({show(battLive())},standalone=TRUE, width = 9.5),
+                 xmlSVG({show(leakLive())},standalone=TRUE, width = 9.5))
+    
+    slickR(obj = test,
+           height = 400
+           ) + settings(dots = TRUE, autoplay = TRUE, fade = TRUE, infinite = TRUE, autoplaySpeed = 7500)
+    
   })
   
   #live mission map
