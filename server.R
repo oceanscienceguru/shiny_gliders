@@ -463,28 +463,28 @@ server <- function(input, output, session) {
   
   #color palette source:
   #https://rdrr.io/github/hvillalo/echogram/src/R/palette.echogram.R
-  velInfo <- file.info(list.files(path = "/echos/layers/",
-                                  full.names = TRUE)) %>%
-    filter(size > 0)
-  
-  velList <- rownames(velInfo) %>%
-    basename()
-  
-  depthInfo <- file.info(list.files(path = "/echos/depths/",
-                                    full.names = TRUE))
-  
-  depthList <- rownames(depthInfo) %>%
-    basename()
-  
-  echoListraw <- intersect(velList, depthList) %>%
-    str_remove(pattern = ".ssv") %>%
-    enframe() %>%
-    mutate(ID = str_extract(value, "(?<=-)[0-9]*$")) %>%
-    mutate(ID = as.numeric(ID)) %>%
-    arrange(ID)
-  
-  echoList <- echoListraw$value
-  
+  # velInfo <- file.info(list.files(path = "/echos/layers/",
+  #                                 full.names = TRUE)) %>%
+  #   filter(size > 0)
+  # 
+  # velList <- rownames(velInfo) %>%
+  #   basename()
+  # 
+  # depthInfo <- file.info(list.files(path = "/echos/depths/",
+  #                                   full.names = TRUE))
+  # 
+  # depthList <- rownames(depthInfo) %>%
+  #   basename()
+  # 
+  # echoListraw <- intersect(velList, depthList) %>%
+  #   str_remove(pattern = ".ssv") %>%
+  #   enframe() %>%
+  #   mutate(ID = str_extract(value, "(?<=-)[0-9]*$")) %>%
+  #   mutate(ID = as.numeric(ID)) %>%
+  #   arrange(ID)
+  # 
+  # echoList <- echoListraw$value
+  # 
   #reactive pseudogram plot identifier for scrolling
   selectPgram <- reactiveValues(seg = NULL, id = NULL)
   
@@ -589,44 +589,44 @@ server <- function(input, output, session) {
   
   
   #### pseudotimegram main setup ####
-  fullehunk <- reactive({
-    req(input$fullecho | input$fullecho2)
-    
-    elist <- list()
-    for (i in echoList) {
-      elist[[i]] <- pseudogram(paste0("/echos/layers/", i, ".ssv"),
-                               paste0("/echos/depths/", i, ".ssv"))
-    }
-    ef <- bind_rows(elist, .id = "segment") %>%
-      mutate(r_depth = round(q_depth, 0)) %>%
-      mutate(day = day(m_present_time)) %>%
-      mutate(hour = hour(m_present_time))
-    
-    ef
-    
-  })
+  # fullehunk <- reactive({
+  #   req(input$fullecho | input$fullecho2)
+  #   
+  #   elist <- list()
+  #   for (i in echoListraw$value) {
+  #     elist[[i]] <- pseudogram(paste0("/echos/layers/", i, ".ssv"),
+  #                              paste0("/echos/depths/", i, ".ssv"))
+  #   }
+  #   ef <- bind_rows(elist, .id = "segment") %>%
+  #     mutate(r_depth = round(q_depth, 0)) %>%
+  #     mutate(day = day(m_present_time)) %>%
+  #     mutate(hour = hour(m_present_time))
+  #   
+  #   ef
+  #   
+  # })
   
   
   #### updater for pseudotimegram inputs ####
   observeEvent(input$fullecho | input$fullecho2, {
     
     updateDateRangeInput(session, "echohistrange", label = NULL, 
-                         start = (max(fullehunk()$m_present_time)-259200),
-                         end = max(fullehunk()$m_present_time), 
-                         min = min(fullehunk()$m_present_time), 
-                         max = max(fullehunk()$m_present_time))
+                         start = (max(fullehunk$m_present_time)-259200),
+                         end = max(fullehunk$m_present_time), 
+                         min = min(fullehunk$m_present_time), 
+                         max = max(fullehunk$m_present_time))
     
     updateDateRangeInput(session, "echohistrange2", label = NULL, 
-                         start = min(fullehunk()$m_present_time),
-                         end = max(fullehunk()$m_present_time), 
-                         min = min(fullehunk()$m_present_time), 
-                         max = max(fullehunk()$m_present_time))
+                         start = min(fullehunk$m_present_time),
+                         end = max(fullehunk$m_present_time), 
+                         min = min(fullehunk$m_present_time), 
+                         max = max(fullehunk$m_present_time))
   })
   
   plotehunk <- reactive({
     req(input$echohistrange)
     
-    pf <- filter(fullehunk(), m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
+    pf <- filter(fullehunk, m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
       filter(hour >= input$echohour[1] & hour <= input$echohour[2]) %>%
       group_by(segment, r_depth) %>%
       mutate(avgDb = mean(value)) %>%
@@ -644,7 +644,7 @@ server <- function(input, output, session) {
   plotethunk <- reactive({
     req(input$echohistrange2)
     
-    pf <- filter(fullehunk(), m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
+    pf <- filter(fullehunk, m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
       filter(hour >= input$echohour2[1] & hour <= input$echohour2[2]) %>%
       group_by(segment, r_depth) %>%
       mutate(avgDb = mean(value)) %>%
