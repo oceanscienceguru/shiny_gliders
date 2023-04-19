@@ -59,7 +59,7 @@ idepth$m_present_time <- as_datetime(floor(seconds(idepth$m_present_time)))
 
 #merge interpolated depth
 bigLong <- pivot_longer(df, !c(m_present_time)) %>%
-  left_join(idepth)
+  left_join(idepth, by = "m_present_time")
 
 #build ping depth matrix
 binList <- unique(bigLong$name)
@@ -68,7 +68,7 @@ binOffset <- data.frame(name = c(binList),
 
 #merge in ping depths and compute
 bigLong <- as.data.frame(bigLong %>%
-  left_join(binOffset) %>%
+  left_join(binOffset, by = "name") %>%
   mutate(p_depth = i_depth + offset)) %>%
   mutate(q_depth = round(p_depth, 1))
 
