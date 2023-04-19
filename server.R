@@ -1,16 +1,10 @@
 server <- function(input, output, session) {
-  # glider = reactive({
-  #   #req(input$mission)
-  #   readRDS(paste0("./Data/", input$mission, ".rds"))
-  # })
-  
-  
+
   #### live mission plotting #####
   load("/echos/usf-stella/glider_live.RData")
-          #gliderdf, scivarsLive, flightvarsLive
+          #load in .RData with latest plots from Cron job
+          #gliderdf, scivarsLive, flightvarsLive, etc.
   
-  #load in .RData with latest plots from Cron job
-
   #mission date range variables
   startDateLive <- min(gliderdf$m_present_time)
   endDateLive <- max(gliderdf$m_present_time)
@@ -23,9 +17,7 @@ server <- function(input, output, session) {
   updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
   
   updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
-  
-  #glider_live <- list(science = sdf, flight = fdf)
-  
+
   gliderChunk_live <- reactive({
     df <- gliderdf %>%
       filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
@@ -62,112 +54,6 @@ server <- function(input, output, session) {
     df
     
   })
-  
-  battLive <- reactive({
-    bats <- gliderdf %>%
-      select(c(m_present_time, m_battery)) %>%
-      filter(m_battery > 0) %>%
-      mutate(day = floor_date(m_present_time,
-                              unit = "days")) %>%
-      group_by(day) %>%
-      mutate(meanBatt = mean(m_battery)) %>%
-      #select(c(day, meanBatt)) %>%
-      distinct(day, meanBatt)
-    
-    battLive <- ggplot(
-      data = 
-        bats,
-      aes(x=day,
-          y=meanBatt,
-      )) +
-      geom_point(
-        size = 2,
-        na.rm = TRUE
-      ) +
-      theme_bw() +
-      labs(title = "Daily Voltage Average",
-        y = "Battery (V)",
-        x = "Date") +
-      theme(plot.title = element_text(size = 32),
-            axis.title = element_text(size = 20),
-            axis.text = element_text(size = 16))
-    
-    battLive
-    
-  })
-  
-  output$battplot <- renderPlot({battLive()})
-  
-  rollLive <- reactive({
-    roll <- gliderdf %>%
-      select(c(m_present_time, m_roll)) %>%
-      filter(!is.na(m_roll > 0)) %>%
-      mutate(day = floor_date(m_present_time,
-                              unit = "days")) %>%
-      group_by(day) %>%
-      mutate(meanRoll = mean(m_roll)) %>%
-      #select(c(day, meanBatt)) %>%
-      distinct(day, meanRoll)
-    
-    rollLive <- ggplot(
-      data = 
-        roll,
-      aes(x=day,
-          y=meanRoll*180/pi,
-      )) +
-      geom_point(
-        size = 2,
-        na.rm = TRUE
-      ) +
-      scale_y_continuous(limits = symmetric_range) +
-      theme_bw() +
-      labs(title = "Daily Roll Average",
-           y = "Roll (deg)",
-           x = "Date") +
-      theme(plot.title = element_text(size = 32),
-            axis.title = element_text(size = 20),
-            axis.text = element_text(size = 16))
-    
-    rollLive
-    
-  })
-  
-  output$rollplot <- renderPlot({rollLive()})
-  
-  leakLive <- reactive({
-    vars <- c("m_leakdetect_voltage", "m_leakdetect_voltage_forward", "m_leakdetect_voltage_science")
-    
-    leaks <- gliderdf %>%
-      select(c(m_present_time, any_of(vars))) %>%
-      filter(m_leakdetect_voltage > 0) %>%
-      filter(m_present_time >= endDateLive-14400) %>%
-      pivot_longer(cols = any_of(vars))
-    
-    leakLive <- ggplot(
-      data = 
-        leaks,
-      aes(x=m_present_time,
-          y=value,
-          color = name
-      )) +
-      geom_point(
-        size = 2,
-        na.rm = TRUE
-      ) +
-      theme_bw() +
-      labs(title = "LD last 4hrs",
-           y = "Voltage",
-           x = "Date") +
-      theme(plot.title = element_text(size = 32),
-            axis.title = element_text(size = 20),
-            axis.text = element_text(size = 16),
-            legend.position   =  "bottom")
-    
-    leakLive
-    
-  })
-  
-  output$leakplot <- renderPlot({leakLive()})
   
   output$LDBox <- renderValueBox({
     if(LDmin >= 2.3){
@@ -260,11 +146,12 @@ server <- function(input, output, session) {
   
   output$img <- renderSlickR({
     
-    test <- list(xmlSVG({show(battLive())},standalone=TRUE, width = 9.5),
-                 xmlSVG({show(leakLive())},standalone=TRUE, width = 9.5),
-                 xmlSVG({show(rollLive())},standalone=TRUE, width = 9.5))
+    plotItUp <- list()
+    for (i in 1:length(livePlots)){
+      plotItUp[[i]] <- xmlSVG({show(livePlots[[i]])},standalone=TRUE, width = 9.5) 
+      }
     
-    slickR(obj = test,
+    slickR(obj = plotItUp,
            height = 400
            ) + settings(dots = TRUE, autoplay = TRUE, fade = TRUE, infinite = TRUE, autoplaySpeed = 7500)
     
