@@ -810,10 +810,18 @@ server <- function(input, output, session) {
       addProviderTiles("Esri.WorldImagery", 
                        group = "World Imagery") %>%
       addLayersControl(baseGroups = c('Ocean Basemap', 'World Imagery')) %>%
+      addPolylines(
+        lat = mapUp$lat,
+        lng = mapUp$long,
+        color = "grey",
+        weight = 3,
+        opacity = 1,
+      ) %>%
       #timestamps for surfacings
       addCircles(data = map_sf,
                  color = "gold",
-                 popup = map_sf$Name
+                 popup = map_sf$Name,
+                 weight = 3
       ) %>%
       #start marker
       addAwesomeMarkers(
