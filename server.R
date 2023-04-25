@@ -4,6 +4,7 @@ server <- function(input, output, session) {
   load("/echos/usf-stella/glider_live.RData")
           #load in .RData with latest plots from Cron job
           #gliderdf, scivarsLive, flightvarsLive, etc.
+  gliderName <- "usf-stella"
   
   #mission date range variables
   startDateLive <- min(gliderdf$m_present_time)
@@ -174,22 +175,11 @@ server <- function(input, output, session) {
     mutate(lat = latd + (latm/60),
            long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
   
-  wpt <- gliderdf %>%
-    select(m_present_time, c_wpt_lat, c_wpt_lon) %>%
-    filter(!is.na(c_wpt_lat)) %>%
-    select(!c(m_present_time)) %>%
-    format(., nsmall = 4) %>%
-    tail(1)  %>% #coerce to character keeping zeroes out to 4 decimals
-    separate(c_wpt_lat, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
-    separate(c_wpt_lon, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
-    mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
-           longd = substr(longgd, 1, nchar(longgd)-2)) %>%
-    mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
-           longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
-    mutate_if(is.character, as.numeric) %>% #coerce back to numeric
-    mutate(lat = latd + (latm/60),
-           long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
+  gotoFiles <- toGliderList %>%
+    filter(str_ends(fileName, "goto_l10.ma")) %>%
+    arrange(fileName)
   
+  wpt <- gotoLoad(paste0("/gliders/gliders/", gliderName, "/archive/", tail(gotoFiles$fileName,1)))
   
   liveMissionMap <- leaflet() %>%
     #base provider layers
@@ -230,8 +220,8 @@ server <- function(input, output, session) {
     #waypoint
     addMarkers(lat = wpt$lat,
                lng = wpt$long,
-               label = "Waypoint") %>%
-    setView(lat = 27.75, lng = -83, zoom = 6)
+               label = "Waypoint")
+    #setView(lat = 27.75, lng = -83, zoom = 6)
   
   output$missionmapLive <- renderLeaflet({liveMissionMap})
   

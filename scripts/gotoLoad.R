@@ -30,4 +30,6 @@ wptsRaw <- rawMa %>%
   mutate(lat = latd + (latm/60),
          long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
 
+return(wptsRaw)
+
 }

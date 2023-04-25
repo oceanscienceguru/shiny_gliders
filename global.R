@@ -21,6 +21,7 @@ library(egg)
 source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")
 source("./scripts/pseudogram.R")
+source("./scripts/gotoLoad.R")
 
 #maximum file upload size of 500mb
 options(shiny.maxRequestSize = 2000*1024^2)
