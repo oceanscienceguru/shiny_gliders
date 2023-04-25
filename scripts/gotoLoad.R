@@ -4,7 +4,7 @@ gotoLoad <- function(inFile){
 
 library(tidyverse)
 
-rawMa <- read.delim(inFile, sep = "\r")
+rawMa <- read.delim(inFile, sep = "\n")
 rawMa <- as.data.frame(rawMa)
 colnames(rawMa)[1] = "raw"
 
