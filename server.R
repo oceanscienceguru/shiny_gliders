@@ -1,16 +1,11 @@
 server <- function(input, output, session) {
-  # glider = reactive({
-  #   #req(input$mission)
-  #   readRDS(paste0("./Data/", input$mission, ".rds"))
-  # })
-  
-  
+
   #### live mission plotting #####
   load("/echos/usf-stella/glider_live.RData")
-          #gliderdf, scivarsLive, flightvarsLive
+          #load in .RData with latest plots from Cron job
+          #gliderdf, scivarsLive, flightvarsLive, etc.
+  gliderName <- "usf-stella"
   
-  #load in .RData with latest plots from Cron job
-
   #mission date range variables
   startDateLive <- min(gliderdf$m_present_time)
   endDateLive <- max(gliderdf$m_present_time)
@@ -23,9 +18,7 @@ server <- function(input, output, session) {
   updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
   
   updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
-  
-  #glider_live <- list(science = sdf, flight = fdf)
-  
+
   gliderChunk_live <- reactive({
     df <- gliderdf %>%
       filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
@@ -62,112 +55,6 @@ server <- function(input, output, session) {
     df
     
   })
-  
-  battLive <- reactive({
-    bats <- gliderdf %>%
-      select(c(m_present_time, m_battery)) %>%
-      filter(m_battery > 0) %>%
-      mutate(day = floor_date(m_present_time,
-                              unit = "days")) %>%
-      group_by(day) %>%
-      mutate(meanBatt = mean(m_battery)) %>%
-      #select(c(day, meanBatt)) %>%
-      distinct(day, meanBatt)
-    
-    battLive <- ggplot(
-      data = 
-        bats,
-      aes(x=day,
-          y=meanBatt,
-      )) +
-      geom_point(
-        size = 2,
-        na.rm = TRUE
-      ) +
-      theme_bw() +
-      labs(title = "Daily Voltage Average",
-        y = "Battery (V)",
-        x = "Date") +
-      theme(plot.title = element_text(size = 32),
-            axis.title = element_text(size = 20),
-            axis.text = element_text(size = 16))
-    
-    battLive
-    
-  })
-  
-  output$battplot <- renderPlot({battLive()})
-  
-  rollLive <- reactive({
-    roll <- gliderdf %>%
-      select(c(m_present_time, m_roll)) %>%
-      filter(!is.na(m_roll > 0)) %>%
-      mutate(day = floor_date(m_present_time,
-                              unit = "days")) %>%
-      group_by(day) %>%
-      mutate(meanRoll = mean(m_roll)) %>%
-      #select(c(day, meanBatt)) %>%
-      distinct(day, meanRoll)
-    
-    rollLive <- ggplot(
-      data = 
-        roll,
-      aes(x=day,
-          y=meanRoll*180/pi,
-      )) +
-      geom_point(
-        size = 2,
-        na.rm = TRUE
-      ) +
-      scale_y_continuous(limits = symmetric_range) +
-      theme_bw() +
-      labs(title = "Daily Roll Average",
-           y = "Roll (deg)",
-           x = "Date") +
-      theme(plot.title = element_text(size = 32),
-            axis.title = element_text(size = 20),
-            axis.text = element_text(size = 16))
-    
-    rollLive
-    
-  })
-  
-  output$rollplot <- renderPlot({rollLive()})
-  
-  leakLive <- reactive({
-    vars <- c("m_leakdetect_voltage", "m_leakdetect_voltage_forward", "m_leakdetect_voltage_science")
-    
-    leaks <- gliderdf %>%
-      select(c(m_present_time, any_of(vars))) %>%
-      filter(m_leakdetect_voltage > 0) %>%
-      filter(m_present_time >= endDateLive-14400) %>%
-      pivot_longer(cols = any_of(vars))
-    
-    leakLive <- ggplot(
-      data = 
-        leaks,
-      aes(x=m_present_time,
-          y=value,
-          color = name
-      )) +
-      geom_point(
-        size = 2,
-        na.rm = TRUE
-      ) +
-      theme_bw() +
-      labs(title = "LD last 4hrs",
-           y = "Voltage",
-           x = "Date") +
-      theme(plot.title = element_text(size = 32),
-            axis.title = element_text(size = 20),
-            axis.text = element_text(size = 16),
-            legend.position   =  "bottom")
-    
-    leakLive
-    
-  })
-  
-  output$leakplot <- renderPlot({leakLive()})
   
   output$LDBox <- renderValueBox({
     if(LDmin >= 2.3){
@@ -260,11 +147,12 @@ server <- function(input, output, session) {
   
   output$img <- renderSlickR({
     
-    test <- list(xmlSVG({show(battLive())},standalone=TRUE, width = 9.5),
-                 xmlSVG({show(leakLive())},standalone=TRUE, width = 9.5),
-                 xmlSVG({show(rollLive())},standalone=TRUE, width = 9.5))
+    plotItUp <- list()
+    for (i in 1:length(livePlots)){
+      plotItUp[[i]] <- xmlSVG({show(livePlots[[i]])},standalone=TRUE, width = 9.5) 
+      }
     
-    slickR(obj = test,
+    slickR(obj = plotItUp,
            height = 400
            ) + settings(dots = TRUE, autoplay = TRUE, fade = TRUE, infinite = TRUE, autoplaySpeed = 7500)
     
@@ -287,22 +175,11 @@ server <- function(input, output, session) {
     mutate(lat = latd + (latm/60),
            long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
   
-  wpt <- gliderdf %>%
-    select(m_present_time, c_wpt_lat, c_wpt_lon) %>%
-    filter(!is.na(c_wpt_lat)) %>%
-    select(!c(m_present_time)) %>%
-    format(., nsmall = 4) %>%
-    tail(1)  %>% #coerce to character keeping zeroes out to 4 decimals
-    separate(c_wpt_lat, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
-    separate(c_wpt_lon, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
-    mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
-           longd = substr(longgd, 1, nchar(longgd)-2)) %>%
-    mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
-           longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
-    mutate_if(is.character, as.numeric) %>% #coerce back to numeric
-    mutate(lat = latd + (latm/60),
-           long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
+  gotoFiles <- toGliderList %>%
+    filter(str_ends(fileName, "goto_l10.ma")) %>%
+    arrange(fileName)
   
+  wpt <- gotoLoad(paste0("/gliders/gliders/", gliderName, "/archive/", tail(gotoFiles$fileName,1)))
   
   liveMissionMap <- leaflet() %>%
     #base provider layers
@@ -343,8 +220,8 @@ server <- function(input, output, session) {
     #waypoint
     addMarkers(lat = wpt$lat,
                lng = wpt$long,
-               label = "Waypoint") %>%
-    setView(lat = 27.75, lng = -83, zoom = 6)
+               label = "Waypoint")
+    #setView(lat = 27.75, lng = -83, zoom = 6)
   
   output$missionmapLive <- renderLeaflet({liveMissionMap})
   
@@ -576,28 +453,28 @@ server <- function(input, output, session) {
   
   #color palette source:
   #https://rdrr.io/github/hvillalo/echogram/src/R/palette.echogram.R
-  velInfo <- file.info(list.files(path = "/echos/layers/",
-                                  full.names = TRUE)) %>%
-    filter(size > 0)
-  
-  velList <- rownames(velInfo) %>%
-    basename()
-  
-  depthInfo <- file.info(list.files(path = "/echos/depths/",
-                                    full.names = TRUE))
-  
-  depthList <- rownames(depthInfo) %>%
-    basename()
-  
-  echoListraw <- intersect(velList, depthList) %>%
-    str_remove(pattern = ".ssv") %>%
-    enframe() %>%
-    mutate(ID = str_extract(value, "(?<=-)[0-9]*$")) %>%
-    mutate(ID = as.numeric(ID)) %>%
-    arrange(ID)
-  
-  echoList <- echoListraw$value
-  
+  # velInfo <- file.info(list.files(path = "/echos/layers/",
+  #                                 full.names = TRUE)) %>%
+  #   filter(size > 0)
+  # 
+  # velList <- rownames(velInfo) %>%
+  #   basename()
+  # 
+  # depthInfo <- file.info(list.files(path = "/echos/depths/",
+  #                                   full.names = TRUE))
+  # 
+  # depthList <- rownames(depthInfo) %>%
+  #   basename()
+  # 
+  # echoListraw <- intersect(velList, depthList) %>%
+  #   str_remove(pattern = ".ssv") %>%
+  #   enframe() %>%
+  #   mutate(ID = str_extract(value, "(?<=-)[0-9]*$")) %>%
+  #   mutate(ID = as.numeric(ID)) %>%
+  #   arrange(ID)
+  # 
+  # echoList <- echoListraw$value
+  # 
   #reactive pseudogram plot identifier for scrolling
   selectPgram <- reactiveValues(seg = NULL, id = NULL)
   
@@ -702,44 +579,44 @@ server <- function(input, output, session) {
   
   
   #### pseudotimegram main setup ####
-  fullehunk <- reactive({
-    req(input$fullecho | input$fullecho2)
-    
-    elist <- list()
-    for (i in echoList) {
-      elist[[i]] <- pseudogram(paste0("/echos/layers/", i, ".ssv"),
-                               paste0("/echos/depths/", i, ".ssv"))
-    }
-    ef <- bind_rows(elist, .id = "segment") %>%
-      mutate(r_depth = round(q_depth, 0)) %>%
-      mutate(day = day(m_present_time)) %>%
-      mutate(hour = hour(m_present_time))
-    
-    ef
-    
-  })
+  # fullehunk <- reactive({
+  #   req(input$fullecho | input$fullecho2)
+  #   
+  #   elist <- list()
+  #   for (i in echoListraw$value) {
+  #     elist[[i]] <- pseudogram(paste0("/echos/layers/", i, ".ssv"),
+  #                              paste0("/echos/depths/", i, ".ssv"))
+  #   }
+  #   ef <- bind_rows(elist, .id = "segment") %>%
+  #     mutate(r_depth = round(q_depth, 0)) %>%
+  #     mutate(day = day(m_present_time)) %>%
+  #     mutate(hour = hour(m_present_time))
+  #   
+  #   ef
+  #   
+  # })
   
   
   #### updater for pseudotimegram inputs ####
   observeEvent(input$fullecho | input$fullecho2, {
     
     updateDateRangeInput(session, "echohistrange", label = NULL, 
-                         start = (max(fullehunk()$m_present_time)-259200),
-                         end = max(fullehunk()$m_present_time), 
-                         min = min(fullehunk()$m_present_time), 
-                         max = max(fullehunk()$m_present_time))
+                         start = (max(fullehunk$m_present_time)-259200),
+                         end = max(fullehunk$m_present_time), 
+                         min = min(fullehunk$m_present_time), 
+                         max = max(fullehunk$m_present_time))
     
     updateDateRangeInput(session, "echohistrange2", label = NULL, 
-                         start = min(fullehunk()$m_present_time),
-                         end = max(fullehunk()$m_present_time), 
-                         min = min(fullehunk()$m_present_time), 
-                         max = max(fullehunk()$m_present_time))
+                         start = min(fullehunk$m_present_time),
+                         end = max(fullehunk$m_present_time), 
+                         min = min(fullehunk$m_present_time), 
+                         max = max(fullehunk$m_present_time))
   })
   
   plotehunk <- reactive({
     req(input$echohistrange)
     
-    pf <- filter(fullehunk(), m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
+    pf <- filter(fullehunk, m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
       filter(hour >= input$echohour[1] & hour <= input$echohour[2]) %>%
       group_by(segment, r_depth) %>%
       mutate(avgDb = mean(value)) %>%
@@ -757,7 +634,7 @@ server <- function(input, output, session) {
   plotethunk <- reactive({
     req(input$echohistrange2)
     
-    pf <- filter(fullehunk(), m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
+    pf <- filter(fullehunk, m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
       filter(hour >= input$echohour2[1] & hour <= input$echohour2[2]) %>%
       group_by(segment, r_depth) %>%
       mutate(avgDb = mean(value)) %>%
@@ -923,10 +800,18 @@ server <- function(input, output, session) {
       addProviderTiles("Esri.WorldImagery", 
                        group = "World Imagery") %>%
       addLayersControl(baseGroups = c('Ocean Basemap', 'World Imagery')) %>%
+      addPolylines(
+        lat = mapUp$lat,
+        lng = mapUp$long,
+        color = "grey",
+        weight = 3,
+        opacity = 1,
+      ) %>%
       #timestamps for surfacings
       addCircles(data = map_sf,
                  color = "gold",
-                 popup = map_sf$Name
+                 popup = map_sf$Name,
+                 weight = 3
       ) %>%
       #start marker
       addAwesomeMarkers(
