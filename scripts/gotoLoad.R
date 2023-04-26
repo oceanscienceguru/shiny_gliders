@@ -12,6 +12,13 @@ colnames(rawMa)[1] = "raw"
 first <- which(rawMa == "<start:waypoints>")
 last  <- which(rawMa == "<end:waypoints>")
 
+#find radius
+radInd <- which(str_starts(rawMa$raw, "b_arg: list_when_wpt_dist"))
+radBarg <- rawMa[radInd,1]
+  rads <- ifelse(str_detect(radBarg, ".*(?=#)"),str_extract(radBarg, ".*(?=#)"), radBarg) %>% #strip off any comments at end
+    str_trim() %>%
+    parse_number()
+  
 wptsRaw <- rawMa %>%
   slice((first+1):(last-1)) %>% #pull out all the wpts
   filter(!str_starts(raw,"#")) %>% #remove any commented lines
@@ -28,8 +35,10 @@ wptsRaw <- rawMa %>%
          longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
   mutate(across(latd:longm, as.numeric)) %>% #coerce back to numeric
   mutate(lat = latd + (latm/60),
-         long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
-
+         long = (abs(longd) + (longm/60))*-1) %>% #*-1 for western hemisphere
+  mutate(rad = ifelse(!is_empty(rads), rads, 10)) %>% # pull in parsed radius if present. otherwise masterdata default
+  mutate(order = rownames(.)) #get order of wpts as listed
+  
 return(wptsRaw)
 
 }
