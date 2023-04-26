@@ -220,6 +220,10 @@ server <- function(input, output, session) {
     #waypoint
     addMarkers(lat = wpt$lat,
                lng = wpt$long,
+               label = "Waypoint") %>%
+    addCircles(lat = wpt$lat,
+               lng = wpt$long,
+               radius = wpt$rad,
                label = "Waypoint")
     #setView(lat = 27.75, lng = -83, zoom = 6)
   
