@@ -1,4 +1,4 @@
-server <- function(input, output, session) {
+server <- function(input, output, session) { options(shiny.usecairo = TRUE)
 
   #### live mission plotting #####
   load("/echos/usf-stella/glider_live.RData")

@@ -8,7 +8,7 @@ library(sf)
 #library(PlotSvalbard) #devtools::install_github("MikkoVihtakari/PlotSvalbard", upgrade = "never")
 #library(patchwork)
 #library(cowplot)
-#library(Cairo)   # For nicer ggplot2 output when deployed on Linux?
+library(Cairo)   # For nicer ggplot2 output when deployed on Linux?
 library(scales)
 library(seacarb)
 library(shinycssloaders)
