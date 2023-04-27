@@ -13,7 +13,7 @@ first <- which(rawMa == "<start:waypoints>")
 last  <- which(rawMa == "<end:waypoints>")
 
 #find radius
-radInd <- which(str_starts(rawMa$raw, "b_arg: list_when_wpt_dist"))
+radInd <- which(str_detect(rawMa$raw, "b_arg: list_when_wpt_dist"))
 radBarg <- rawMa[radInd,1]
   rads <- ifelse(str_detect(radBarg, ".*(?=#)"),str_extract(radBarg, ".*(?=#)"), radBarg) %>% #strip off any comments at end
     str_trim() %>%
