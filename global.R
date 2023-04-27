@@ -23,6 +23,13 @@ source("./scripts/loadSSV.R")
 source("./scripts/pseudogram.R")
 source("./scripts/gotoLoad.R")
 
+
+deployedGliders <- read.csv("/echos/deployedGliders.txt", 
+                            sep = "",
+                            header = FALSE)
+colnames(deployedGliders)[1] = "Name"
+colnames(deployedGliders)[2] = "ahrCap"
+
 #maximum file upload size of 500mb
 options(shiny.maxRequestSize = 2000*1024^2)
 
