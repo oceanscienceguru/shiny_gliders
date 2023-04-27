@@ -81,6 +81,10 @@
                tabItems(
                  tabItem(tabName = "dashboard",
                          fluidRow(
+                           radioButtons(inputId = "gliderSelect",
+                                        label = "Pick Your Glider",
+                                        choices = deployedGliders$Name,
+                                        selected = tail(deployedGliders$Name,1)),
                          box(
                            leafletOutput(outputId = "missionmapLive")
                            ),

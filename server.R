@@ -1,10 +1,12 @@
 server <- function(input, output, session) { options(shiny.usecairo = TRUE)
 
   #### live mission plotting #####
-  load("/echos/usf-stella/glider_live.RData")
+  observeEvent(input$gliderSelect, {
+  load(paste0("/echos/", input$gliderSelect, "/glider_live.RData"))
+  
+    #load(paste0("/echos/", "usf-stella", "/glider_live.RData"))
           #load in .RData with latest plots from Cron job
           #gliderdf, scivarsLive, flightvarsLive, etc.
-  gliderName <- "usf-stella"
   
   #mission date range variables
   startDateLive <- min(gliderdf$m_present_time)
@@ -19,6 +21,8 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
   
   updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
 
+  
+  
   gliderChunk_live <- reactive({
     df <- gliderdf %>%
       filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
@@ -179,7 +183,7 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
     filter(str_ends(fileName, "goto_l10.ma")) %>%
     arrange(fileName)
   
-  wpt <- gotoLoad(paste0("/gliders/gliders/", gliderName, "/archive/", tail(gotoFiles$fileName,1)))
+  wpt <- gotoLoad(paste0("/gliders/gliders/", input$gliderSelect, "/archive/", tail(gotoFiles$fileName,1)))
   
   liveMissionMap <- leaflet() %>%
     #base provider layers
@@ -228,7 +232,7 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
     #setView(lat = 27.75, lng = -83, zoom = 6)
   
   output$missionmapLive <- renderLeaflet({liveMissionMap})
-  
+ 
   ######### current mission data ########
   
   observeEvent(input$tabs, {
@@ -480,9 +484,10 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
   # echoList <- echoListraw$value
   # 
   #reactive pseudogram plot identifier for scrolling
-  selectPgram <- reactiveValues(seg = NULL, id = NULL)
   
-  updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value))
+  selectPgram <- reactiveValues(seg = NULL, id = NULL)
+  if(input$gliderSelect == "usf-stella"){
+  #updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value))
   
   #attach IDs to psuedogram plot reactives
   observeEvent(input$echo, {
@@ -761,12 +766,12 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
   
   output$echoTime <- renderPlot({gg6()})
   
-  
+  }
     }
     
   })
   
-  
+  })
   
   ####### archived flight data ########
   
