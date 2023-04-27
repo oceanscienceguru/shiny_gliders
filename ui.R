@@ -270,7 +270,7 @@
                                                  inputId = "echoColor",
                                                  label = "Color scheme",
                                                  choices = c("EK", "magma", "viridis"),
-                                                 selected =  "viridis"
+                                                 selected =  "EK"
                                                ),
                                                #downloadButton('downloadEchoPlot')
                                              )),
@@ -340,7 +340,7 @@
                                                  inputId = "echoColor2",
                                                  label = "Color scheme",
                                                  choices = c("EK", "magma", "viridis"),
-                                                 selected =  "viridis"
+                                                 selected =  "EK"
                                                ),
                                                #downloadButton('downloadEchoHist2')
                                              )),
