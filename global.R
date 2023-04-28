@@ -22,6 +22,7 @@ source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")
 source("./scripts/pseudogram.R")
 source("./scripts/gotoLoad.R")
+source("./modules/gliderDashboard.R")
 
 
 deployedGliders <- read.csv("/echos/deployedGliders.txt", 
