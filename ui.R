@@ -80,50 +80,11 @@
                tags$div(tags$style(HTML( ".dropdown-menu{z-index:10000 !important;}"))),
                tabItems(
                  tabItem(tabName = "dashboard",
-                         fluidRow(
-                           radioButtons(inputId = "gliderSelect",
-                                        label = "Pick Your Glider",
-                                        choices = deployedGliders$Name,
-                                        selected = tail(deployedGliders$Name,1)),
-                         box(
-                           leafletOutput(outputId = "missionmapLive")
-                           ),
-                         box(
-                           slickROutput("img")
-                         ),
-                         # box(
-                         #   plotOutput(
-                         #     outputId = "battplot",
-                         #   ) %>% withSpinner(color="#0dc5c1")
-                         # ),
-                         ),
-                         fluidRow(
-                           valueBoxOutput(
-                             "recoBox",
-                             width = 2),
-                         valueBoxOutput(
-                                        "LDBox",
-                                        width = 2),
-                         valueBoxOutput(
-                                        "battBox",
-                                        width = 2),
-                         valueBoxOutput(
-                           "powerBox1",
-                           width = 2),
-                         valueBoxOutput(
-                           "powerBox3",
-                           width = 2),
-                         valueBoxOutput(
-                           "powerBoxall",
-                           width = 2),
-                         ),
-                         # fluidRow(
-                         #   box(
-                         #     plotOutput(
-                         #       outputId = "battplot",
-                         #     ),
-                         #   ),
-                         # ),
+                         radioButtons(inputId = "gliderSelect",
+                                      label = "Pick Your Glider",
+                                      choices = deployedGliders$Name,
+                                      selected = tail(deployedGliders$Name,1)),
+                         gliderDashboard_ui("test")
                  ),
                  tabItem(tabName = "currMissData",
                          fluidPage(
