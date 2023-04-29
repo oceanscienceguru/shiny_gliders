@@ -14,12 +14,16 @@
              dashboardHeader(title = "The Brewery"),
              dashboardSidebar(
                sidebarMenu(id = "tabs",
-                 menuItem("Piloting Dashboard", 
-                          tabName = "dashboard", 
-                          icon = icon("dashboard")),
-                 menuItem("Current Mission Data", 
-                          tabName = "currMissData", 
-                          icon = icon("plane")),
+                 menuItem("Piloting Dashboard", startExpanded = TRUE,
+                          menuSubItem("Dashboard", tabName = "dashboard"),
+                          icon = icon("dashboard"),
+                          radioButtons(inputId = "gliderSelect",
+                                       label = "Pick Your Glider",
+                                       choices = deployedGliders$Name,
+                                       selected = tail(deployedGliders$Name,1))),
+                 # menuItem("Current Mission Data", 
+                 #          tabName = "currMissData", 
+                 #          icon = icon("plane")),
                  menuItem("Archived Mission Data",
                           icon = icon("calendar"),
                           expandedName = "oldData",
@@ -80,11 +84,14 @@
                tags$div(tags$style(HTML( ".dropdown-menu{z-index:10000 !important;}"))),
                tabItems(
                  tabItem(tabName = "dashboard",
-                         radioButtons(inputId = "gliderSelect",
-                                      label = "Pick Your Glider",
-                                      choices = deployedGliders$Name,
-                                      selected = tail(deployedGliders$Name,1)),
-                         gliderDashboard_ui("test")
+                         gliderDashboard_ui("display")
+                         # tabBox(
+                         #   width = 12,
+                         #   tabPanel(title = "usf-stella",
+                         #            gliderDashboard_ui("test")),
+                           # tabPanel(title = "usf-jaialai",
+                           #          gliderDashboard_ui("usf-jaialai"))
+                 #)
                  ),
                  tabItem(tabName = "currMissData",
                          fluidPage(

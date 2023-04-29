@@ -49,52 +49,50 @@ gliderDashboard_ui <- function(id) {
   )
 }
 
-gliderDashboard_server <- function(id) {
+gliderDashboard_server <- function(id, gliderName) {
   
   moduleServer(id, function(input, output, session) {
-    
-    #observeEvent(input$gliderSelect, {
-      
-    load(paste0("/echos/", tail(deployedGliders$Name,1), "/glider_live.RData"))
-    
+    # print(gliderName())
+    load(paste0("/echos/", gliderName, "/glider_live.RData"))
+
     startDateLive <- min(gliderdf$m_present_time)
     endDateLive <- max(gliderdf$m_present_time)
-    
+
     #get start/end days and update data filters
     updateDateInput(session, "date1Live", NULL, min = min(gliderdf$m_present_time), max = max(gliderdf$m_present_time), value = startDateLive)
     updateDateInput(session, "date2Live", NULL, min = min(gliderdf$m_present_time), max = max(gliderdf$m_present_time), value = endDateLive)
-    
+
     updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
     updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
-    
+
     updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
-    
-    
-    
+
+
+
     gliderChunk_live <- reactive({
       df <- gliderdf %>%
         filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
       #filter(status %in% c(input$status)) %>%
       #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
       #filter(m_depth >= input$min_depth & m_depth <= input$max_depth)
-      
+
       df
     })
-    
+
     scienceChunk_live <- reactive({
       req(input$display_varLive)
-      
+
       qf <- gliderChunk_live() %>%
         select(c(m_present_time, osg_depth, any_of(input$display_varLive))) %>%
         filter(!is.na(across(!c(m_present_time:osg_depth))))
-      
+
       qf
-      
+
     })
-    
+
     flightChunk_live <- reactive({
       req(input$date1Live)
-      
+
       df <- gliderChunk_live() %>%
         dplyr::select(c(m_present_time, all_of(input$flight_varLive))) %>%
         filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live) %>%
@@ -103,13 +101,12 @@ gliderDashboard_server <- function(id) {
           names_to = "variable",
           values_to = "count") %>%
         filter(!is.na(count))
-      
+
       df
-      
+
     })
-    
+
     output$LDBox <- renderValueBox({
-      ns <- session$ns
       if(LDmin >= 2.3){
         Mycolor = "green"
       } else if(LDmin >= 2 & LDmin < 2.3) {
@@ -122,11 +119,10 @@ gliderDashboard_server <- function(id) {
         color = Mycolor
       )
     })
-    
+
     output$recoBox <- renderValueBox({
-      ns <- session$ns
       recoDays <- ((ahrCap*.9)-ahrUsed)/ahr3day
-      
+
       if(recoDays >= 14){
         Mycolor = "green"
       } else if(recoDays >= 7 & recoDays < 14) {
@@ -139,9 +135,8 @@ gliderDashboard_server <- function(id) {
         color = Mycolor
       )
     })
-    
+
     output$battBox <- renderValueBox({
-      ns <- session$ns
       if(battLeft >= 25){
         Mycolor = "green"
       } else if(battLeft >= 10 & battLeft < 25) {
@@ -154,9 +149,8 @@ gliderDashboard_server <- function(id) {
         color = Mycolor
       )
     })
-    
+
     output$powerBox3 <- renderValueBox({
-      ns <- session$ns
       if(ahr3day <= 7){
         Mycolor = "green"
       } else if(ahr3day >= 7 & ahr3day < 10) {
@@ -169,9 +163,8 @@ gliderDashboard_server <- function(id) {
         color = Mycolor
       )
     })
-    
+
     output$powerBox1 <- renderValueBox({
-      ns <- session$ns
       if(ahr1day <= 7){
         Mycolor = "green"
       } else if(ahr1day >= 7 & ahr1day < 10) {
@@ -184,9 +177,8 @@ gliderDashboard_server <- function(id) {
         color = Mycolor
       )
     })
-    
+
     output$powerBoxall <- renderValueBox({
-      ns <- session$ns
       if(ahrAllday <= 7){
         Mycolor = "green"
       } else if(ahrAllday >= 7 & ahrAllday < 10) {
@@ -199,20 +191,19 @@ gliderDashboard_server <- function(id) {
         color = Mycolor
       )
     })
-    
+
     output$img <- renderSlickR({
-      ns <- session$ns
       plotItUp <- list()
       for (i in 1:length(livePlots)){
-        plotItUp[[i]] <- xmlSVG({show(livePlots[[i]])},standalone=TRUE, width = 9.5) 
+        plotItUp[[i]] <- xmlSVG({show(livePlots[[i]])},standalone=TRUE, width = 9.5)
       }
-      
+
       slickR(obj = plotItUp,
              height = 400
       ) + settings(dots = TRUE, autoplay = TRUE, fade = TRUE, infinite = TRUE, autoplaySpeed = 7500)
-      
+
     })
-    
+
     #live mission map
     #massage gps data a lot
     map_sf <- gliderdf %>%
@@ -229,18 +220,18 @@ gliderDashboard_server <- function(id) {
       mutate_if(is.character, as.numeric) %>% #coerce back to numeric
       mutate(lat = latd + (latm/60),
              long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
-    
+
     gotoFiles <- toGliderList %>%
       filter(str_ends(fileName, "goto_l10.ma")) %>%
       arrange(fileName)
-    
-    wpt <- gotoLoad(paste0("/gliders/gliders/", tail(deployedGliders$Name,1), "/archive/", tail(gotoFiles$fileName,1)))
-    
+
+    wpt <- gotoLoad(paste0("/gliders/gliders/", gliderName, "/archive/", tail(gotoFiles$fileName,1)))
+
     liveMissionMap <- leaflet() %>%
       #base provider layers
-      addProviderTiles(providers$Esri.OceanBasemap, 
+      addProviderTiles(providers$Esri.OceanBasemap,
                        group = "Ocean Basemap") %>%
-      addProviderTiles(providers$Esri.WorldImagery, 
+      addProviderTiles(providers$Esri.WorldImagery,
                        group = "World Imagery") %>%
       addLayersControl(baseGroups = c('Ocean Basemap', 'World Imagery')) %>%
       addPolylines(
@@ -281,9 +272,8 @@ gliderDashboard_server <- function(id) {
                  radius = wpt$rad,
                  label = "Waypoint")
     #setView(lat = 27.75, lng = -83, zoom = 6)
-    
+
     output$missionmapLive <- renderLeaflet({
-      ns <- session$ns
-      liveMissionMap })
+      liveMissionMap})
     })
 }

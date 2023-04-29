@@ -1,10 +1,14 @@
 server <- function(input, output, session) { options(shiny.usecairo = TRUE)
 
   #### live mission plotting #####
-
-    gliderDashboard_server("test")
- 
+  glider <- reactiveVal(tail(deployedGliders$Name, 1))
   
+  observeEvent(input$gliderSelect, {
+    
+    glider <- input$gliderSelect
+    gliderDashboard_server("display", glider)
+  })
+
   ######### current mission data ########
   
   observeEvent(input$tabs, {
