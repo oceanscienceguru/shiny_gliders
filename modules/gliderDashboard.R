@@ -144,15 +144,20 @@ gliderDashboard_server <- function(id, gliderName) {
     })
 
     output$img <- renderSlickR({
+      
+      ## NOTE: requires non-CRAN for switching plots
+      ## remotes::install_github("yonicd/slickR@1ab229e4c400e54187a406130610852b0300986c")
       plotItUp <- list()
       for (i in 1:length(livePlots)){
         plotItUp[[i]] <- xmlSVG({show(livePlots[[i]])},standalone=TRUE, width = 9.5)
       }
 
-      slickR(obj = plotItUp,
-             height = 400
+      x <- slickR(obj = plotItUp,
+             height = 400,
+             slideId = gliderName
       ) + settings(dots = TRUE, autoplay = TRUE, fade = TRUE, infinite = TRUE, autoplaySpeed = 7500)
 
+      x
     })
 
     #live mission map
