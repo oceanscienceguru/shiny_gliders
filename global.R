@@ -23,6 +23,7 @@ source("./scripts/loadSSV.R")
 source("./scripts/pseudogram.R")
 source("./scripts/gotoLoad.R")
 source("./modules/gliderDashboard.R")
+source("./modules/currentData.R")
 
 
 deployedGliders <- read.csv("/echos/deployedGliders.txt", 

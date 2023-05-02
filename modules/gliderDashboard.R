@@ -55,56 +55,7 @@ gliderDashboard_server <- function(id, gliderName) {
     # print(gliderName())
     load(paste0("/echos/", gliderName, "/glider_live.RData"))
 
-    startDateLive <- min(gliderdf$m_present_time)
-    endDateLive <- max(gliderdf$m_present_time)
 
-    #get start/end days and update data filters
-    updateDateInput(session, "date1Live", NULL, min = min(gliderdf$m_present_time), max = max(gliderdf$m_present_time), value = startDateLive)
-    updateDateInput(session, "date2Live", NULL, min = min(gliderdf$m_present_time), max = max(gliderdf$m_present_time), value = endDateLive)
-
-    updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
-    updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
-
-    updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
-
-
-
-    gliderChunk_live <- reactive({
-      df <- gliderdf %>%
-        filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
-      #filter(status %in% c(input$status)) %>%
-      #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
-      #filter(m_depth >= input$min_depth & m_depth <= input$max_depth)
-
-      df
-    })
-
-    scienceChunk_live <- reactive({
-      req(input$display_varLive)
-
-      qf <- gliderChunk_live() %>%
-        select(c(m_present_time, osg_depth, any_of(input$display_varLive))) %>%
-        filter(!is.na(across(!c(m_present_time:osg_depth))))
-
-      qf
-
-    })
-
-    flightChunk_live <- reactive({
-      req(input$date1Live)
-
-      df <- gliderChunk_live() %>%
-        dplyr::select(c(m_present_time, all_of(input$flight_varLive))) %>%
-        filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live) %>%
-        pivot_longer(
-          cols = !m_present_time,
-          names_to = "variable",
-          values_to = "count") %>%
-        filter(!is.na(count))
-
-      df
-
-    })
 
     output$LDBox <- renderValueBox({
       if(LDmin >= 2.3){
@@ -275,5 +226,7 @@ gliderDashboard_server <- function(id, gliderName) {
 
     output$missionmapLive <- renderLeaflet({
       liveMissionMap})
+    
+    
     })
 }
