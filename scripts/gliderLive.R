@@ -8,8 +8,8 @@ library(lubridate)
 library(ggplot2)
 library(scales)
 
-source("./thebrewery/scripts/ssv_to_df.R")
-source("./thebrewery/scripts/pseudogram.R")
+source("/srv/shiny-server/thebrewery/scripts/ssv_to_df.R")
+source("/srv/shiny-server/thebrewery/scripts/pseudogram.R")
   
 print(paste0(gliderName, ", ", ahrCap, "ahr capacity"))
 
