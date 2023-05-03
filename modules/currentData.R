@@ -226,11 +226,11 @@ currentData_ui <- function(id) {
                             choices = c("EK", "magma", "viridis"),
                             selected =  "EK"
                           ),
-                          selectInput(
+                          checkboxGroupInput(
                             inputId = ns("todTgram"),
                             label = "Time of day",
-                            choices = c("day", "night", "day/night"),
-                            selected = "day/night"
+                            choices = c("day", "night"),
+                            selected = c("day", "night")
                           ),
                           #downloadButton('downloadEchoHist2')
                         )),
@@ -745,15 +745,18 @@ currentData_server <- function(id, gliderName) {
         
         pf <- filter(fullehunk, m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
           filter(hour >= input$echohour2[1] & hour <= input$echohour2[2]) %>%
-          group_by(segment, r_depth) %>%
-          mutate(avgDb = exp(mean(log(abs(value))))*-1) %>%
-          ungroup() %>%
           group_by(segment) %>%
           mutate(seg_time = mean(m_present_time)) %>%
           ungroup() %>%
           mutate(seg_hour = hour(seg_time)) %>%
           mutate(cycle = case_when(seg_hour %in% c(11:23) ~ 'day',
-                                   seg_hour %in% c(1:10, 24) ~ 'night')) # add day/night filter
+                                   seg_hour %in% c(1:10, 24) ~ 'night')) %>% # add day/night filter
+          filter(cycle %in% input$todTgram) %>%
+          group_by(segment, r_depth, cycle) %>%
+          mutate(avgDb = exp(mean(log(abs(value))))*-1) %>%
+          #mutate(avgDbOLD = mean(value)) %>%
+          ungroup()
+
         
         pf
       })
