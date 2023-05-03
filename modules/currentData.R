@@ -226,6 +226,12 @@ currentData_ui <- function(id) {
                             choices = c("EK", "magma", "viridis"),
                             selected =  "EK"
                           ),
+                          selectInput(
+                            inputId = ns("todTgram"),
+                            label = "Time of day",
+                            choices = c("day", "night", "day/night"),
+                            selected = "day/night"
+                          ),
                           #downloadButton('downloadEchoHist2')
                         )),
                  column(10,
@@ -722,7 +728,7 @@ currentData_server <- function(id, gliderName) {
         pf <- filter(fullehunk, m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
           filter(hour >= input$echohour[1] & hour <= input$echohour[2]) %>%
           group_by(segment, r_depth) %>%
-          mutate(avgDb = mean(value)) %>%
+          mutate(avgDb = exp(mean(log(abs(value))))*-1) %>%
           ungroup() %>%
           group_by(segment) %>%
           mutate(seg_time = mean(m_present_time)) %>%
@@ -740,7 +746,7 @@ currentData_server <- function(id, gliderName) {
         pf <- filter(fullehunk, m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
           filter(hour >= input$echohour2[1] & hour <= input$echohour2[2]) %>%
           group_by(segment, r_depth) %>%
-          mutate(avgDb = mean(value)) %>%
+          mutate(avgDb = exp(mean(log(abs(value))))*-1) %>%
           ungroup() %>%
           group_by(segment) %>%
           mutate(seg_time = mean(m_present_time)) %>%
@@ -813,6 +819,10 @@ currentData_server <- function(id, gliderName) {
       
       #### pseudotimegram ####
       gg6 <- reactive({
+        # if(input$todTgram != "day/night") {
+        #   filter(plotethunk(), cycle %in% input$todTgram)
+        # } else { plotethunk()
+        # },
         
         ggEchoTime <- 
           ggplot(data = plotethunk(),
