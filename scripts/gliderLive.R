@@ -10,6 +10,7 @@ library(scales)
 
 source("/srv/shiny-server/thebrewery/scripts/ssv_to_df.R")
 source("/srv/shiny-server/thebrewery/scripts/pseudogram.R")
+source("/srv/shiny-server/thebrewery/scripts/depthInt.R")
   
 print(paste0(gliderName, ", ", ahrCap, "ahr capacity"))
 
