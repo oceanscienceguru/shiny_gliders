@@ -319,8 +319,7 @@ currentData_server <- function(id, gliderName) {
       req(input$display_varLive)
       
       qf <- gliderChunk_live() %>%
-        select(c(m_present_time, osg_depth, any_of(input$display_varLive))) %>%
-        filter(!is.na(across(!c(m_present_time:osg_depth))))
+        select(c(m_present_time, osg_i_depth, any_of(input$display_varLive)))
       
       qf
       
@@ -347,7 +346,7 @@ currentData_server <- function(id, gliderName) {
         data = 
           scienceChunk_live(),#dynamically filter the sci variable of interest
         aes(x=m_present_time,
-            y=osg_depth,
+            y=osg_i_depth,
             #z=.data[[input$display_varLive]],
             colour = .data[[input$display_varLive]],
         )) +
