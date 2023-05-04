@@ -198,8 +198,16 @@ gliderDashboard_server <- function(id, gliderName) {
       mutate(lat = latd + (latm/60),
              long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
     
-    #get waypoints
-    goto <- gotoLoad(paste0("/gliders/gliders/", gliderName, "/archive/", tail(gotoFiles$fileName,1)))
+    gotoN <- as.integer(nrow(gotoFiles))
+    
+    #build goto history
+    gotoHistory <- list()
+    for (i in 1:gotoN) {
+      gotoHistory[[i]] <- gotoLoad(paste0("/gliders/gliders/", gliderName, "/archive/", gotoFiles[i,]))
+    }
+    
+    #get most recent goto file
+    goto <- as.data.frame(tail(gotoHistory, 1))
     
     liveMissionMap <- leaflet() %>%
       #base provider layers
