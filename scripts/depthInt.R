@@ -7,7 +7,7 @@ library(zoo)
 
 #test <- palette.echogram(Svthr = -75, Svmax = -35, col.sep = 1, scheme = "echov", visu = FALSE)
 
-ef <- gliderdf %>%
+ef <- inGliderdf %>%
   select(c(m_present_time, m_depth))
 
 #coerce as dataframe
