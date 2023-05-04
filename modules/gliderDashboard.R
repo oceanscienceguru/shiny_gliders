@@ -244,7 +244,9 @@ gliderDashboard_server <- function(id, gliderName) {
                  label = goto$comment) %>%
       addMarkers(lat = cwpt$lat,
                  lng = cwpt$long,
-                 label = "Commanded wpt")
+                 label = "Commanded wpt") %>%
+      addMeasure(primaryLengthUnit = "kilometers",
+                 secondaryLengthUnit = "miles")
     #setView(lat = 27.75, lng = -83, zoom = 6)
 
     output$missionmapLive <- renderLeaflet({
