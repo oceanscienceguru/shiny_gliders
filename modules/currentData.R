@@ -319,7 +319,8 @@ currentData_server <- function(id, gliderName) {
       req(input$display_varLive)
       
       qf <- gliderChunk_live() %>%
-        select(c(m_present_time, osg_i_depth, any_of(input$display_varLive)))
+        select(c(m_present_time, osg_i_depth, any_of(input$display_varLive))) %>%
+        filter(!is.na(across(!c(m_present_time:osg_i_depth))))
       
       qf
       
