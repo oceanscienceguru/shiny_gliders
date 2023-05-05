@@ -1,15 +1,4 @@
 server <- function(input, output, session) { options(shiny.usecairo = TRUE)
-
-  routesList_files <- file.info(list.files(path = "/echos/routes",
-                                           pattern = "*.ma"))
-  
-  routesList_files$names <- rownames(routesList_files)
-  
-  #build route list
-  routesList <- list()
-  for (i in routesList_files$names) {
-    routesList[[i]] <- gotoLoad(paste0("/echos/routes/", i))
-  }
   
   ######### current mission data ########
   observe({

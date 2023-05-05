@@ -32,6 +32,17 @@ deployedGliders <- read.csv("/echos/deployedGliders.txt",
 colnames(deployedGliders)[1] = "Name"
 colnames(deployedGliders)[2] = "ahrCap"
 
+routesList_files <- file.info(list.files(path = "/echos/routes",
+                                         pattern = "*.ma"))
+
+routesList_files$names <- rownames(routesList_files)
+
+#build route list
+routesList <- list()
+for (i in routesList_files$names) {
+  routesList[[i]] <- gotoLoad(paste0("/echos/routes/", i))
+}
+
 #maximum file upload size of 500mb
 options(shiny.maxRequestSize = 2000*1024^2)
 
