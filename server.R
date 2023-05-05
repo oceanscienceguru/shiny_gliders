@@ -1,15 +1,31 @@
 server <- function(input, output, session) { options(shiny.usecairo = TRUE)
 
+  routesList_files <- file.info(list.files(path = "/echos/routes",
+                                           pattern = "*.ma"))
+  
+  routesList_files$names <- rownames(routesList_files)
+  
+  #build route list
+  routesList <- list()
+  for (i in routesList_files$names) {
+    routesList[[i]] <- gotoLoad(paste0("/echos/routes/", i))
+  }
+  
   ######### current mission data ########
-  observeEvent(input$gliderSelect, {
+  observe({
     glider <- input$gliderSelect
 
     gliderDashboard_server("display", glider)
+    
+    if(input$tabs == "currMissData"){
+      #Code for current mission data on selected glider
     currentData_server("curDisplay", glider)
+    }
+    if(input$tabs == "routing"){
+      routing_server("curRoute", glider)
+    }
 
   })
-  
-  
   
   ####### archived flight data ########
   

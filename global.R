@@ -24,7 +24,7 @@ source("./scripts/pseudogram.R")
 source("./scripts/gotoLoad.R")
 source("./modules/gliderDashboard.R")
 source("./modules/currentData.R")
-
+source("./modules/routing.R")
 
 deployedGliders <- read.csv("/echos/deployedGliders.txt", 
                             sep = "",
