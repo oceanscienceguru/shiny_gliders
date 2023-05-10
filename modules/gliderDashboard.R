@@ -250,6 +250,17 @@ gliderDashboard_server <- function(id, gliderName) {
                  lng = goto$long,
                  radius = goto$rad,
                  label = goto$comment) %>%
+      addArrowhead(lat = goto$lat,
+                   lng = goto$long, color="blue",
+                   options = arrowheadOptions(
+                     #yawn = 60,
+                     size = '10%',
+                     frequency = 'allvertices',
+                     fill = TRUE,
+                     opacity=0.5, stroke=TRUE, fillOpacity=0.4,
+                     proportionalToTotal = TRUE,
+                     offsets = NULL,
+                     perArrowheadOptions = NULL)) %>%
       addMarkers(lat = cwpt$lat,
                  lng = cwpt$long,
                  label = "Commanded wpt") %>%

@@ -139,7 +139,18 @@ routing_server <- function(id, gliderName) {
                      lng = userGoto$long,
                      radius = userGoto$rad,
                      label = userGoto$comment,
-                     color = "red")
+                     color = "red") %>%
+          addArrowhead(lat = userGoto$lat,
+                       lng = userGoto$long, color="red",
+                       options = arrowheadOptions(
+                         #yawn = 60,
+                         size = '10%',
+                         frequency = 'allvertices',
+                         fill = TRUE,
+                         opacity=0.5, stroke=TRUE, fillOpacity=0.4,
+                         proportionalToTotal = TRUE,
+                         offsets = NULL,
+                         perArrowheadOptions = NULL))
         
         p
       } else {
@@ -194,7 +205,18 @@ routing_server <- function(id, gliderName) {
                  lng = routesList[[input$gotoFile]]$long,
                  radius = routesList[[input$gotoFile]]$rad,
                  label = routesList[[input$gotoFile]]$comment,
-                 color = "red")
+                 color = "red") %>%
+      addArrowhead(lat = routesList[[input$gotoFile]]$lat,
+                   lng = routesList[[input$gotoFile]]$long, color="red",
+                   options = arrowheadOptions(
+                     #yawn = 60,
+                     size = '10%',
+                     frequency = 'allvertices',
+                     fill = TRUE,
+                     opacity=0.5, stroke=TRUE, fillOpacity=0.4,
+                     proportionalToTotal = TRUE,
+                     offsets = NULL,
+                     perArrowheadOptions = NULL))
 
     }
     })
