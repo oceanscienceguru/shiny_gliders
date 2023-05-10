@@ -2,8 +2,8 @@ library(tidyverse)
 library(ggplot2)
 library(shiny)
 library(leaflet)
+#library(leaflet.extras2)
 library(ggtext)
-#library(leaflet.extras)
 library(sf)
 #library(PlotSvalbard) #devtools::install_github("MikkoVihtakari/PlotSvalbard", upgrade = "never")
 #library(patchwork)
@@ -31,6 +31,9 @@ deployedGliders <- read.csv("/echos/deployedGliders.txt",
                             header = FALSE)
 colnames(deployedGliders)[1] = "Name"
 colnames(deployedGliders)[2] = "ahrCap"
+
+deployedGliders <- deployedGliders %>%
+  filter(!str_starts(Name,"#")) #remove any commented lines
 
 routesList_files <- file.info(list.files(path = "/echos/routes",
                                          pattern = "*.ma"))
