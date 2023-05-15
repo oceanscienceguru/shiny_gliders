@@ -587,7 +587,7 @@ currentData_server <- function(id, gliderName) {
     
     selectPgram <- reactiveValues(seg = NULL, id = NULL)
     if(gliderName == "usf-stella"){
-      #updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value))
+      updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1))
       
       #attach IDs to psuedogram plot reactives
       observeEvent(input$echo, {
