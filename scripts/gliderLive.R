@@ -262,6 +262,7 @@ rollLive <- ggplot(
     size = 2,
     na.rm = TRUE
   ) +
+  geom_hline(yintercept = 0, linetype = 2) +
   scale_y_continuous(limits = symmetric_range) +
   theme_bw() +
   labs(title = "Daily Roll Average",
