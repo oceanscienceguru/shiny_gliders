@@ -2,6 +2,8 @@ ssv_to_rds <- function(inputFile, missionNumber) {
 
 library(tidyverse)
 library(lubridate)
+  
+  source("./scripts/gliderGPS_to_dd.R")
 
 missionNum <- sub(".ssv", "", missionNumber)
 
@@ -20,7 +22,10 @@ raw <- raw %>%
   mutate(m_present_time = as_datetime(m_present_time)) #convert to POSIXct
 
 gps <- raw %>%
-  select(m_present_time, m_lat, m_lon)
+  select(m_present_time, m_gps_lat, m_gps_lon) %>%
+  mutate(lat = gliderGPS_to_dd(m_gps_lat),
+         long = gliderGPS_to_dd(m_gps_lon)) %>%
+  select(m_present_time, lat, long)
 
 library(zoo)
 
@@ -29,8 +34,8 @@ gps.zoo <- zoo(gps[2:3], gps$m_present_time) #convert to zoo
 result <- na.approx(gps.zoo, xout = full.time) #interpolate
 
 igps <- fortify.zoo(result) %>% #extract out as DF
-  rename(i_lat = m_lat) %>%
-  rename(i_lon = m_lon) %>%
+  rename(i_lat = lat) %>%
+  rename(i_lon = long) %>%
   rename(m_present_time = Index) %>%
   mutate(m_present_time = as_datetime(m_present_time))
   
