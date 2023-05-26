@@ -35,15 +35,8 @@ routing_server <- function(id, gliderName) {
       filter(!is.na(m_gps_lat)) %>%
       mutate(latt = format(m_gps_lat, nsmall = 4),
              longg = format(m_gps_lon, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
-      separate(latt, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
-      separate(longg, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
-      mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
-             longd = substr(longgd, 1, nchar(longgd)-2)) %>%
-      mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
-             longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
-      mutate_if(is.character, as.numeric) %>% #coerce back to numeric
-      mutate(lat = latd + (latm/60),
-             long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
+      mutate(lat = gliderGPS_to_dd(latt),
+             long = gliderGPS_to_dd(longg))
     
     gotoFiles <- toGliderList %>%
       filter(str_ends(fileName, "goto_l10.ma")) %>%
@@ -56,15 +49,8 @@ routing_server <- function(id, gliderName) {
       select(!c(m_present_time)) %>%
       format(., nsmall = 4) %>% #coerce to character keeping zeroes out to 4 decimals
       tail(1)  %>% 
-      separate(c_wpt_lat, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
-      separate(c_wpt_lon, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
-      mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
-             longd = substr(longgd, 1, nchar(longgd)-2)) %>%
-      mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
-             longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
-      mutate_if(is.character, as.numeric) %>% #coerce back to numeric
-      mutate(lat = latd + (latm/60),
-             long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
+      mutate(lat = gliderGPS_to_dd(c_wpt_lat),
+             long = gliderGPS_to_dd(c_wpt_lon))
     
     gotoN <- as.integer(nrow(gotoFiles))
     

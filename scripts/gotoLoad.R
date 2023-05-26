@@ -2,6 +2,7 @@ gotoLoad <- function(inFile){
 
 #### parse goto_l*.ma 
 
+source("./scripts/gliderGPS_to_dd.R")
 library(tidyverse)
 
 rawMa <- read.delim(inFile, sep = "\n")
@@ -26,17 +27,9 @@ wptsRaw <- rawMa %>%
   mutate(comment = str_trim(ifelse(str_detect(raw, "(?=#).*"),str_extract(raw, "(?=#).*"), ""))) %>% #extract any comments from end
   mutate(cleanNums = str_trim(nums)) %>% #clean up both sides
   separate_wider_delim(cleanNums, delim = " ", names = c("rawlong", "rawlat"), too_many = "merge") %>% #break into 2
-  # mutate(latt = format(rawlat, nsmall = 4),
-  #        longg = format(rawlong, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
-  separate(rawlat, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
-  separate(rawlong, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
-  mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
-         longd = substr(longgd, 1, nchar(longgd)-2)) %>%
-  mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
-         longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
-  mutate(across(latd:longm, as.numeric)) %>% #coerce back to numeric
-  mutate(lat = latd + (latm/60),
-         long = (abs(longd) + (longm/60))*-1) %>% #*-1 for western hemisphere
+#convert to decimal degrees using osg function
+  mutate(lat = gliderGPS_to_dd(rawlat),
+         long = gliderGPS_to_dd(rawlong)) %>%
   mutate(rad = ifelse(!is_empty(rads), rads, 10)) %>% # pull in parsed radius if present. otherwise masterdata default
   mutate(order = rownames(.)) #get order of wpts as listed
 
