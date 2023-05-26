@@ -15,12 +15,14 @@
              dashboardSidebar(
                sidebarMenu(id = "tabs",
                  menuItem("Piloting Dashboard", startExpanded = TRUE,
-                          menuSubItem("Dashboard", tabName = "dashboard"),
                           icon = icon("dashboard"),
                           radioButtons(inputId = "gliderSelect",
                                        label = "Pick Your Glider",
                                        choices = deployedGliders$Name,
-                                       selected = tail(deployedGliders$Name,1))),
+                                       selected = tail(deployedGliders$Name,1)),
+                          hr(),
+                          menuSubItem("Dashboard", tabName = "dashboard"),
+                          menuSubItem("Routing", tabName = "routing")),
                  menuItem("Current Mission Data",
                           tabName = "currMissData",
                           icon = icon("plane")),
@@ -88,6 +90,9 @@
                  ),
                  tabItem(tabName = "currMissData",
                          currentData_ui("curDisplay"),
+                         ),
+                 tabItem(tabName = "routing",
+                         routing_ui("curRoute")
                          ),
                  tabItem(tabName = "archMissData",
                          fluidPage(

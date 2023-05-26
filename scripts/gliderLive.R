@@ -10,6 +10,7 @@ library(scales)
 
 source("/srv/shiny-server/thebrewery/scripts/ssv_to_df.R")
 source("/srv/shiny-server/thebrewery/scripts/pseudogram.R")
+source("/srv/shiny-server/thebrewery/scripts/depthInt.R")
   
 print(paste0(gliderName, ", ", ahrCap, "ahr capacity"))
 
@@ -86,7 +87,7 @@ fdf <- bind_rows(flist, .id = "segment")
 sdf <- bind_rows(slist, .id = "segment") %>%
   mutate(m_present_time = sci_m_present_time) #consider sci time same as flight time for ease of merging
 
-gliderdf <- fdf %>%
+gliderdfraw <- fdf %>%
   select(!c(segment)) %>% #temporarily remove segment
   full_join(sdf) %>% #merge in sci data and get segment back
   arrange(m_present_time) %>% #ensure chronological order
@@ -99,6 +100,13 @@ gliderdf <- fdf %>%
   mutate(osg_soundvel1 = c_Coppens1981(osg_depth,
                                        osg_salinity,
                                        sci_water_temp))
+
+#interpolate across m_depth
+idepth <- depthInt(gliderdfraw)
+
+#join back in
+gliderdf <- gliderdfraw %>%
+  left_join(idepth)
 
 #pull out science variables
 scivarsLive <- sdf %>%

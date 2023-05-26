@@ -1,15 +1,20 @@
 server <- function(input, output, session) { options(shiny.usecairo = TRUE)
-
+  
   ######### current mission data ########
-  observeEvent(input$gliderSelect, {
+  observe({
     glider <- input$gliderSelect
 
     gliderDashboard_server("display", glider)
+    
+    if(input$tabs == "currMissData"){
+      #Code for current mission data on selected glider
     currentData_server("curDisplay", glider)
+    }
+    if(input$tabs == "routing"){
+      routing_server("curRoute", glider)
+    }
 
   })
-  
-  
   
   ####### archived flight data ########
   

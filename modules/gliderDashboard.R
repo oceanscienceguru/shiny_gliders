@@ -144,15 +144,20 @@ gliderDashboard_server <- function(id, gliderName) {
     })
 
     output$img <- renderSlickR({
+      
+      ## NOTE: requires non-CRAN for switching plots
+      ## remotes::install_github("yonicd/slickR@1ab229e4c400e54187a406130610852b0300986c")
       plotItUp <- list()
       for (i in 1:length(livePlots)){
         plotItUp[[i]] <- xmlSVG({show(livePlots[[i]])},standalone=TRUE, width = 9.5)
       }
 
-      slickR(obj = plotItUp,
-             height = 400
+      x <- slickR(obj = plotItUp,
+             height = 400,
+             slideId = gliderName
       ) + settings(dots = TRUE, autoplay = TRUE, fade = TRUE, infinite = TRUE, autoplaySpeed = 7500)
 
+      x
     })
 
     #live mission map
@@ -176,8 +181,34 @@ gliderDashboard_server <- function(id, gliderName) {
       filter(str_ends(fileName, "goto_l10.ma")) %>%
       arrange(fileName)
 
-    wpt <- gotoLoad(paste0("/gliders/gliders/", gliderName, "/archive/", tail(gotoFiles$fileName,1)))
-
+    #get commanded wpt
+    cwpt <- gliderdf %>%
+      select(m_present_time, c_wpt_lat, c_wpt_lon) %>%
+      filter(!is.na(c_wpt_lat)) %>%
+      select(!c(m_present_time)) %>%
+      format(., nsmall = 4) %>% #coerce to character keeping zeroes out to 4 decimals
+      tail(1)  %>% 
+      separate(c_wpt_lat, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
+      separate(c_wpt_lon, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
+      mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
+             longd = substr(longgd, 1, nchar(longgd)-2)) %>%
+      mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
+             longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
+      mutate_if(is.character, as.numeric) %>% #coerce back to numeric
+      mutate(lat = latd + (latm/60),
+             long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
+    
+    gotoN <- as.integer(nrow(gotoFiles))
+    
+    #build goto history
+    gotoHistory <- list()
+    for (i in 1:gotoN) {
+      gotoHistory[[i]] <- gotoLoad(paste0("/gliders/gliders/", gliderName, "/archive/", gotoFiles[i,]))
+    }
+    
+    #get most recent goto file
+    goto <- as.data.frame(tail(gotoHistory, 1))
+    
     liveMissionMap <- leaflet() %>%
       #base provider layers
       addProviderTiles(providers$Esri.OceanBasemap,
@@ -214,14 +245,27 @@ gliderDashboard_server <- function(id, gliderName) {
         label = "Latest position",
         icon = icon.latest
       ) %>%
-      #waypoint
-      addMarkers(lat = wpt$lat,
-                 lng = wpt$long,
-                 label = wpt$order) %>%
-      addCircles(lat = wpt$lat,
-                 lng = wpt$long,
-                 radius = wpt$rad,
-                 label = "Waypoint")
+      #waypoints, list first, then add current commanded
+      addCircles(lat = goto$lat,
+                 lng = goto$long,
+                 radius = goto$rad,
+                 label = goto$comment) %>%
+      addArrowhead(lat = goto$lat,
+                   lng = goto$long, color="blue",
+                   options = arrowheadOptions(
+                     #yawn = 60,
+                     size = '10%',
+                     frequency = 'allvertices',
+                     fill = TRUE,
+                     opacity=0.5, stroke=TRUE, fillOpacity=0.4,
+                     proportionalToTotal = TRUE,
+                     offsets = NULL,
+                     perArrowheadOptions = NULL)) %>%
+      addMarkers(lat = cwpt$lat,
+                 lng = cwpt$long,
+                 label = "Commanded wpt") %>%
+      addMeasure(primaryLengthUnit = "kilometers",
+                 secondaryLengthUnit = "miles")
     #setView(lat = 27.75, lng = -83, zoom = 6)
 
     output$missionmapLive <- renderLeaflet({

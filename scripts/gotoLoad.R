@@ -23,8 +23,9 @@ wptsRaw <- rawMa %>%
   slice((first+1):(last-1)) %>% #pull out all the wpts
   filter(!str_starts(raw,"#")) %>% #remove any commented lines
   mutate(nums = ifelse(str_detect(raw, ".*(?=#)"),str_extract(raw, ".*(?=#)"), raw)) %>% #strip off any comments at end
+  mutate(comment = str_trim(ifelse(str_detect(raw, "(?=#).*"),str_extract(raw, "(?=#).*"), ""))) %>% #extract any comments from end
   mutate(cleanNums = str_trim(nums)) %>% #clean up both sides
-  separate(cleanNums, into = c("rawlong", "rawlat"), sep = "\\s") %>% #break into 2
+  separate_wider_delim(cleanNums, delim = " ", names = c("rawlong", "rawlat"), too_many = "merge") %>% #break into 2
   # mutate(latt = format(rawlat, nsmall = 4),
   #        longg = format(rawlong, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
   separate(rawlat, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
@@ -38,6 +39,7 @@ wptsRaw <- rawMa %>%
          long = (abs(longd) + (longm/60))*-1) %>% #*-1 for western hemisphere
   mutate(rad = ifelse(!is_empty(rads), rads, 10)) %>% # pull in parsed radius if present. otherwise masterdata default
   mutate(order = rownames(.)) #get order of wpts as listed
+
   
 return(wptsRaw)
 

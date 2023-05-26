@@ -226,6 +226,12 @@ currentData_ui <- function(id) {
                             choices = c("EK", "magma", "viridis"),
                             selected =  "EK"
                           ),
+                          checkboxGroupInput(
+                            inputId = ns("todTgram"),
+                            label = "Time of day",
+                            choices = c("day", "night"),
+                            selected = c("day", "night")
+                          ),
                           #downloadButton('downloadEchoHist2')
                         )),
                  column(10,
@@ -313,8 +319,8 @@ currentData_server <- function(id, gliderName) {
       req(input$display_varLive)
       
       qf <- gliderChunk_live() %>%
-        select(c(m_present_time, osg_depth, any_of(input$display_varLive))) %>%
-        filter(!is.na(across(!c(m_present_time:osg_depth))))
+        select(c(m_present_time, osg_i_depth, any_of(input$display_varLive))) %>%
+        filter(!is.na(across(!c(m_present_time:osg_i_depth))))
       
       qf
       
@@ -341,7 +347,7 @@ currentData_server <- function(id, gliderName) {
         data = 
           scienceChunk_live(),#dynamically filter the sci variable of interest
         aes(x=m_present_time,
-            y=osg_depth,
+            y=osg_i_depth,
             #z=.data[[input$display_varLive]],
             colour = .data[[input$display_varLive]],
         )) +
@@ -581,7 +587,7 @@ currentData_server <- function(id, gliderName) {
     
     selectPgram <- reactiveValues(seg = NULL, id = NULL)
     if(gliderName == "usf-stella"){
-      #updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value))
+      updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1))
       
       #attach IDs to psuedogram plot reactives
       observeEvent(input$echo, {
@@ -722,7 +728,7 @@ currentData_server <- function(id, gliderName) {
         pf <- filter(fullehunk, m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
           filter(hour >= input$echohour[1] & hour <= input$echohour[2]) %>%
           group_by(segment, r_depth) %>%
-          mutate(avgDb = mean(value)) %>%
+          mutate(avgDb = exp(mean(log(abs(value))))*-1) %>%
           ungroup() %>%
           group_by(segment) %>%
           mutate(seg_time = mean(m_present_time)) %>%
@@ -739,15 +745,18 @@ currentData_server <- function(id, gliderName) {
         
         pf <- filter(fullehunk, m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
           filter(hour >= input$echohour2[1] & hour <= input$echohour2[2]) %>%
-          group_by(segment, r_depth) %>%
-          mutate(avgDb = mean(value)) %>%
-          ungroup() %>%
           group_by(segment) %>%
           mutate(seg_time = mean(m_present_time)) %>%
           ungroup() %>%
           mutate(seg_hour = hour(seg_time)) %>%
           mutate(cycle = case_when(seg_hour %in% c(11:23) ~ 'day',
-                                   seg_hour %in% c(1:10, 24) ~ 'night')) # add day/night filter
+                                   seg_hour %in% c(1:10, 24) ~ 'night')) %>% # add day/night filter
+          filter(cycle %in% input$todTgram) %>%
+          group_by(segment, r_depth, cycle) %>%
+          mutate(avgDb = exp(mean(log(abs(value))))*-1) %>%
+          #mutate(avgDbOLD = mean(value)) %>%
+          ungroup()
+
         
         pf
       })
@@ -813,6 +822,10 @@ currentData_server <- function(id, gliderName) {
       
       #### pseudotimegram ####
       gg6 <- reactive({
+        # if(input$todTgram != "day/night") {
+        #   filter(plotethunk(), cycle %in% input$todTgram)
+        # } else { plotethunk()
+        # },
         
         ggEchoTime <- 
           ggplot(data = plotethunk(),

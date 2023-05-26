@@ -2,8 +2,8 @@ library(tidyverse)
 library(ggplot2)
 library(shiny)
 library(leaflet)
+library(leaflet.extras2)
 library(ggtext)
-#library(leaflet.extras)
 library(sf)
 #library(PlotSvalbard) #devtools::install_github("MikkoVihtakari/PlotSvalbard", upgrade = "never")
 #library(patchwork)
@@ -24,13 +24,27 @@ source("./scripts/pseudogram.R")
 source("./scripts/gotoLoad.R")
 source("./modules/gliderDashboard.R")
 source("./modules/currentData.R")
-
+source("./modules/routing.R")
 
 deployedGliders <- read.csv("/echos/deployedGliders.txt", 
                             sep = "",
                             header = FALSE)
 colnames(deployedGliders)[1] = "Name"
 colnames(deployedGliders)[2] = "ahrCap"
+
+deployedGliders <- deployedGliders %>%
+  filter(!str_starts(Name,"#")) #remove any commented lines
+
+routesList_files <- file.info(list.files(path = "/echos/routes",
+                                         pattern = "*.ma"))
+
+routesList_files$names <- rownames(routesList_files)
+
+#build route list
+routesList <- list()
+for (i in routesList_files$names) {
+  routesList[[i]] <- gotoLoad(paste0("/echos/routes/", i))
+}
 
 #maximum file upload size of 500mb
 options(shiny.maxRequestSize = 2000*1024^2)
