@@ -70,7 +70,8 @@ gliderDashboard_server <- function(id, gliderName) {
         color = Mycolor
       )
     })
-
+    
+    if (ahrCap > 0) {
     output$recoBox <- renderValueBox({
       recoDays <- ((ahrCap*.9)-ahrUsed)/ahr3day
 
@@ -83,20 +84,6 @@ gliderDashboard_server <- function(id, gliderName) {
       }
       valueBox(
         round(recoDays, 1), "Days til 10% charge abort", icon = icon("time", lib = "glyphicon"),
-        color = Mycolor
-      )
-    })
-
-    output$battBox <- renderValueBox({
-      if(battLeft >= 25){
-        Mycolor = "green"
-      } else if(battLeft >= 10 & battLeft < 25) {
-        Mycolor = "yellow"
-      } else {
-        Mycolor = "red"
-      }
-      valueBox(
-        round(battLeft, 3), "Batt Percent", icon = icon("off", lib = "glyphicon"),
         color = Mycolor
       )
     })
@@ -142,6 +129,36 @@ gliderDashboard_server <- function(id, gliderName) {
         color = Mycolor
       )
     })
+    
+    output$battBox <- renderValueBox({
+      if(battLeft >= 25){
+        Mycolor = "green"
+      } else if(battLeft >= 10 & battLeft < 25) {
+        Mycolor = "yellow"
+      } else {
+        Mycolor = "red"
+      }
+      valueBox(
+        round(battLeft, 3), "Batt Percent", icon = icon("off", lib = "glyphicon"),
+        color = Mycolor
+      )
+    })
+    
+    } else {
+      output$battBox <- renderValueBox({
+        if(battLeft >= 14){
+          Mycolor = "green"
+        } else if(battLeft >= 7 & battLeft < 14) {
+          Mycolor = "yellow"
+        } else {
+          Mycolor = "red"
+        }
+        valueBox(
+          round(battLeft, 0), "Approx. Days Left", icon = icon("off", lib = "glyphicon"),
+          color = Mycolor
+        )
+      })
+    }
 
     output$img <- renderSlickR({
       
@@ -170,6 +187,7 @@ gliderDashboard_server <- function(id, gliderName) {
       mutate(lat = gliderGPS_to_dd(latt),
              long = gliderGPS_to_dd(longg))
 
+    if (nrow(toGliderList) > 0){
     gotoFiles <- toGliderList %>%
       filter(str_ends(fileName, "goto_l10.ma")) %>%
       arrange(fileName)
@@ -197,11 +215,16 @@ gliderDashboard_server <- function(id, gliderName) {
     
     liveMissionMap <- leaflet() %>%
       #base provider layers
+      addWMSTiles("https://www.gebco.net/data_and_products/gebco_web_services/web_map_service/mapserv?",
+                  layers = "GEBCO_LATEST",
+                  group = "GEBCO",
+                  options = WMSTileOptions(format = "image/png", transparent = F)
+      ) %>%
       addProviderTiles(providers$Esri.OceanBasemap,
                        group = "Ocean Basemap") %>%
       addProviderTiles(providers$Esri.WorldImagery,
                        group = "World Imagery") %>%
-      addLayersControl(baseGroups = c('Ocean Basemap', 'World Imagery')) %>%
+      addLayersControl(baseGroups = c('GEBCO', 'Ocean Basemap', 'World Imagery')) %>%
       addPolylines(
         lat = map_sf$lat,
         lng = map_sf$long,
@@ -257,6 +280,7 @@ gliderDashboard_server <- function(id, gliderName) {
     output$missionmapLive <- renderLeaflet({
       liveMissionMap})
     
-    
+    }
     })
+  
 }
