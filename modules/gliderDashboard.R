@@ -187,7 +187,7 @@ gliderDashboard_server <- function(id, gliderName) {
       mutate(lat = gliderGPS_to_dd(latt),
              long = gliderGPS_to_dd(longg))
 
-    if (nrow(toGliderList) > 0){
+   # if (nrow(toGliderList) > 0){
     gotoFiles <- toGliderList %>%
       filter(str_ends(fileName, "goto_l10.ma")) %>%
       arrange(fileName)
@@ -204,6 +204,7 @@ gliderDashboard_server <- function(id, gliderName) {
     
     gotoN <- as.integer(nrow(gotoFiles))
     
+    if (gotoN > 0){
     #build goto history
     gotoHistory <- list()
     for (i in 1:gotoN) {
@@ -212,6 +213,7 @@ gliderDashboard_server <- function(id, gliderName) {
     
     #get most recent goto file
     goto <- as.data.frame(tail(gotoHistory, 1))
+    }
     
     liveMissionMap <- leaflet() %>%
       #base provider layers
@@ -254,33 +256,36 @@ gliderDashboard_server <- function(id, gliderName) {
         label = "Latest position",
         icon = icon.latest
       ) %>%
-      #waypoints, list first, then add current commanded
-      addCircles(lat = goto$lat,
-                 lng = goto$long,
-                 radius = goto$rad,
-                 label = goto$comment) %>%
-      addArrowhead(lat = goto$lat,
-                   lng = goto$long, color="blue",
-                   options = arrowheadOptions(
-                     #yawn = 60,
-                     size = '10%',
-                     frequency = 'allvertices',
-                     fill = TRUE,
-                     opacity=0.5, stroke=TRUE, fillOpacity=0.4,
-                     proportionalToTotal = TRUE,
-                     offsets = NULL,
-                     perArrowheadOptions = NULL)) %>%
       addMarkers(lat = cwpt$lat,
                  lng = cwpt$long,
                  label = "Commanded wpt") %>%
       addMeasure(primaryLengthUnit = "kilometers",
                  secondaryLengthUnit = "miles")
+    
+    if (gotoN > 0) {
+      liveMissionMap <- liveMissionMap %>%
+      addCircles(lat = goto$lat,
+                 lng = goto$long,
+                 radius = goto$rad,
+                 label = goto$comment) %>%
+        addArrowhead(lat = goto$lat,
+                     lng = goto$long, color="blue",
+                     options = arrowheadOptions(
+                       #yawn = 60,
+                       size = '10%',
+                       frequency = 'allvertices',
+                       fill = TRUE,
+                       opacity=0.5, stroke=TRUE, fillOpacity=0.4,
+                       proportionalToTotal = TRUE,
+                       offsets = NULL,
+                       perArrowheadOptions = NULL))
+      }
     #setView(lat = 27.75, lng = -83, zoom = 6)
 
     output$missionmapLive <- renderLeaflet({
       liveMissionMap})
     
-    }
+    
     })
   
 }
