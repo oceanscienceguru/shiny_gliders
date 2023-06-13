@@ -204,7 +204,7 @@ gliderDashboard_server <- function(id, gliderName) {
     
     gotoN <- as.integer(nrow(gotoFiles))
     
-    if (gotoN > 0){
+    if (gotoN > 0 & gliderName != "usf-stella"){
     #build goto history
     gotoHistory <- list()
     for (i in 1:gotoN) {
@@ -262,7 +262,7 @@ gliderDashboard_server <- function(id, gliderName) {
       addMeasure(primaryLengthUnit = "kilometers",
                  secondaryLengthUnit = "miles")
     
-    if (gotoN > 0) {
+    if (gotoN > 0 & gliderName != "usf-stella") {
       liveMissionMap <- liveMissionMap %>%
       addCircles(lat = goto$lat,
                  lng = goto$long,
