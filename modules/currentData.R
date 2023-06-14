@@ -11,21 +11,27 @@ currentData_ui <- function(id) {
         tabPanel(title = "Piloting",
                  column(2,
                         wellPanel(h4("Data Filtering"),
-                                  dateInput(
+                                  airDatepickerInput(
                                     inputId = ns("date1Live"),
                                     label = "Start Date:",
                                     value = NULL,
-                                    min = NULL,
-                                    max = NULL,
-                                    format = "mm/dd/yy"
+                                    range = FALSE,
+                                    minDate = NULL,
+                                    maxDate = NULL,
+                                    update_on = "close",
+                                    timepicker = TRUE,
+                                    clearButton = TRUE
                                   ),
-                                  dateInput(
+                                  airDatepickerInput(
                                     inputId = ns("date2Live"),
                                     label = "End Date:",
                                     value = NULL,
-                                    min = NULL,
-                                    max = NULL,
-                                    format = "mm/dd/yy"
+                                    range = FALSE,
+                                    minDate = NULL,
+                                    maxDate = NULL,
+                                    update_on = "close",
+                                    timepicker = TRUE,
+                                    clearButton = TRUE
                                   ),
                                   # numericInput(
                                   #   inputId = "min_depthLive",
@@ -291,12 +297,14 @@ currentData_server <- function(id, gliderName) {
     
     load(paste0("/echos/", gliderName, "/glider_live.RData"))
     
-    startDateLive <- min(gliderdf$m_present_time)
-    endDateLive <- max(gliderdf$m_present_time)
+    startDateLive <- as_datetime(min(gliderdf$m_present_time))
+    endDateLive <- as_datetime(max(gliderdf$m_present_time))
     
     #get start/end days and update data filters
-    updateDateInput(session, "date1Live", NULL, min = min(gliderdf$m_present_time), max = max(gliderdf$m_present_time), value = startDateLive)
-    updateDateInput(session, "date2Live", NULL, min = min(gliderdf$m_present_time), max = max(gliderdf$m_present_time), value = endDateLive)
+    updateAirDateInput(session, "date1Live", NULL, value = startDateLive, 
+                       options = list(minDate = startDateLive, maxDate = endDateLive))
+    updateAirDateInput(session, "date2Live", NULL, value = endDateLive, 
+                       options = list(minDate = startDateLive, maxDate = endDateLive))
     
     updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
     updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
@@ -306,8 +314,11 @@ currentData_server <- function(id, gliderName) {
     
     
     gliderChunk_live <- reactive({
+      soFar <- interval(input$date1Live, input$date2Live)
+      
       df <- gliderdf %>%
-        filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
+        filter(m_present_time %within% soFar)
+        #filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
       #filter(status %in% c(input$status)) %>%
       #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
       #filter(m_depth >= input$min_depth & m_depth <= input$max_depth)

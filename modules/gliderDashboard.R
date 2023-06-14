@@ -70,7 +70,8 @@ gliderDashboard_server <- function(id, gliderName) {
         color = Mycolor
       )
     })
-
+    
+    if (ahrCap > 0) {
     output$recoBox <- renderValueBox({
       recoDays <- ((ahrCap*.9)-ahrUsed)/ahr3day
 
@@ -83,20 +84,6 @@ gliderDashboard_server <- function(id, gliderName) {
       }
       valueBox(
         round(recoDays, 1), "Days til 10% charge abort", icon = icon("time", lib = "glyphicon"),
-        color = Mycolor
-      )
-    })
-
-    output$battBox <- renderValueBox({
-      if(battLeft >= 25){
-        Mycolor = "green"
-      } else if(battLeft >= 10 & battLeft < 25) {
-        Mycolor = "yellow"
-      } else {
-        Mycolor = "red"
-      }
-      valueBox(
-        round(battLeft, 3), "Batt Percent", icon = icon("off", lib = "glyphicon"),
         color = Mycolor
       )
     })
@@ -142,6 +129,36 @@ gliderDashboard_server <- function(id, gliderName) {
         color = Mycolor
       )
     })
+    
+    output$battBox <- renderValueBox({
+      if(battLeft >= 25){
+        Mycolor = "green"
+      } else if(battLeft >= 10 & battLeft < 25) {
+        Mycolor = "yellow"
+      } else {
+        Mycolor = "red"
+      }
+      valueBox(
+        round(battLeft, 3), "Batt Percent", icon = icon("off", lib = "glyphicon"),
+        color = Mycolor
+      )
+    })
+    
+    } else {
+      output$battBox <- renderValueBox({
+        if(battLeft >= 14){
+          Mycolor = "green"
+        } else if(battLeft >= 7 & battLeft < 14) {
+          Mycolor = "yellow"
+        } else {
+          Mycolor = "red"
+        }
+        valueBox(
+          round(battLeft, 0), "Approx. Days Left", icon = icon("off", lib = "glyphicon"),
+          color = Mycolor
+        )
+      })
+    }
 
     output$img <- renderSlickR({
       
@@ -167,16 +184,10 @@ gliderDashboard_server <- function(id, gliderName) {
       filter(!is.na(m_gps_lat)) %>%
       mutate(latt = format(m_gps_lat, nsmall = 4),
              longg = format(m_gps_lon, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
-      separate(latt, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
-      separate(longg, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
-      mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
-             longd = substr(longgd, 1, nchar(longgd)-2)) %>%
-      mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
-             longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
-      mutate_if(is.character, as.numeric) %>% #coerce back to numeric
-      mutate(lat = latd + (latm/60),
-             long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
+      mutate(lat = gliderGPS_to_dd(latt),
+             long = gliderGPS_to_dd(longg))
 
+   # if (nrow(toGliderList) > 0){
     gotoFiles <- toGliderList %>%
       filter(str_ends(fileName, "goto_l10.ma")) %>%
       arrange(fileName)
@@ -188,18 +199,12 @@ gliderDashboard_server <- function(id, gliderName) {
       select(!c(m_present_time)) %>%
       format(., nsmall = 4) %>% #coerce to character keeping zeroes out to 4 decimals
       tail(1)  %>% 
-      separate(c_wpt_lat, paste0("latt",c("d","m")), sep="\\.", remove = FALSE) %>% #have to double escape to sep by period
-      separate(c_wpt_lon, paste0("longg",c("d","m")), sep="\\.", remove = FALSE) %>%
-      mutate(latd = substr(lattd, 1, nchar(lattd)-2), #pull out degrees
-             longd = substr(longgd, 1, nchar(longgd)-2)) %>%
-      mutate(latm = paste0(str_sub(lattd, start= -2),".",lattm), #pull out minutes
-             longm = paste0(str_sub(longgd, start= -2),".",longgm)) %>%
-      mutate_if(is.character, as.numeric) %>% #coerce back to numeric
-      mutate(lat = latd + (latm/60),
-             long = (abs(longd) + (longm/60))*-1) #*-1 for western hemisphere
+      mutate(lat = gliderGPS_to_dd(c_wpt_lat),
+             long = gliderGPS_to_dd(c_wpt_lon))
     
     gotoN <- as.integer(nrow(gotoFiles))
     
+    if (gotoN > 0 & gliderName != "usf-stella"){
     #build goto history
     gotoHistory <- list()
     for (i in 1:gotoN) {
@@ -208,14 +213,20 @@ gliderDashboard_server <- function(id, gliderName) {
     
     #get most recent goto file
     goto <- as.data.frame(tail(gotoHistory, 1))
+    }
     
     liveMissionMap <- leaflet() %>%
       #base provider layers
+      addWMSTiles("https://www.gebco.net/data_and_products/gebco_web_services/web_map_service/mapserv?",
+                  layers = "GEBCO_LATEST",
+                  group = "GEBCO",
+                  options = WMSTileOptions(format = "image/png", transparent = F)
+      ) %>%
       addProviderTiles(providers$Esri.OceanBasemap,
                        group = "Ocean Basemap") %>%
       addProviderTiles(providers$Esri.WorldImagery,
                        group = "World Imagery") %>%
-      addLayersControl(baseGroups = c('Ocean Basemap', 'World Imagery')) %>%
+      addLayersControl(baseGroups = c('GEBCO', 'Ocean Basemap', 'World Imagery')) %>%
       addPolylines(
         lat = map_sf$lat,
         lng = map_sf$long,
@@ -245,27 +256,30 @@ gliderDashboard_server <- function(id, gliderName) {
         label = "Latest position",
         icon = icon.latest
       ) %>%
-      #waypoints, list first, then add current commanded
-      addCircles(lat = goto$lat,
-                 lng = goto$long,
-                 radius = goto$rad,
-                 label = goto$comment) %>%
-      addArrowhead(lat = goto$lat,
-                   lng = goto$long, color="blue",
-                   options = arrowheadOptions(
-                     #yawn = 60,
-                     size = '10%',
-                     frequency = 'allvertices',
-                     fill = TRUE,
-                     opacity=0.5, stroke=TRUE, fillOpacity=0.4,
-                     proportionalToTotal = TRUE,
-                     offsets = NULL,
-                     perArrowheadOptions = NULL)) %>%
       addMarkers(lat = cwpt$lat,
                  lng = cwpt$long,
                  label = "Commanded wpt") %>%
       addMeasure(primaryLengthUnit = "kilometers",
                  secondaryLengthUnit = "miles")
+    
+    if (gotoN > 0 & gliderName != "usf-stella") {
+      liveMissionMap <- liveMissionMap %>%
+      addCircles(lat = goto$lat,
+                 lng = goto$long,
+                 radius = goto$rad,
+                 label = goto$comment) %>%
+        addArrowhead(lat = goto$lat,
+                     lng = goto$long, color="blue",
+                     options = arrowheadOptions(
+                       #yawn = 60,
+                       size = '10%',
+                       frequency = 'allvertices',
+                       fill = TRUE,
+                       opacity=0.5, stroke=TRUE, fillOpacity=0.4,
+                       proportionalToTotal = TRUE,
+                       offsets = NULL,
+                       perArrowheadOptions = NULL))
+      }
     #setView(lat = 27.75, lng = -83, zoom = 6)
 
     output$missionmapLive <- renderLeaflet({
@@ -273,4 +287,5 @@ gliderDashboard_server <- function(id, gliderName) {
     
     
     })
+  
 }

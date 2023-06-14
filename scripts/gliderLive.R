@@ -7,6 +7,8 @@ library(egg)
 library(lubridate)
 library(ggplot2)
 library(scales)
+  
+  load("/echos/G1AlkalineCurve.RData")
 
 source("/srv/shiny-server/thebrewery/scripts/ssv_to_df.R")
 source("/srv/shiny-server/thebrewery/scripts/pseudogram.R")
@@ -127,6 +129,7 @@ print("dashboard calculations")
 gliderdfChunk <- gliderdf %>%
   filter(m_present_time >= endDateLive-14400)
 
+if (ahrCap > 0){
 ahrUsed <- max(gliderdf$m_coulomb_amphr_total, na.rm = TRUE)
 ahrLeft <- as.numeric(ahrCap-ahrUsed)
 pwr3day <- gliderdf %>%
@@ -140,8 +143,78 @@ ahr3day <- (max(pwr3day$m_coulomb_amphr_total)-min(pwr3day$m_coulomb_amphr_total
 ahr1day <- (max(pwr1day$m_coulomb_amphr_total)-min(pwr1day$m_coulomb_amphr_total))/(as.numeric(max(pwr1day$m_present_time))-as.numeric(min(pwr1day$m_present_time)))*86400
 ahrAllday <- (max(gliderdf$m_coulomb_amphr_total, na.rm = TRUE)-min(gliderdf$m_coulomb_amphr_total, na.rm = TRUE))/(as.numeric(max(gliderdf$m_present_time, na.rm = TRUE))-as.numeric(min(gliderdf$m_present_time, na.rm = TRUE)))*86400
 
-LDmin <- min(gliderdfChunk$m_leakdetect_voltage, na.rm = TRUE)
 battLeft <- as.numeric((ahrLeft/ahrCap)*100)
+
+#coulombs daily use
+coulombs <- gliderdf %>%
+  select(c(m_present_time, m_coulomb_amphr_total)) %>%
+  filter(m_coulomb_amphr_total > 0) %>%
+  mutate(day = floor_date(m_present_time,
+                          unit = "days")) %>%
+  group_by(day) %>%
+  mutate(dailyAhr = (max(m_coulomb_amphr_total)-min(m_coulomb_amphr_total))/(as.numeric(max(m_present_time))-as.numeric(min(m_present_time)))*86400) %>%
+  #select(c(day, meanBatt)) %>%
+  distinct(day, dailyAhr)
+
+couLive <- ggplot(
+  data = 
+    coulombs,
+  aes(x=day,
+      y=dailyAhr,
+  )) +
+  geom_point(
+    size = 2,
+    na.rm = TRUE
+  ) +
+  theme_bw() +
+  labs(title = "Daily Power Usage",
+       y = "Ahrs",
+       x = "Date") +
+  theme(plot.title = element_text(size = 32),
+        axis.title = element_text(size = 20),
+        axis.text = element_text(size = 16))
+} else {
+  
+  #calculate mean battery voltage daily
+  meanVolt <- gliderdf %>%
+    select(c(m_present_time, m_battery)) %>%
+    filter(m_battery > 0) %>%
+    mutate(days = yday(m_present_time)) %>% #may break if deployment crosses to new year
+    mutate(shiftDay = (days - min(days)) + 1) %>%
+    group_by(shiftDay) %>%
+    mutate(battAvg = mean(m_battery)) %>%
+    select(shiftDay, battAvg) %>%
+    distinct()
+  
+  #find "deployment day" based on reference curve
+  refDay <- reference %>%
+    ungroup() %>%
+    slice(which.min(abs(reference$avg - max(meanVolt$battAvg))))
+  
+  #shift for plotting
+  battShift <- meanVolt %>%
+    mutate(depDay = (shiftDay + refDay$shiftDay)-1)
+  
+  #plot shifted days against ref curve
+  couLive <- ggplot() +
+    geom_point(data = battShift, 
+               size = 2, aes(x = depDay, y = battAvg), color = "red") +
+    geom_line(data = reference, aes(x = shiftDay, y = avg), color = "blue") +
+    labs(title = "Daily Voltage vs. Curve",
+         caption = "Reference curve calculated from usf-bass M86 and M109",
+         x = "Time remaining (days)", 
+         y = "Battery (V)") +
+    theme_bw() +
+    theme(plot.title = element_text(size = 32),
+          axis.title = element_text(size = 20),
+          axis.text = element_text(size = 16))
+  
+  #find day on curve that matches lowest daily voltage average
+  battLeft <- as.numeric(reference %>%
+                           ungroup() %>%
+                           slice(which.min(abs(reference$avg - min(meanVolt$battAvg)))) %>%
+                           select(daysLeft))
+}
 
 ###### to glider file list ########
 toGliderListInfo <- file.info(list.files(path = paste0("/gliders/gliders/", gliderName, "/archive/"),
@@ -183,35 +256,6 @@ battLive <- ggplot(
         axis.title = element_text(size = 20),
         axis.text = element_text(size = 16))
 
-#coulombs daily use
-coulombs <- gliderdf %>%
-  select(c(m_present_time, m_coulomb_amphr_total)) %>%
-  filter(m_coulomb_amphr_total > 0) %>%
-  mutate(day = floor_date(m_present_time,
-                          unit = "days")) %>%
-  group_by(day) %>%
-  mutate(dailyAhr = (max(m_coulomb_amphr_total)-min(m_coulomb_amphr_total))/(as.numeric(max(m_present_time))-as.numeric(min(m_present_time)))*86400) %>%
-  #select(c(day, meanBatt)) %>%
-  distinct(day, dailyAhr)
-
-couLive <- ggplot(
-  data = 
-    coulombs,
-  aes(x=day,
-      y=dailyAhr,
-  )) +
-  geom_point(
-    size = 2,
-    na.rm = TRUE
-  ) +
-  theme_bw() +
-  labs(title = "Daily Power Usage",
-       y = "Ahrs",
-       x = "Date") +
-  theme(plot.title = element_text(size = 32),
-        axis.title = element_text(size = 20),
-        axis.text = element_text(size = 16))
-
 #label all LD vars
 LDvars <- c("m_leakdetect_voltage", "m_leakdetect_voltage_forward", "m_leakdetect_voltage_science")
 
@@ -220,6 +264,8 @@ leaks <- gliderdf %>%
   filter(m_leakdetect_voltage > 0) %>%
   filter(m_present_time >= endDateLive-14400) %>%
   pivot_longer(cols = any_of(LDvars))
+
+LDmin <- min(leaks$value, na.rm = TRUE)
 
 leakLive <- ggplot(
   data = 
@@ -262,6 +308,7 @@ rollLive <- ggplot(
     size = 2,
     na.rm = TRUE
   ) +
+  geom_hline(yintercept = 0, linetype = 2) +
   scale_y_continuous(limits = symmetric_range) +
   theme_bw() +
   labs(title = "Daily Roll Average",
@@ -372,10 +419,14 @@ if(gliderName == "usf-stella"){
 livePlots <- list(
   #carousel plots
   leakLive, battLive, rollLive, couLive, ggEcho)
-} else {
+} else if (ahrCap > 0) {
   livePlots <- list(
     #carousel plots
     leakLive, battLive, rollLive, couLive)
+} else {
+  livePlots <- list(
+    #carousel plots
+    leakLive, rollLive, couLive)
 }
 
 # glider_live <- list(
@@ -432,7 +483,7 @@ save(gliderdf, scivarsLive, flightvarsLive, toGliderList,
      fullehunk,
      livePlots,
      file = paste0("/echos/", gliderName, "/glider_live.RData"))
-} else {
+} else if (ahrCap > 0) {
   save(gliderdf, scivarsLive, flightvarsLive, toGliderList,
        ahrCap,
        ahrUsed,
@@ -442,6 +493,15 @@ save(gliderdf, scivarsLive, flightvarsLive, toGliderList,
        ahr3day,
        ahr1day,
        ahrAllday,
+       LDmin,
+       battLeft,
+       #echoListraw,
+       #fullehunk,
+       livePlots,
+       file = paste0("/echos/", gliderName, "/glider_live.RData"))
+} else {
+  save(gliderdf, scivarsLive, flightvarsLive, toGliderList,
+       ahrCap,
        LDmin,
        battLeft,
        #echoListraw,
