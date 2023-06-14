@@ -175,34 +175,45 @@ couLive <- ggplot(
         axis.text = element_text(size = 16))
 } else {
   
+  #calculate mean battery voltage daily
   meanVolt <- gliderdf %>%
     select(c(m_present_time, m_battery)) %>%
     filter(m_battery > 0) %>%
-    mutate(days = yday(m_present_time)) %>%
+    mutate(days = yday(m_present_time)) %>% #may break if deployment crosses to new year
     mutate(shiftDay = (days - min(days)) + 1) %>%
     group_by(shiftDay) %>%
     mutate(battAvg = mean(m_battery)) %>%
     select(shiftDay, battAvg) %>%
     distinct()
   
+  #find "deployment day" based on reference curve
   refDay <- reference %>%
     ungroup() %>%
     slice(which.min(abs(reference$avg - max(meanVolt$battAvg))))
   
+  #shift for plotting
   battShift <- meanVolt %>%
     mutate(depDay = (shiftDay + refDay$shiftDay)-1)
   
+  #plot shifted days against ref curve
   couLive <- ggplot() +
     geom_point(data = battShift, 
-               size = 2, aes(x = depDay, y = battAvg, color = "red")) +
-    geom_line(data = reference, aes(x = shiftDay, y = avg, color = "blue")) +
-    labs(x = "Time (days)", y = "Voltage") +
+               size = 2, aes(x = depDay, y = battAvg), color = "red") +
+    geom_line(data = reference, aes(x = shiftDay, y = avg), color = "blue") +
+    labs(title = "Daily Voltage vs. Curve",
+         caption = "Reference curve calculated from usf-bass M86 and M109",
+         x = "Time remaining (days)", 
+         y = "Battery (V)") +
     theme_bw() +
     theme(plot.title = element_text(size = 32),
           axis.title = element_text(size = 20),
           axis.text = element_text(size = 16))
   
-  battLeft <- as.numeric(refDay$daysLeft)
+  #find day on curve that matches lowest daily voltage average
+  battLeft <- as.numeric(reference %>%
+                           ungroup() %>%
+                           slice(which.min(abs(reference$avg - min(meanVolt$battAvg)))) %>%
+                           select(daysLeft))
 }
 
 ###### to glider file list ########
@@ -408,10 +419,14 @@ if(gliderName == "usf-stella"){
 livePlots <- list(
   #carousel plots
   leakLive, battLive, rollLive, couLive, ggEcho)
-} else {
+} else if (ahrCap > 0) {
   livePlots <- list(
     #carousel plots
     leakLive, battLive, rollLive, couLive)
+} else {
+  livePlots <- list(
+    #carousel plots
+    leakLive, rollLive, couLive)
 }
 
 # glider_live <- list(
