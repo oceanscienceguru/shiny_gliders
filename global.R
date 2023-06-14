@@ -27,6 +27,7 @@ source("./scripts/gliderGPS_to_dd.R")
 source("./modules/gliderDashboard.R")
 source("./modules/currentData.R")
 source("./modules/routing.R")
+source("./modules/fullData.R")
 
 deployedGliders <- read.csv("/echos/deployedGliders.txt", 
                             sep = "",
