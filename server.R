@@ -92,7 +92,8 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
     if (ext == "ssv") {
       print("SSV!")
       newGlider <- ssv_to_rds(inputFile = input$upload$datapath,
-                              missionNum = input$upload$name)
+                              missionNum = input$upload$name,
+                              gliderName = input$uploadGliderName)
       session$reload()
       #if kml
     } else if (ext == "kml"){
