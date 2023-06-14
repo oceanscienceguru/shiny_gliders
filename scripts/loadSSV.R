@@ -86,7 +86,7 @@ igps <- fortify.zoo(result) %>% #extract out as DF
 igps$m_present_time <- as_datetime(floor(seconds(igps$m_present_time)))
 raw$m_present_time <- as_datetime(floor(seconds(raw$m_present_time)))
 
-newGlider <- raw %>%
+gliderdf <- raw %>%
   left_join(igps) %>%
   mutate(status = if_else(m_avg_depth_rate > 0, "dive", "climb")) %>%
   fill(status) %>%
@@ -105,6 +105,6 @@ newGlider <- raw %>%
                                        osg_salinity,
                                        sci_water_temp))
 
-save(newGlider, gliderName, file = paste0("./Data/",missionNum,".RData"))
+save(gliderdf, gliderName, file = paste0("./Data/",gliderName,"_",missionNum,".RData"))
 
 }

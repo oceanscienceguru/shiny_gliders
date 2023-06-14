@@ -67,6 +67,13 @@
                                           ".*bd",
                                           ".kml")
                              ),
+                             selectInput(
+                               inputId = "uploadGliderName",
+                               label = "Which glider?",
+                               choices = c("usf-bass",
+                                           "usf-stella"),
+                               selected = NULL
+                             ),
                              tableOutput('uploadTable')
                              # selectInput(
                              #   inputId = "mission",
