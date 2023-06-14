@@ -21,21 +21,27 @@ fullData_ui <- function(id) {
         selected =  NULL
       ),
       br(),
-      dateInput(
+      airDatepickerInput(
         inputId = ns("date1"),
         label = "Start Date:",
         value = NULL,
-        min = NULL,
-        max = NULL,
-        format = "mm/dd/yy"
+        range = FALSE,
+        minDate = NULL,
+        maxDate = NULL,
+        update_on = "close",
+        timepicker = TRUE,
+        clearButton = TRUE
       ),
-      dateInput(
+      airDatepickerInput(
         inputId = ns("date2"),
         label = "End Date:",
         value = NULL,
-        min = NULL,
-        max = NULL,
-        format = "mm/dd/yy"
+        range = FALSE,
+        minDate = NULL,
+        maxDate = NULL,
+        update_on = "close",
+        timepicker = TRUE,
+        clearButton = TRUE
       ),
       numericInput(
         inputId = ns("min_depth"),
@@ -47,14 +53,14 @@ fullData_ui <- function(id) {
       numericInput(
         inputId = ns("max_depth"),
         label = "Depth Maximum",
-        value = 150,
+        value = 1000,
         min = 0,
         max = 1000
       ),),
       column(12,
              #mainPanel(#science variable settings
-             tabBox(
-               width = 12,
+             tabsetPanel(id = ns("tabs"),
+               #width = 12,
                tabPanel(title = "Map",
                         leafletOutput(outputId = ns("missionmap"),
                                       height = "600px")),
@@ -152,9 +158,9 @@ fullData_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     
     fileList_archive <- list.files(path = "./Data/",
-                                   pattern = "*.rds")
+                                   pattern = "*.RData")
     
-    missionList_archive <- str_remove(fileList_archive, pattern = ".rds")
+    missionList_archive <- str_remove(fileList_archive, pattern = ".RData")
     
     updateSelectInput(session, "mission", NULL, choices = c(missionList_archive), selected = tail(missionList_archive, 1))
     
@@ -218,16 +224,24 @@ fullData_server <- function(id) {
     
     glider <- reactiveValues()
     
+    gliderReactor <- reactiveValues()
+    
     observeEvent(input$load, {
       #req(input$load)
       #on load add salinty + SV
-      df <- readRDS(paste0("./Data/", isolate(input$mission), ".rds")) %>%
-        mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
-        mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
-        mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
-        mutate(soundvel1 = c_Coppens1981(m_depth,
-                                         osg_salinity,
-                                         sci_water_temp))
+      load(paste0("./Data/", isolate(input$mission), ".RData"))
+      
+      gliderReactor <- gliderName
+      
+      df <- gliderdf 
+      
+      # df <- readRDS(paste0("./Data/", isolate(input$mission), ".RData")) %>%
+      #   mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
+      #   mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
+      #   mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
+      #   mutate(soundvel1 = c_Coppens1981(m_depth,
+      #                                    osg_salinity,
+      #                                    sci_water_temp))
       #possible add ... from masterdata
       #mutate(new_water_depth = m_water_depth * (1500/soundvel1))
       
@@ -245,12 +259,14 @@ fullData_server <- function(id) {
       missionNum$id <- isolate(input$mission)
       
       #mission date range variables
-      startDate <- min(df$m_present_time)
-      endDate <- max(df$m_present_time)
+      startDate <- as_datetime(min(df$m_present_time))
+      endDate <- as_datetime(max(df$m_present_time))
       
       #get start/end days and update data filters
-      updateDateInput(session, "date1", NULL, min = min(df$m_present_time), max = max(df$m_present_time), value = startDate)
-      updateDateInput(session, "date2", NULL, min = min(df$m_present_time), max = max(df$m_present_time), value = endDate)
+      updateAirDateInput(session, "date1", NULL, value = startDate, 
+                         options = list(minDate = startDate, maxDate = endDate))
+      updateAirDateInput(session, "date2", NULL, value = endDate, 
+                         options = list(minDate = startDate, maxDate = endDate))
       updateSelectInput(session, "display_var", NULL, choices = c(scivars), selected = "sci_water_temp")
       updateSelectizeInput(session, "flight_var", NULL, choices = c(flightvars), selected = "m_roll")
       
@@ -260,12 +276,159 @@ fullData_server <- function(id) {
       
       glider$full <- df
       
+      if (gliderName == "usf-stella"){
+        appendTab(inputId = "tabs",
+                  tabPanel(title = "Pseudograms",
+                           column(2,
+                                  wellPanel(
+                                    selectInput(
+                                      inputId = ns("echo"),
+                                      label = "Which pseudogram to display",
+                                      choices = NULL,
+                                      selected =  NULL
+                                    ),
+                                    selectInput(
+                                      inputId = ns("echoColor"),
+                                      label = "Color scheme",
+                                      choices = c("EK", "magma", "viridis"),
+                                      selected =  "EK"
+                                    ),
+                                    #downloadButton('downloadEchoPlot')
+                                  )),
+                           column(10,
+                                  plotOutput(
+                                    outputId = ns("echoPlot"),
+                                    #dblclick = "fliPlot_dblclick",
+                                    #brush = brushOpts(id = "fliPlot_brush",
+                                    #                  resetOnNew = TRUE),
+                                    #height = "600px"
+                                  ),
+                                  hr(),
+                                  column(3,
+                                         actionButton(
+                                           inputId = ns("oldestPgram"),
+                                           label = "Oldest",
+                                           #icon("boat"),
+                                           style =
+                                             "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                         ), align = "center"),
+                                  column(3,
+                                         actionButton(
+                                           inputId = ns("prevPgram"),
+                                           label = "Previous",
+                                           #icon("boat"),
+                                           style =
+                                             "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                         ), align = "center"),
+                                  column(3,
+                                         actionButton(
+                                           inputId = ns("nextPgram"),
+                                           label = "Next",
+                                           #icon("boat"),
+                                           style =
+                                             "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                         ), align = "center"),
+                                  column(3,
+                                         actionButton(
+                                           inputId = ns("latestPgram"),
+                                           label = "Latest",
+                                           #icon("boat"),
+                                           style =
+                                             "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                         ), align = "center"),
+                           )),
+                  tabPanel(title = "Pseudotimegram",
+                           column(2,
+                                  wellPanel(
+                                    actionButton(
+                                      inputId = ns("fullecho2"),
+                                      label = "Plot!",
+                                      #icon("boat"),
+                                      style =
+                                        "color: #fff; background-color: #963ab7; border-color: #2e6da4"
+                                    ),
+                                    dateRangeInput(ns("echohistrange2"), "Date range:",
+                                                   start  = NULL,
+                                                   end    = NULL,
+                                                   min    = NULL,
+                                                   max    = NULL,
+                                                   format = "mm/dd/yy",
+                                                   separator = " - "),
+                                    sliderInput(ns("echohour2"),
+                                                "Hour:",
+                                                min = 0,  max = 24, value = c(0, 24)),
+                                    selectInput(
+                                      inputId = ns("echoColor2"),
+                                      label = "Color scheme",
+                                      choices = c("EK", "magma", "viridis"),
+                                      selected =  "EK"
+                                    ),
+                                    checkboxGroupInput(
+                                      inputId = ns("todTgram"),
+                                      label = "Time of day",
+                                      choices = c("day", "night"),
+                                      selected = c("day", "night")
+                                    ),
+                                    #downloadButton('downloadEchoHist2')
+                                  )),
+                           column(10,
+                                  plotOutput(
+                                    outputId = ns("echoTime"),
+                                    #dblclick = "fliPlot_dblclick",
+                                    #brush = brushOpts(id = "fliPlot_brush",
+                                    #                  resetOnNew = TRUE),
+                                    #height = "600px"
+                                  ) %>% withSpinner(color="#0dc5c1")
+                           )),
+                  tabPanel(title = "Frequency Polygon",
+                           column(2,
+                                  wellPanel(
+                                    actionButton(
+                                      inputId = ns("fullecho"),
+                                      label = "Plot!",
+                                      #icon("boat"),
+                                      style =
+                                        "color: #fff; background-color: #963ab7; border-color: #2e6da4"
+                                    ),
+                                    dateRangeInput(ns("echohistrange"), "Date range:",
+                                                   start  = NULL,
+                                                   end    = NULL,
+                                                   min    = NULL,
+                                                   max    = NULL,
+                                                   format = "mm/dd/yy",
+                                                   separator = " - "),
+                                    numericInput(
+                                      inputId = ns("depthbin"),
+                                      label = "Depth Bin Size",
+                                      value = 3,
+                                      min = 1,
+                                      max = 1000
+                                    ),
+                                    sliderInput(ns("echohour"),
+                                                "Hour:",
+                                                min = 0,  max = 24, value = c(0, 24)),
+                                    #downloadButton('downloadEchoHist')
+                                  )),
+                           column(10,
+                                  plotOutput(
+                                    outputId = ns("echoHist"),
+                                    #dblclick = "fliPlot_dblclick",
+                                    #brush = brushOpts(id = "fliPlot_brush",
+                                    #                  resetOnNew = TRUE),
+                                    #height = "600px"
+                                  ) %>% withSpinner(color="#0dc5c1")
+                           ))
+        )
+      }
+      
     })
     
     #dynamically filter for plotting
     chunk <- reactive({
+      soFar <- interval(input$date1, input$date2)
+      
       df <- glider$full %>%
-        filter(m_present_time >= input$date1 & m_present_time <= input$date2) %>%
+        filter(m_present_time %within% soFar) %>%
         #filter(status %in% c(input$status)) %>%
         #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
         filter(m_depth >= input$min_depth & m_depth <= input$max_depth)
