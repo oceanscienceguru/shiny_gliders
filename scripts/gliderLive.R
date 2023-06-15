@@ -94,6 +94,7 @@ gliderdfraw <- fdf %>%
   full_join(sdf) %>% #merge in sci data and get segment back
   arrange(m_present_time) %>% #ensure chronological order
   fill(segment, .direction = "downup") %>% #fill out segment ID
+  distinct(m_present_time, .keep_all = TRUE) %>% #remove duplicate m_present_time rows (usually bad sci file)
   #calculate several osg* variables for plotting
   mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
   mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
