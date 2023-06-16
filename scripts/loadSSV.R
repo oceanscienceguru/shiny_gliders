@@ -105,6 +105,6 @@ gliderdf <- raw %>%
                                        osg_salinity,
                                        sci_water_temp))
 
-save(gliderdf, gliderName, file = paste0("./Data/",gliderName,"_",missionNum,".RData"))
+save(gliderdf, gliderName, file = paste0("./Data/",missionNum,"_",gliderName,".RData"))
 
 }
