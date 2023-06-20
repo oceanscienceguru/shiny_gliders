@@ -203,7 +203,7 @@ couLive <- ggplot(
     geom_line(data = reference, aes(x = shiftDay, y = avg), color = "blue") +
     labs(title = "Daily Voltage vs. Curve",
          caption = "Reference curve calculated from usf-bass M86 and M109",
-         x = "Time remaining (days)", 
+         x = "Days Deployed", 
          y = "Battery (V)") +
     theme_bw() +
     theme(plot.title = element_text(size = 32),
@@ -427,7 +427,7 @@ livePlots <- list(
 } else {
   livePlots <- list(
     #carousel plots
-    leakLive, rollLive, couLive)
+    leakLive, battLive, rollLive, couLive)
 }
 
 # glider_live <- list(
