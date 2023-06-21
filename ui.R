@@ -52,36 +52,65 @@
                  ),
                  
                  tabItem(tabName = "dataImport",
-                         fluidPage(
-
-                           #file upload row
-                           wellPanel(
-                             fileInput(
-                               inputId = "upload",
-                               label = "Upload New Mission Data",
-                               multiple = FALSE,
-                               accept = c("text/SSV",
-                                          ".ssv",
-                                          ".rds",
-                                          ".Rdata",
-                                          ".*bd",
-                                          ".kml")
-                             ),
+                         box(
+                         glide(
+                           height = "500px",
+                           screen(
+                             next_condition = "input.uploadGliderName.length > 0",
+                             h3("Which glider is this?"),
                              selectInput(
                                inputId = "uploadGliderName",
-                               label = "Which glider?",
-                               choices = c("usf-bass",
-                                           "usf-stella"),
+                               label = "Select glider name:",
+                               choices = c("",
+                                           fleetGliders$V1),
                                selected = NULL
                              ),
-                             tableOutput('uploadTable')
-                             # selectInput(
-                             #   inputId = "mission",
-                             #   label = "Which mission data to display",
-                             #   choices = c(missionList),
-                             #   selected =  NULL
-                             #
-                           ))
+                           screen(
+                             h3("Upload whole-mission .ssv"),
+                             fileInput(
+                               inputId = "upload",
+                               label = "Select file:",
+                               multiple = FALSE,
+                               accept = c(#"text/SSV",
+                                          #".kml",
+                                          #".rds",
+                                          #".Rdata",
+                                          #".*bd",
+                                          ".ssv"
+                                          )
+                             )
+                           )
+                           )))
+                         # fluidPage(
+                         # 
+                         #   #file upload row
+                         #   wellPanel(
+                         #     fileInput(
+                         #       inputId = "upload",
+                         #       label = "Upload New Mission Data",
+                         #       multiple = FALSE,
+                         #       accept = c("text/SSV",
+                         #                  ".ssv",
+                         #                  ".rds",
+                         #                  ".Rdata",
+                         #                  ".*bd",
+                         #                  ".kml")
+                         #     ),
+                         #     selectInput(
+                         #       inputId = "uploadGliderName",
+                         #       label = "Which glider?",
+                         #       choices = c("usf-bass",
+                         #                   "usf-stella"),
+                         #       selected = NULL
+                         #     ),
+                         #     tableOutput('uploadTable')
+                         #     # selectInput(
+                         #     #   inputId = "mission",
+                         #     #   label = "Which mission data to display",
+                         #     #   choices = c(missionList),
+                         #     #   selected =  NULL
+                         #     #
+                         #   ))
 
 
                          )

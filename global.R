@@ -18,6 +18,7 @@ library(svglite)
 library(lubridate)
 library(egg)
 library(shinyWidgets)
+library(shinyglide)
 
 source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")
@@ -32,8 +33,14 @@ source("./modules/fullData.R")
 deployedGliders <- read.csv("/echos/deployedGliders.txt", 
                             sep = "",
                             header = FALSE)
+
 colnames(deployedGliders)[1] = "Name"
 colnames(deployedGliders)[2] = "ahrCap"
+
+fleetGliders <- read.csv("/echos/fleetGliders.txt", 
+                         sep = "",
+                         header = FALSE) %>%
+  arrange(V1)
 
 deployedGliders <- deployedGliders %>%
   filter(!str_starts(Name,"#")) #remove any commented lines
