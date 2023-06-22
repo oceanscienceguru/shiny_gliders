@@ -326,11 +326,22 @@ fullData_server <- function(id) {
       
       leaflet() %>%
         #base provider layers
-        addProviderTiles("Esri.OceanBasemap", 
-                         group = "Ocean Basemap") %>%
-        addProviderTiles("Esri.WorldImagery", 
+        addWMSTiles("https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}.png",
+                    layers = "World_Ocean_Base",
+                    group = "Ocean Basemap",
+                    options = WMSTileOptions(format = "image/png", transparent = F)) %>%
+        addWMSTiles("https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Reference/MapServer/tile/{z}/{y}/{x}.png",
+                    layers = "World_Ocean_Reference",
+                    group = "Ocean Reference",
+                    options = WMSTileOptions(format = "image/png", transparent = T)) %>%
+        addWMSTiles("https://www.gebco.net/data_and_products/gebco_web_services/web_map_service/mapserv?",
+                    layers = "GEBCO_LATEST",
+                    group = "GEBCO",
+                    options = WMSTileOptions(format = "image/png", transparent = F)) %>%
+        addProviderTiles(providers$Esri.WorldImagery,
                          group = "World Imagery") %>%
-        addLayersControl(baseGroups = c('Ocean Basemap', 'World Imagery')) %>%
+        addLayersControl(baseGroups = c('Ocean Basemap', 'GEBCO', 'World Imagery'),
+                         overlayGroups = c('Ocean Reference')) %>%
         addPolylines(
           lat = mapUp$lat,
           lng = mapUp$long,
