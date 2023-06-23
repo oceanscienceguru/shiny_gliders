@@ -361,7 +361,7 @@ currentData_server <- function(id, gliderName) {
             y=osg_i_depth,
             #z=.data[[input$display_varLive]],
             colour = .data[[input$display_varLive]],
-            tooltip = .data[[input$display_varLive]]
+            tooltip = round(.data[[input$display_varLive]], 3)
         )) +
         geom_point_interactive(
           # size = 2,
@@ -390,7 +390,12 @@ currentData_server <- function(id, gliderName) {
     })
     
     output$sciPlotLive <- renderGirafe(girafe(code = print(gg1Live()),
-                                              width_svg = 12, height_svg = 5
+                                              width_svg = 12, height_svg = 5,
+                                              options = list(
+                                                opts_sizing(width = .7),
+                                                opts_zoom(max = 5),
+                                                opts_toolbar(position = "bottomleft")
+                                              )
                                               ))
     
     #flight plot
@@ -408,7 +413,7 @@ currentData_server <- function(id, gliderName) {
             y = count,
             color = variable,
             shape = variable,
-            tooltip = count)) +
+            tooltip = round(count, 3))) +
         geom_point_interactive() +
         #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
         theme_bw() +
@@ -423,7 +428,13 @@ currentData_server <- function(id, gliderName) {
     })
     
     output$fliPlotLive <- renderGirafe(girafe(code = print(gg2Live()),
-                                              width_svg = 12, height_svg = 5))
+                                              width_svg = 12, height_svg = 5,
+                                              options = list(
+                                                opts_sizing(width = .7),
+                                                opts_zoom(max = 5),
+                                                opts_toolbar(position = "bottomleft")
+                                              )
+                                              ))
     
     ##### derived Live plots #########
     gg3Live <- reactive({
@@ -473,7 +484,7 @@ currentData_server <- function(id, gliderName) {
                      #z=osg_soundvel1
                  )) +
           geom_point_interactive(
-            aes(color = osg_soundvel1, tooltip = osg_soundvel1)
+            aes(color = osg_soundvel1, tooltip = round(osg_soundvel1, 3))
           ) +
           #geom_hline(yintercept = 0) +
           scale_y_reverse() +
@@ -507,7 +518,7 @@ currentData_server <- function(id, gliderName) {
                 y=osg_depth,
                 #z=.data[[input$display_varLive]],
                 colour = osg_rho,
-                tooltip = osg_rho
+                tooltip = round(osg_rho, 3)
             )) +
           geom_point_interactive(
             # size = 2,
@@ -544,7 +555,7 @@ currentData_server <- function(id, gliderName) {
                 y=osg_depth,
                 #z=.data[[input$display_varLive]],
                 colour = osg_salinity,
-                tooltip = osg_salinity
+                tooltip = round(osg_salinity, 3)
             )) +
           geom_point_interactive(
             # size = 2,
@@ -574,7 +585,13 @@ currentData_server <- function(id, gliderName) {
     })
     
     output$tsPlotLive <- renderGirafe(girafe(code = print(gg3Live()),
-                                             width_svg = 12, height_svg = 5))
+                                             width_svg = 12, height_svg = 5,
+                                             options = list(
+                                               opts_sizing(width = .7),
+                                               opts_zoom(max = 5),
+                                               opts_toolbar(position = "bottomleft")
+                                             )
+                                             ))
     
     #### psuedograms ########
     
