@@ -128,24 +128,43 @@ fullData_ui <- function(id) {
                           )
                         )),
                #sound velocity tab
-               tabPanel(title = "Sound Velocity",
+               tabPanel(title = "Derived Data",
                         fluidRow(
                           column(3,
                                  wellPanel(
-                                   numericInput(inputId = ns("soundmin"),
-                                                label = "Sound Axis Minimum",
-                                                NULL),
-                                   numericInput(inputId = ns("soundmax"),
-                                                label = "Sound Axis Maximum",
-                                                NULL),
-                                   downloadButton('downloadSouPlot')
+                                   selectInput(inputId = ns("derivedType"),
+                                               label = "Which type of plot?",
+                                               choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity"),
+                                   # numericInput(inputId = "derivedmaxLive",
+                                   #              label = "Axis Maximum",
+                                   #              NULL),
+                                   #downloadButton('downloadSouPlot')
                                  )),
                           column(9,
-                                 plotOutput(outputId = ns("souPlot"),
-                                            height = "600px"
+                                 plotOutput(outputId = ns("tsPlot"),
+                                            #height = "600px"
                                  ) %>% withSpinner(color="#0dc5c1")
                           )
                         ),),
+               #sound velocity tab
+               # tabPanel(title = "Sound Velocity",
+               #          fluidRow(
+               #            column(3,
+               #                   wellPanel(
+               #                     numericInput(inputId = ns("soundmin"),
+               #                                  label = "Sound Axis Minimum",
+               #                                  NULL),
+               #                     numericInput(inputId = ns("soundmax"),
+               #                                  label = "Sound Axis Maximum",
+               #                                  NULL),
+               #                     downloadButton('downloadSouPlot')
+               #                   )),
+               #            column(9,
+               #                   plotOutput(outputId = ns("souPlot"),
+               #                              height = "600px"
+               #                   ) %>% withSpinner(color="#0dc5c1")
+               #            )
+               #          ),),
                tabPanel(title = "Pseudograms",
                         column(2,
                                wellPanel(
@@ -879,37 +898,186 @@ fullData_server <- function(id) {
     
     ######### sound velocity plot ##########
     
+    # gg3 <- reactive({
+    #   req(input$load)
+    #   # create plot
+    #   ggplot(data = filter(chunk(), !is.nan(soundvel1)),
+    #          aes(x=m_present_time,
+    #              y=m_depth,
+    #              z=soundvel1)) +
+    #     geom_point(
+    #       aes(color = soundvel1)
+    #     ) +
+    #     geom_point(data = filter(chunk(), m_water_depth > 0),
+    #                aes(y = m_water_depth),
+    #                size = 0.1,
+    #                na.rm = TRUE
+    #     ) +
+    #     #geom_hline(yintercept = 0) +
+    #     scale_y_reverse() +
+    #     scale_colour_viridis_c(limits = c(limits = c(input$soundmin, input$soundmax))) +
+    #     theme_bw() +
+    #     labs(title = paste0(missionNum$id, " Sound Velocity"),
+    #          caption = "Calculated using Coppens <i>et al.</i> (1981)",
+    #          y = "Depth (m)",
+    #          x = "Date") +
+    #     theme(plot.title = element_text(size = 32)) +
+    #     theme(axis.title = element_text(size = 16)) +
+    #     theme(axis.text = element_text(size = 12)) +
+    #     theme(plot.caption = element_markdown())
+    #   
+    # })
+    # 
+    # output$souPlot <- renderPlot({gg3()})
+    
+    
+    ##### derived plots #########
     gg3 <- reactive({
-      req(input$load)
-      # create plot
-      ggplot(data = filter(chunk(), !is.nan(soundvel1)),
-             aes(x=m_present_time,
-                 y=m_depth,
-                 z=soundvel1)) +
-        geom_point(
-          aes(color = soundvel1)
-        ) +
-        geom_point(data = filter(chunk(), m_water_depth > 0),
-                   aes(y = m_water_depth),
-                   size = 0.1,
-                   na.rm = TRUE
-        ) +
-        #geom_hline(yintercept = 0) +
-        scale_y_reverse() +
-        scale_colour_viridis_c(limits = c(limits = c(input$soundmin, input$soundmax))) +
-        theme_bw() +
-        labs(title = paste0(missionNum$id, " Sound Velocity"),
-             caption = "Calculated using Coppens <i>et al.</i> (1981)",
-             y = "Depth (m)",
-             x = "Date") +
-        theme(plot.title = element_text(size = 32)) +
-        theme(axis.title = element_text(size = 16)) +
-        theme(axis.text = element_text(size = 12)) +
-        theme(plot.caption = element_markdown())
+      
+      if (input$derivedType == "TS Plot"){
+        df <- filter(chunk(), osg_salinity > 0)
+        wf <- filter(chunk(), m_water_depth > 0)
+        
+        plot <- 
+          ggplot(
+            data = df,
+            aes(x = osg_salinity,
+                y = osg_theta,
+                #color = segment,
+                #shape = variable
+            )) +
+          geom_point(size = 3,
+                     pch = 1) +
+          # scale_color_gradient(
+          #   low = "red",
+          #   high = "blue",
+          # ) +
+          #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
+          theme_bw() +
+          labs(title = "TS Plot",
+               x = "Salinity",
+               y = "Potential Temperature",
+               #color = "Time",
+               #caption = "Red = older ... Blue = more recent"
+          ) +
+          theme(plot.title = element_text(size = 32),
+                axis.title = element_text(size = 16),
+                axis.text = element_text(size = 12),
+                plot.caption = element_text(size = 16),
+                legend.position ="none",
+          ) 
+      }
+      
+      if (input$derivedType == "SV Plot"){
+        df <- filter(chunk(), osg_soundvel1 > 0)
+        wf <- filter(chunk(), m_water_depth > 0)
+        
+        plot <- 
+          ggplot(data = df,
+                 aes(x=m_present_time,
+                     y=osg_depth,
+                     #z=osg_soundvel1
+                 )) +
+          geom_point(
+            aes(color = osg_soundvel1)
+          ) +
+          #geom_hline(yintercept = 0) +
+          scale_y_reverse() +
+          scale_colour_viridis_c() +
+          geom_point(data = wf,
+                     aes(y = m_water_depth),
+                     size = 0.3,
+                     color = "black",
+                     na.rm = TRUE
+          ) +
+          theme_bw() +
+          labs(title = "Sound Velocity",
+               caption = "Calculated using Coppens <i>et al.</i> (1981)",
+               y = "Depth (m)",
+               x = "Date") +
+          theme(plot.title = element_text(size = 32)) +
+          theme(axis.title = element_text(size = 16)) +
+          theme(axis.text = element_text(size = 12)) +
+          theme(plot.caption = element_markdown())
+      }
+      
+      if (input$derivedType == "Density"){
+        df <- filter(chunk(), osg_rho > 0)
+        wf <- filter(chunk(), m_water_depth > 0)
+        
+        plot <- 
+          ggplot(
+            data = 
+              df,
+            aes(x=m_present_time,
+                y=osg_depth,
+                #z=.data[[input$display_varLive]],
+                colour = osg_rho,
+            )) +
+          geom_point(
+            # size = 2,
+            # na.rm = TRUE
+          ) +
+          # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
+          #geom_hline(yintercept = 0) +
+          scale_y_reverse() +
+          scale_colour_viridis_c() +
+          geom_point(data = wf,
+                     aes(y = m_water_depth),
+                     size = 0.3,
+                     color = "black",
+                     na.rm = TRUE
+          ) +
+          theme_bw() +
+          labs(title = "Density at Depth",
+               y = "Depth (m)",
+               x = "Date") +
+          theme(plot.title = element_text(size = 32)) +
+          theme(axis.title = element_text(size = 16)) +
+          theme(axis.text = element_text(size = 12))
+      }
+      
+      if (input$derivedType == "Salinity"){
+        df <- filter(chunk(), osg_salinity > 0)
+        wf <- filter(chunk(), m_water_depth > 0)
+        
+        plot <- 
+          ggplot(
+            data = 
+              df,
+            aes(x=m_present_time,
+                y=osg_depth,
+                #z=.data[[input$display_varLive]],
+                colour = osg_salinity,
+            )) +
+          geom_point(
+            # size = 2,
+            # na.rm = TRUE
+          ) +
+          # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
+          #geom_hline(yintercept = 0) +
+          scale_y_reverse() +
+          scale_colour_viridis_c() +
+          geom_point(data = wf,
+                     aes(y = m_water_depth),
+                     size = 0.3,
+                     color = "black",
+                     na.rm = TRUE
+          ) +
+          theme_bw() +
+          labs(title = "Salinity at Depth",
+               y = "Depth (m)",
+               x = "Date") +
+          theme(plot.title = element_text(size = 32)) +
+          theme(axis.title = element_text(size = 16)) +
+          theme(axis.text = element_text(size = 12))
+      }
+      
+      plot
       
     })
     
-    output$souPlot <- renderPlot({gg3()})
+    output$tsPlot <- renderPlot({gg3()})
 
   })
 }
