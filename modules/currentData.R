@@ -297,14 +297,16 @@ currentData_server <- function(id, gliderName) {
     
     load(paste0("/echos/", gliderName, "/glider_live.RData"))
     
-    startDateLive <- as_datetime(min(gliderdf$m_present_time))
-    endDateLive <- as_datetime(max(gliderdf$m_present_time))
+    startDateLive <- as_datetime(min(gliderdf$m_present_time), tz = "America/New_York")
+    endDateLive <- as_datetime(max(gliderdf$m_present_time), tz = "America/New_York")
     
     #get start/end days and update data filters
     updateAirDateInput(session, "date1Live", NULL, value = startDateLive, 
-                       options = list(minDate = startDateLive, maxDate = endDateLive))
+                       options = list(minDate = startDateLive, maxDate = endDateLive,
+                                      timeFormat = "HH:mm"))
     updateAirDateInput(session, "date2Live", NULL, value = endDateLive, 
-                       options = list(minDate = startDateLive, maxDate = endDateLive))
+                       options = list(minDate = startDateLive, maxDate = endDateLive,
+                                      timeFormat = "HH:mm"))
     
     updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
     updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
