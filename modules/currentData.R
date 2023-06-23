@@ -81,7 +81,7 @@ currentData_ui <- function(id) {
                                    column(
                                      9,
                                      # h4("Brush and double-click to zoom (double-click again to reset)"),
-                                     plotOutput(
+                                     girafeOutput(
                                        outputId = ns("sciPlotLive"),
                                        # dblclick = "sciPlot_dblclick",
                                        # brush = brushOpts(id = "sciPlot_brush",
@@ -115,7 +115,7 @@ currentData_ui <- function(id) {
                                      column(
                                        9,
                                        # h4("Brush and double-click to zoom (double-click again to reset)"),
-                                       plotOutput(
+                                       girafeOutput(
                                          outputId = ns("fliPlotLive"),
                                          # dblclick = "fliPlot_dblclick",
                                          # brush = brushOpts(id = "fliPlot_brush",
@@ -138,7 +138,7 @@ currentData_ui <- function(id) {
                                               #downloadButton('downloadSouPlot')
                                             )),
                                      column(9,
-                                            plotOutput(outputId = ns("tsPlotLive"),
+                                            girafeOutput(outputId = ns("tsPlotLive"),
                                                        #height = "600px"
                                             )
                                      )
@@ -361,8 +361,9 @@ currentData_server <- function(id, gliderName) {
             y=osg_i_depth,
             #z=.data[[input$display_varLive]],
             colour = .data[[input$display_varLive]],
+            tooltip = .data[[input$display_varLive]]
         )) +
-        geom_point(
+        geom_point_interactive(
           # size = 2,
           na.rm = TRUE
         ) +
@@ -388,7 +389,9 @@ currentData_server <- function(id, gliderName) {
       
     })
     
-    output$sciPlotLive <- renderPlot({gg1Live()})
+    output$sciPlotLive <- renderGirafe(girafe(code = print(gg1Live()),
+                                              width_svg = 12, height_svg = 5
+                                              ))
     
     #flight plot
     gg2Live <- reactive({
@@ -404,8 +407,9 @@ currentData_server <- function(id, gliderName) {
         aes(x = m_present_time,
             y = count,
             color = variable,
-            shape = variable)) +
-        geom_point() +
+            shape = variable,
+            tooltip = count)) +
+        geom_point_interactive() +
         #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
         theme_bw() +
         labs(#title = paste0(missionNum, " Flight Data"),
@@ -418,7 +422,8 @@ currentData_server <- function(id, gliderName) {
       
     })
     
-    output$fliPlotLive <- renderPlot({gg2Live()})
+    output$fliPlotLive <- renderGirafe(girafe(code = print(gg2Live()),
+                                              width_svg = 12, height_svg = 5))
     
     ##### derived Live plots #########
     gg3Live <- reactive({
@@ -435,7 +440,7 @@ currentData_server <- function(id, gliderName) {
                 #color = segment,
                 #shape = variable
             )) +
-          geom_point(size = 3,
+          geom_point_interactive(size = 3,
                      pch = 1) +
           # scale_color_gradient(
           #   low = "red",
@@ -467,8 +472,8 @@ currentData_server <- function(id, gliderName) {
                      y=osg_depth,
                      #z=osg_soundvel1
                  )) +
-          geom_point(
-            aes(color = osg_soundvel1)
+          geom_point_interactive(
+            aes(color = osg_soundvel1, tooltip = osg_soundvel1)
           ) +
           #geom_hline(yintercept = 0) +
           scale_y_reverse() +
@@ -502,8 +507,9 @@ currentData_server <- function(id, gliderName) {
                 y=osg_depth,
                 #z=.data[[input$display_varLive]],
                 colour = osg_rho,
+                tooltip = osg_rho
             )) +
-          geom_point(
+          geom_point_interactive(
             # size = 2,
             # na.rm = TRUE
           ) +
@@ -538,8 +544,9 @@ currentData_server <- function(id, gliderName) {
                 y=osg_depth,
                 #z=.data[[input$display_varLive]],
                 colour = osg_salinity,
+                tooltip = osg_salinity
             )) +
-          geom_point(
+          geom_point_interactive(
             # size = 2,
             # na.rm = TRUE
           ) +
@@ -566,7 +573,8 @@ currentData_server <- function(id, gliderName) {
       
     })
     
-    output$tsPlotLive <- renderPlot({gg3Live()})
+    output$tsPlotLive <- renderGirafe(girafe(code = print(gg3Live()),
+                                             width_svg = 12, height_svg = 5))
     
     #### psuedograms ########
     

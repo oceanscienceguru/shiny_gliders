@@ -19,6 +19,7 @@ library(lubridate)
 library(egg)
 library(shinyWidgets)
 library(shinyglide)
+library(ggiraph)
 
 source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")
