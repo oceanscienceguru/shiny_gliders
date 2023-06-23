@@ -297,8 +297,8 @@ currentData_server <- function(id, gliderName) {
     
     load(paste0("/echos/", gliderName, "/glider_live.RData"))
     
-    startDateLive <- as_datetime(min(gliderdf$m_present_time), tz = "America/New_York")
-    endDateLive <- as_datetime(max(gliderdf$m_present_time), tz = "America/New_York")
+    startDateLive <- as_datetime(min(gliderdf$m_present_time), tz = "UTC")
+    endDateLive <- as_datetime(max(gliderdf$m_present_time), tz = "UTC")
     
     #get start/end days and update data filters
     updateAirDateInput(session, "date1Live", NULL, value = startDateLive, 
