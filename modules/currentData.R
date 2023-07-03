@@ -380,7 +380,7 @@ currentData_server <- function(id, gliderName) {
                    na.rm = TRUE
         ) +
         theme_bw() +
-        labs(#title = paste0(missionNum, " Science Data"),
+        labs(title = paste0(gliderName, " Current Data"),
           y = "Depth (m)",
           x = "Date") +
         theme(plot.title = element_text(size = 32)) +
@@ -419,7 +419,7 @@ currentData_server <- function(id, gliderName) {
         geom_point_interactive() +
         #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
         theme_bw() +
-        labs(#title = paste0(missionNum, " Flight Data"),
+        labs(title = paste0(gliderName, " Current Data"),
           x = "Date") +
         theme(plot.title = element_text(size = 32)) +
         theme(axis.title = element_text(size = 16)) +

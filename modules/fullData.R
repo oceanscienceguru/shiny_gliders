@@ -146,6 +146,41 @@ fullData_ui <- function(id) {
                                  ) %>% withSpinner(color="#0dc5c1")
                           )
                         ),),
+               #data explorer tab
+               tabPanel(title = "Data Explorer",
+                        fluidRow(
+                          column(3,
+                                 wellPanel(
+                                   selectInput(inputId = ns("exploreVar1"),
+                                               label = "x-axis variable",
+                                               choices = NULL,
+                                               selected = NULL),
+                                   selectInput(inputId = ns("exploreVar2"),
+                                               label = "y-axis variable",
+                                               choices = NULL, 
+                                               selected = NULL),
+                                   numericInput(inputId = ns("exploreMin"),
+                                                label = "x-axis minimum",
+                                                NULL),
+                                   numericInput(inputId = ns("exploreMax"),
+                                                label = "x-axis maximum",
+                                                NULL),
+                                   checkboxInput(inputId = ns("exploreRevAxis"),
+                                                 label = "Invert y-axis"),
+                                   checkboxInput(inputId = ns("exploreSmooth"),
+                                                 label = "Smooth")
+                                   # numericInput(inputId = "derivedmaxLive",
+                                   #              label = "Axis Maximum",
+                                   #              NULL),
+                                   #downloadButton('downloadSouPlot')
+                                 )),
+                          column(9,
+                                 plotOutput(outputId = ns("explorePlot"),
+                                            #height = "600px"
+                                 ) %>% withSpinner(color="#0dc5c1")
+                          )
+                        )
+                        ),
                #sound velocity tab
                # tabPanel(title = "Sound Velocity",
                #          fluidRow(
@@ -417,6 +452,8 @@ fullData_server <- function(id) {
       #possible add ... from masterdata
       #mutate(new_water_depth = m_water_depth * (1500/soundvel1))
       
+      allvars <- colnames(df)
+      
       #pull out science variables
       scivars <- df %>%
         select(starts_with(c("sci","osg"))) %>%
@@ -441,6 +478,9 @@ fullData_server <- function(id) {
                          options = list(minDate = startDate, maxDate = endDate))
       updateSelectInput(session, "display_var", NULL, choices = c(scivars), selected = "sci_water_temp")
       updateSelectizeInput(session, "flight_var", NULL, choices = c(flightvars), selected = "m_roll")
+      
+      updateSelectInput(session, "exploreVar1", NULL, choices = c(allvars), selected = "m_present_time")
+      updateSelectInput(session, "exploreVar2", NULL, choices = c(allvars), selected = head(allvars, 1))
       
       showNotification("Data loaded", type = "message")
       
@@ -855,7 +895,7 @@ fullData_server <- function(id) {
             shape = variable)) +
         geom_point() +
         coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
-        theme_grey() +
+        theme_bw() +
         labs(title = paste0(missionNum$id, " Flight Data"),
              x = "Date") +
         theme(plot.title = element_text(size = 32)) +
@@ -1078,6 +1118,61 @@ fullData_server <- function(id) {
     })
     
     output$tsPlot <- renderPlot({gg3()})
+    
+    ########## explorer plot #########
+    
+    exploreChunk <- reactive({
+      select(chunk(), input$exploreVar1, input$exploreVar2)
+      #filter(input$exploreVar1 >= input$exploreMin & input$exploreVar1 <= input$exploreMax)
+      
+      
+        # pivot_longer(
+        #   cols = !input$exploreVar2,
+        #   names_to = "variable",
+        #   values_to = "count") %>%
+        # filter(!is.na(count))
+        # 
+      # if(!is.null(input$exploreFilter1)){
+      #   filter()
+      # }
+    })
+
+    ggExplore <- reactive({
+
+      explorePlot <- ggplot(
+        data =
+          exploreChunk(),
+        # aes(x = count,
+        #     y = .data[[input$exploreVar2]],
+        #     color = variable,
+        #     shape = variable)) +
+        aes(x = .data[[input$exploreVar1]],
+            y = .data[[input$exploreVar2]],
+            #color = .data[[input$exploreVar1]],
+            #shape = variable
+            )) +
+        geom_point(na.rm = TRUE) +
+        theme_bw() +
+        labs(title = paste0(missionNum$id, " Data"),
+             #x = "Value"
+             ) +
+        theme(plot.title = element_text(size = 32)) +
+        theme(axis.title = element_text(size = 16)) +
+        theme(axis.text = element_text(size = 12))
+      
+      if(input$exploreRevAxis == TRUE){
+        explorePlot <- explorePlot + scale_y_reverse()
+          
+      }
+      
+      if(input$exploreSmooth == TRUE){
+        explorePlot <- explorePlot + geom_smooth(method=NULL, se=TRUE)
+      }
+      explorePlot
+      
+    })
+    
+    output$explorePlot <- renderPlot({ggExplore()})
 
   })
 }
