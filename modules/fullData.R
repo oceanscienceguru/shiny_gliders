@@ -159,12 +159,12 @@ fullData_ui <- function(id) {
                                                label = "y-axis variable",
                                                choices = NULL, 
                                                selected = NULL),
-                                   numericInput(inputId = ns("exploreMin"),
-                                                label = "x-axis minimum",
-                                                NULL),
-                                   numericInput(inputId = ns("exploreMax"),
-                                                label = "x-axis maximum",
-                                                NULL),
+                                   # numericInput(inputId = ns("exploreMin"),
+                                   #              label = "x-axis minimum",
+                                   #              NULL),
+                                   # numericInput(inputId = ns("exploreMax"),
+                                   #              label = "x-axis maximum",
+                                   #              NULL),
                                    checkboxInput(inputId = ns("exploreRevAxis"),
                                                  label = "Invert y-axis"),
                                    checkboxInput(inputId = ns("exploreSmooth"),
@@ -1168,6 +1168,7 @@ fullData_server <- function(id) {
       if(input$exploreSmooth == TRUE){
         explorePlot <- explorePlot + geom_smooth(method=NULL, se=TRUE)
       }
+      
       explorePlot
       
     })
