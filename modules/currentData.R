@@ -69,6 +69,11 @@ currentData_ui <- function(id) {
                                               label = "Which science variable to display",
                                               choices = NULL
                                             ),
+                                            # checkboxInput(
+                                            #   inputId = ns("zeroFilter"),
+                                            #   label = "Filter data > 0?",
+                                            #   value = TRUE
+                                            # ),
                                             h4("Color Scale Override"),
                                             numericInput(inputId = ns("minLive"),
                                                          label = "Sci Axis Minimum",
@@ -317,6 +322,7 @@ currentData_server <- function(id, gliderName) {
     
     gliderChunk_live <- reactive({
       soFar <- interval(input$date1Live, input$date2Live)
+      #soFar <- interval(force_tz(input$date1Live, "UTC"), force_tz(input$date2Live, "UTC"))
       
       df <- gliderdf %>%
         filter(m_present_time %within% soFar)
@@ -334,6 +340,11 @@ currentData_server <- function(id, gliderName) {
       qf <- gliderChunk_live() %>%
         select(c(m_present_time, osg_i_depth, any_of(input$display_varLive))) %>%
         filter(!is.na(across(!c(m_present_time:osg_i_depth))))
+      
+      # if(isTRUE(input$zeroFilter)){
+      #   qf <- qf %>%
+      #     filter(input$display_varLive > 0)
+      # }
       
       qf
       
@@ -382,10 +393,12 @@ currentData_server <- function(id, gliderName) {
         theme_bw() +
         labs(title = paste0(gliderName, " Current Data"),
           y = "Depth (m)",
-          x = "Date") +
+          x = "Date",
+          caption = "<img src='./www/cms_horiz.png' width='200'/>") +
         theme(plot.title = element_text(size = 32)) +
         theme(axis.title = element_text(size = 16)) +
-        theme(axis.text = element_text(size = 12))
+        theme(axis.text = element_text(size = 12)) +
+        theme(plot.caption = element_markdown())
       
       sciLive
       
@@ -420,10 +433,12 @@ currentData_server <- function(id, gliderName) {
         #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
         theme_bw() +
         labs(title = paste0(gliderName, " Current Data"),
-          x = "Date") +
+          x = "Date",
+          caption = "<img src='./www/cms_horiz.png' width='200'/>") +
         theme(plot.title = element_text(size = 32)) +
         theme(axis.title = element_text(size = 16)) +
-        theme(axis.text = element_text(size = 12))
+        theme(axis.text = element_text(size = 12),
+              plot.caption = element_markdown())
       
       fliLive 
       
@@ -465,12 +480,13 @@ currentData_server <- function(id, gliderName) {
                x = "Salinity",
                y = "Potential Temperature",
                #color = "Time",
-               #caption = "Red = older ... Blue = more recent"
+               #caption = "Red = older ... Blue = more recent",
+               caption = "<img src='./www/cms_horiz.png' width='200'/>"
           ) +
           theme(plot.title = element_text(size = 32),
                 axis.title = element_text(size = 16),
                 axis.text = element_text(size = 12),
-                plot.caption = element_text(size = 16),
+                plot.caption = element_markdown(),
                 legend.position ="none",
           ) 
       }
@@ -499,7 +515,10 @@ currentData_server <- function(id, gliderName) {
           ) +
           theme_bw() +
           labs(title = "Sound Velocity",
-               caption = "Calculated using Coppens <i>et al.</i> (1981)",
+               caption = "Calculated using Coppens <i>et al.</i> (1981) 
+               <br>
+               <br>
+               <img src='./www/cms_horiz.png' width='200'/>",
                y = "Depth (m)",
                x = "Date") +
           theme(plot.title = element_text(size = 32)) +
@@ -539,10 +558,12 @@ currentData_server <- function(id, gliderName) {
           theme_bw() +
           labs(title = "Density at Depth",
                y = "Depth (m)",
-               x = "Date") +
+               x = "Date",
+               caption = "<img src='./www/cms_horiz.png' width='200'/>") +
           theme(plot.title = element_text(size = 32)) +
           theme(axis.title = element_text(size = 16)) +
-          theme(axis.text = element_text(size = 12))
+          theme(axis.text = element_text(size = 12),
+                plot.caption = element_markdown())
       }
       
       if (input$derivedTypeLive == "Salinity"){
@@ -576,10 +597,12 @@ currentData_server <- function(id, gliderName) {
           theme_bw() +
           labs(title = "Salinity at Depth",
                y = "Depth (m)",
-               x = "Date") +
+               x = "Date",
+               caption = "<img src='./www/cms_horiz.png' width='200'/>") +
           theme(plot.title = element_text(size = 32)) +
           theme(axis.title = element_text(size = 16)) +
-          theme(axis.text = element_text(size = 12))
+          theme(axis.text = element_text(size = 12),
+                plot.caption = element_markdown())
       }
       
       plot
@@ -671,7 +694,8 @@ currentData_server <- function(id, gliderName) {
           labs(title = paste0(selectPgram$seg, " Pseudogram"),
                y = "Depth (m)",
                x = "Date/Time (UTC)",
-               colour = "dB") +
+               colour = "dB",
+               caption = "<img src='./www/cms_horiz.png' width='200'/>") +
           theme(plot.title = element_text(size = 32),
                 axis.title = element_text(size = 16),
                 axis.text = element_text(size = 12),
