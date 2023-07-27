@@ -1,4 +1,4 @@
-ssv_to_rds <- function(inputFile, missionNumber, gliderName) {
+ssv_to_rds <- function(inputFile, missionNumber, gliderName, mapGen = FALSE) {
 
 library(tidyverse)
 library(lubridate)
@@ -66,9 +66,16 @@ raw <- raw %>%
 
 gps <- raw %>%
   select(m_present_time, m_gps_lat, m_gps_lon) %>%
-  mutate(lat = gliderGPS_to_dd(m_gps_lat),
-         long = gliderGPS_to_dd(m_gps_lon)) %>%
-  select(m_present_time, lat, long)
+  filter(!is.na(m_gps_lat)) %>% #clean up input for conversion
+  mutate(latt = format(m_gps_lat, nsmall = 4),
+         longg = format(m_gps_lon, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
+  mutate(lat = gliderGPS_to_dd(latt),
+         long = gliderGPS_to_dd(longg)) %>%
+  # mutate(lat = gliderGPS_to_dd(m_gps_lat),
+  #        long = gliderGPS_to_dd(m_gps_lon)) %>%
+  select(m_present_time, lat, long) %>%
+  filter(lat >= -90 & lat <= 90) %>% #remove illegal values
+  filter(long >= -180 & long <= 180)
 
 library(zoo)
 
@@ -106,5 +113,9 @@ gliderdf <- raw %>%
                                        sci_water_temp))
 
 save(gliderdf, gliderName, file = paste0("./Data/",missionNum,"_",gliderName,".RData"))
+
+if(isTRUE(mapGen)){
+  write.csv(gps, file = paste0("./KML/",missionNum,"_",gliderName,".csv"))
+}
 
 }
