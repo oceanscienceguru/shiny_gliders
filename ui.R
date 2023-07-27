@@ -64,8 +64,14 @@
                                choices = c("",
                                            fleetGliders$V1),
                                selected = NULL
-                             ),
+                             )),
                            screen(
+                             h3("Generate map?"),
+                             checkboxInput(
+                               inputId = "generateMap",
+                               label = "Generate map using ssv",
+                               value = TRUE
+                             ),
                              h3("Upload whole-mission .ssv"),
                              fileInput(
                                inputId = "upload",
@@ -80,7 +86,7 @@
                                           )
                              )
                            )
-                           )))
+                           ))
                          # fluidPage(
                          # 
                          #   #file upload row

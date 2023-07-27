@@ -361,9 +361,13 @@ fullData_server <- function(id) {
     #mission map 
     output$missionmap <- renderLeaflet({
       
+      if(file.exists(paste0("./KML/", input$mission, ".kml"))){
       #grab .kml per mission number
       raw_sf <- st_read(paste0("./KML/", input$mission, ".kml"),
                         layer = "Surfacings")
+      
+      # raw_sf <- st_read(paste0("./thebrewery/KML/", "M112", ".kml"),
+      #                   layer = "Surfacings")
       
       #pull out only relevant portion
       KML_sf <- raw_sf %>%
@@ -377,6 +381,14 @@ fullData_server <- function(id) {
         mutate(long = st_coordinates(.)[,1],
                lat = st_coordinates(.)[,2]) %>%
         st_drop_geometry()
+      } else {
+        mapUp <- read.csv(paste0("./KML/", input$mission, ".csv")) %>%
+          select(m_present_time, long, lat)
+        #mapUp2 <- read.csv(paste0("./thebrewery/KML/", "M103_usf-bass", ".csv"))
+        
+        map_sf <- mapUp %>%
+          mutate(Name = m_present_time)
+      }
       
       leaflet() %>%
         #base provider layers
