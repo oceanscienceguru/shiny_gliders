@@ -545,6 +545,9 @@ fullData_server <- function(id) {
       })
       
       plotehunk <- reactive({
+        validate(
+          need(gliderReactor$name == "usf-stella", "These data require echosounder glider")
+        )
         req(input$echohistrange)
         
         pf <- filter(fullehunk, m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
@@ -563,6 +566,9 @@ fullData_server <- function(id) {
       })
       
       plotethunk <- reactive({
+        validate(
+          need(gliderReactor$name == "usf-stella", "These data require echosounder glider")
+        )
         req(input$echohistrange2)
         
         pf <- filter(fullehunk, m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
@@ -585,6 +591,7 @@ fullData_server <- function(id) {
       
       #### frequency polygon ####
       gg5 <- reactive({
+
         req(input$echohistrange)
         
         ggHist <- ggplot(data = plotehunk(),
@@ -648,7 +655,7 @@ fullData_server <- function(id) {
         #   filter(plotethunk(), cycle %in% input$todTgram)
         # } else { plotethunk()
         # },
-        
+
         ggEchoTime <-
           ggplot(data = plotethunk(),
                  aes(x = seg_time,
@@ -707,6 +714,9 @@ fullData_server <- function(id) {
       
       #process the requested pseudogram
       ehunk <- reactive({
+        validate(
+          need(gliderReactor$name == "usf-stella", "These data require echosounder glider")
+        )
         req(input$echo)
         
         ehunk <- pseudogram(paste0("/echos/layers/", selectPgram$seg, ".ssv"),
@@ -824,6 +834,9 @@ fullData_server <- function(id) {
     ########## science plot #########
     
     scienceChunk <- reactive({
+      validate(
+        need(gliderReactor$name != "", "Please click the Load Mission Data button")
+      )
       #req(input$display_var)
       
       select(chunk(), m_present_time, m_depth, input$display_var) %>%
@@ -831,6 +844,7 @@ fullData_server <- function(id) {
     })
     
     gg1 <- reactive({
+
       ggplot(data = 
                scienceChunk(),#dynamically filter the sci variable of interest
              aes(x=m_present_time,
@@ -877,7 +891,9 @@ fullData_server <- function(id) {
     ##### flight plot #####
     
     flightChunk <- reactive({
-      req(input$load)
+      validate(
+        need(gliderReactor$name != "", "Please click the Load Mission Data button")
+      )
       select(chunk(), m_present_time, all_of(input$flight_var)) %>%
         pivot_longer(
           cols = !m_present_time,
@@ -897,7 +913,7 @@ fullData_server <- function(id) {
       # } else if (input$flight_var == "m_heading") {
       #   flightxlabel <- "heading"
       # }
-      req(input$load)
+      #req(input$load)
       ggplot(
         data =
           flightChunk(),
@@ -985,6 +1001,9 @@ fullData_server <- function(id) {
     
     ##### derived plots #########
     gg3 <- reactive({
+      validate(
+        need(gliderReactor$name != "", "Please click the Load Mission Data button")
+      )
       
       if (input$derivedType == "TS Plot"){
         df <- filter(chunk(), osg_salinity > 0)
@@ -1134,6 +1153,9 @@ fullData_server <- function(id) {
     ########## explorer plot #########
     
     exploreChunk <- reactive({
+      validate(
+        need(gliderReactor$name != "", "Please click the Load Mission Data button")
+      )
       select(chunk(), input$exploreVar1, input$exploreVar2)
       #filter(input$exploreVar1 >= input$exploreMin & input$exploreVar1 <= input$exploreMax)
       
