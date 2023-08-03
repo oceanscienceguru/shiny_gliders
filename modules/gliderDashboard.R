@@ -185,7 +185,9 @@ gliderDashboard_server <- function(id, gliderName) {
       mutate(latt = format(m_gps_lat, nsmall = 4),
              longg = format(m_gps_lon, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
       mutate(lat = gliderGPS_to_dd(latt),
-             long = gliderGPS_to_dd(longg))
+             long = gliderGPS_to_dd(longg)) %>%
+      filter(lat >= -90 & lat <= 90) %>% #remove illegal values
+      filter(long >= -180 & long <= 180)
 
    # if (nrow(toGliderList) > 0){
     gotoFiles <- toGliderList %>%
