@@ -54,6 +54,23 @@ head <- read.csv(inputFile,
                  sep="", #whitespace as delimiter
                  nrows=1)
 
+#screen for required variables
+requiredVars <- c("m_present_time", 
+                  "m_gps_lat",
+                  "m_gps_lon", 
+                  "sci_water_cond",
+                  "sci_water_temp", 
+                  "sci_water_pressure")
+
+missing_columns <- setdiff(requiredVars, colnames(head))
+
+#stop function if missing anything and report
+if (length(missing_columns) > 0) {
+  stop(paste("Missing column(s):", paste(missing_columns, collapse = ", ")))
+} else {
+  message("All required columns are present.")
+}
+
 raw <- read.csv(inputFile,
                 sep="", #whitespace as delimiter
                 skip=2,
@@ -64,6 +81,7 @@ colnames(raw) <- colnames(head)
 raw <- raw %>%
   mutate(m_present_time = as_datetime(m_present_time)) #convert to POSIXct
 
+#lots of GPS massaging
 gps <- raw %>%
   select(m_present_time, m_gps_lat, m_gps_lon) %>%
   filter(!is.na(m_gps_lat)) %>% #clean up input for conversion
@@ -95,15 +113,7 @@ raw$m_present_time <- as_datetime(floor(seconds(raw$m_present_time)))
 
 gliderdf <- raw %>%
   left_join(igps) %>%
-  mutate(status = if_else(m_avg_depth_rate > 0, "dive", "climb")) %>%
-  fill(status) %>%
-  #convert from rad to degrees for some vars
-  mutate(m_roll = m_roll * 180/pi) %>%
-  mutate(m_heading = m_heading * 180/pi) %>%
-  mutate(c_heading = c_heading * 180/pi) %>%
-  mutate(m_fin = m_fin * 180/pi) %>%
-  mutate(c_fin = c_fin * 180/pi) %>%
-  mutate(m_pitch = m_pitch * 180/pi) %>%
+  #compute some derived variables with CTD data
   mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
   mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
   mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
