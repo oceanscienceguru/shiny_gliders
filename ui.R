@@ -66,13 +66,15 @@
                                selected = NULL
                              )),
                            screen(
-                             h3("Generate map?"),
+                             h3("Upload whole-mission .ssv"),
+                             p("SSV must have: ", code("m_present_time, m_gps_lat,
+                               m_gps_lon, sci_water_cond, sci_water_temp, sci_water_pressure")),
+                             br(),
                              checkboxInput(
                                inputId = "generateMap",
-                               label = "Generate map using ssv",
+                               label = "Generate map using SSV?",
                                value = TRUE
                              ),
-                             h3("Upload whole-mission .ssv"),
                              fileInput(
                                inputId = "upload",
                                label = "Select file:",
