@@ -7,10 +7,12 @@ currentData_ui <- function(id) {
   
   tagList(
     fluidPage(
-      tabsetPanel(
-        tabPanel(title = "Piloting",
-                 column(2,
-                        wellPanel(h4("Data Filtering"),
+      fluidRow(
+        box(title = "Date Filtering",
+            width = 12,
+            collapsible = TRUE,
+            collapsed = TRUE,
+                        box(
                                   airDatepickerInput(
                                     inputId = ns("date1Live"),
                                     label = "Start Date:",
@@ -55,9 +57,12 @@ currentData_ui <- function(id) {
                                   #   selected = c("dive")
                                   # )
                         )),
-                 column(10,
+      ),
+                 fluidRow(
                         #mainPanel(#science variable settings
                         tabsetPanel(
+                          id = ns("x"),
+                          #width = 12,
                           # tabPanel(title = "Map",
                           #          leafletOutput(outputId = "missionmapLive",
                           #                        height = "600px")),
@@ -148,157 +153,17 @@ currentData_ui <- function(id) {
                                             )
                                      )
                                    ),),
-                          #selected = "Map"
                         )
-                 )
-        ),
-        tabPanel(title = "Pseudograms",
-                 column(2,
-                        wellPanel(
-                          selectInput(
-                            inputId = ns("echo"),
-                            label = "Which pseudogram to display",
-                            choices = NULL,
-                            selected =  NULL
-                          ),
-                          selectInput(
-                            inputId = ns("echoColor"),
-                            label = "Color scheme",
-                            choices = c("EK", "magma", "viridis"),
-                            selected =  "EK"
-                          ),
-                          #downloadButton('downloadEchoPlot')
-                        )),
-                 column(10,
-                        plotOutput(
-                          outputId = ns("echoPlot"),
-                          #dblclick = "fliPlot_dblclick",
-                          #brush = brushOpts(id = "fliPlot_brush",
-                          #                  resetOnNew = TRUE),
-                          #height = "600px"
-                        ),
-                        hr(),
-                        column(3,
-                               actionButton(
-                                 inputId = ns("oldestPgram"),
-                                 label = "Oldest",
-                                 #icon("boat"),
-                                 style =
-                                   "color: #fff; background-color: #000000; border-color: #2e6da4"
-                               ), align = "center"),
-                        column(3,
-                               actionButton(
-                                 inputId = ns("prevPgram"),
-                                 label = "Previous",
-                                 #icon("boat"),
-                                 style =
-                                   "color: #fff; background-color: #000000; border-color: #2e6da4"
-                               ), align = "center"),
-                        column(3,
-                               actionButton(
-                                 inputId = ns("nextPgram"),
-                                 label = "Next",
-                                 #icon("boat"),
-                                 style =
-                                   "color: #fff; background-color: #000000; border-color: #2e6da4"
-                               ), align = "center"),
-                        column(3,
-                               actionButton(
-                                 inputId = ns("latestPgram"),
-                                 label = "Latest",
-                                 #icon("boat"),
-                                 style =
-                                   "color: #fff; background-color: #000000; border-color: #2e6da4"
-                               ), align = "center"),
-                 )),
-        tabPanel(title = "Pseudotimegram",
-                 column(2,
-                        wellPanel(
-                          actionButton(
-                            inputId = ns("fullecho2"),
-                            label = "Plot!",
-                            #icon("boat"),
-                            style =
-                              "color: #fff; background-color: #963ab7; border-color: #2e6da4"
-                          ),
-                          dateRangeInput(ns("echohistrange2"), "Date range:",
-                                         start  = NULL,
-                                         end    = NULL,
-                                         min    = NULL,
-                                         max    = NULL,
-                                         format = "mm/dd/yy",
-                                         separator = " - "),
-                          sliderInput(ns("echohour2"),
-                                      "Hour:",
-                                      min = 0,  max = 24, value = c(0, 24)),
-                          selectInput(
-                            inputId = ns("echoColor2"),
-                            label = "Color scheme",
-                            choices = c("EK", "magma", "viridis"),
-                            selected =  "EK"
-                          ),
-                          checkboxGroupInput(
-                            inputId = ns("todTgram"),
-                            label = "Time of day",
-                            choices = c("day", "night"),
-                            selected = c("day", "night")
-                          ),
-                          #downloadButton('downloadEchoHist2')
-                        )),
-                 column(10,
-                        plotOutput(
-                          outputId = ns("echoTime"),
-                          #dblclick = "fliPlot_dblclick",
-                          #brush = brushOpts(id = "fliPlot_brush",
-                          #                  resetOnNew = TRUE),
-                          #height = "600px"
-                        ) %>% withSpinner(color="#0dc5c1")
-                 )),
-        tabPanel(title = "Frequency Polygon",
-                 column(2,
-                        wellPanel(
-                          actionButton(
-                            inputId = ns("fullecho"),
-                            label = "Plot!",
-                            #icon("boat"),
-                            style =
-                              "color: #fff; background-color: #963ab7; border-color: #2e6da4"
-                          ),
-                          dateRangeInput(ns("echohistrange"), "Date range:",
-                                         start  = NULL,
-                                         end    = NULL,
-                                         min    = NULL,
-                                         max    = NULL,
-                                         format = "mm/dd/yy",
-                                         separator = " - "),
-                          numericInput(
-                            inputId = ns("depthbin"),
-                            label = "Depth Bin Size",
-                            value = 3,
-                            min = 1,
-                            max = 1000
-                          ),
-                          sliderInput(ns("echohour"),
-                                      "Hour:",
-                                      min = 0,  max = 24, value = c(0, 24)),
-                          #downloadButton('downloadEchoHist')
-                        )),
-                 column(10,
-                        plotOutput(
-                          outputId = ns("echoHist"),
-                          #dblclick = "fliPlot_dblclick",
-                          #brush = brushOpts(id = "fliPlot_brush",
-                          #                  resetOnNew = TRUE),
-                          #height = "600px"
-                        ) %>% withSpinner(color="#0dc5c1")
-                 ))
-      ))
+        )
+      )
   )
 }
 
 currentData_server <- function(id, gliderName) {
   
   moduleServer(id, function(input, output, session) {
+    
+    ns <- NS(id)
     
     load(paste0("/echos/", gliderName, "/glider_live.RData"))
     
@@ -318,7 +183,169 @@ currentData_server <- function(id, gliderName) {
     
     updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
     
-    
+    #check if echosounder glider and update tabs if so
+    if(gliderName == "usf-stella"){
+      
+      appendTab(inputId = "x",
+                select = F,
+                tabPanel(title = "Pseudograms",
+                                          column(2,
+                                                 wellPanel(
+                                                   selectInput(
+                                                     inputId = ns("echo"),
+                                                     label = "Which pseudogram to display",
+                                                     choices = NULL,
+                                                     selected =  NULL
+                                                   ),
+                                                   selectInput(
+                                                     inputId = ns("echoColor"),
+                                                     label = "Color scheme",
+                                                     choices = c("EK", "magma", "viridis"),
+                                                     selected =  "EK"
+                                                   ),
+                                                   #downloadButton('downloadEchoPlot')
+                                                 )),
+                                          column(10,
+                                                 plotOutput(
+                                                   outputId = ns("echoPlot"),
+                                                   #dblclick = "fliPlot_dblclick",
+                                                   #brush = brushOpts(id = "fliPlot_brush",
+                                                   #                  resetOnNew = TRUE),
+                                                   #height = "600px"
+                                                 ),
+                                                 hr(),
+                                                 column(3,
+                                                        actionButton(
+                                                          inputId = ns("oldestPgram"),
+                                                          label = "Oldest",
+                                                          #icon("boat"),
+                                                          style =
+                                                            "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                                        ), align = "center"),
+                                                 column(3,
+                                                        actionButton(
+                                                          inputId = ns("prevPgram"),
+                                                          label = "Previous",
+                                                          #icon("boat"),
+                                                          style =
+                                                            "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                                        ), align = "center"),
+                                                 column(3,
+                                                        actionButton(
+                                                          inputId = ns("nextPgram"),
+                                                          label = "Next",
+                                                          #icon("boat"),
+                                                          style =
+                                                            "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                                        ), align = "center"),
+                                                 column(3,
+                                                        actionButton(
+                                                          inputId = ns("latestPgram"),
+                                                          label = "Latest",
+                                                          #icon("boat"),
+                                                          style =
+                                                            "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                                        ), align = "center"),
+                                          ),
+
+                )
+      )
+      appendTab(inputId = "x",
+                select = F,
+                tabPanel(title = "Pseudotimegram",
+                         column(2,
+                                wellPanel(
+                                  actionButton(
+                                    inputId = ns("fullecho2"),
+                                    label = "Plot!",
+                                    #icon("boat"),
+                                    style =
+                                      "color: #fff; background-color: #963ab7; border-color: #2e6da4"
+                                  ),
+                                  dateRangeInput(ns("echohistrange2"), "Date range:",
+                                                 start  = NULL,
+                                                 end    = NULL,
+                                                 min    = NULL,
+                                                 max    = NULL,
+                                                 format = "mm/dd/yy",
+                                                 separator = " - "),
+                                  sliderInput(ns("echohour2"),
+                                              "Hour:",
+                                              min = 0,  max = 24, value = c(0, 24)),
+                                  selectInput(
+                                    inputId = ns("echoColor2"),
+                                    label = "Color scheme",
+                                    choices = c("EK", "magma", "viridis"),
+                                    selected =  "EK"
+                                  ),
+                                  checkboxGroupInput(
+                                    inputId = ns("todTgram"),
+                                    label = "Time of day",
+                                    choices = c("day", "night"),
+                                    selected = c("day", "night")
+                                  ),
+                                  #downloadButton('downloadEchoHist2')
+                                )),
+                         column(10,
+                                plotOutput(
+                                  outputId = ns("echoTime"),
+                                  #dblclick = "fliPlot_dblclick",
+                                  #brush = brushOpts(id = "fliPlot_brush",
+                                  #                  resetOnNew = TRUE),
+                                  #height = "600px"
+                                ) %>% withSpinner(color="#0dc5c1")
+                         ))
+      )
+      appendTab(inputId = "x",
+                select = F,
+                tabPanel(title = "Frequency Polygon",
+                         column(2,
+                                wellPanel(
+                                  actionButton(
+                                    inputId = ns("fullecho"),
+                                    label = "Plot!",
+                                    #icon("boat"),
+                                    style =
+                                      "color: #fff; background-color: #963ab7; border-color: #2e6da4"
+                                  ),
+                                  dateRangeInput(ns("echohistrange"), "Date range:",
+                                                 start  = NULL,
+                                                 end    = NULL,
+                                                 min    = NULL,
+                                                 max    = NULL,
+                                                 format = "mm/dd/yy",
+                                                 separator = " - "),
+                                  numericInput(
+                                    inputId = ns("depthbin"),
+                                    label = "Depth Bin Size",
+                                    value = 3,
+                                    min = 1,
+                                    max = 1000
+                                  ),
+                                  sliderInput(ns("echohour"),
+                                              "Hour:",
+                                              min = 0,  max = 24, value = c(0, 24)),
+                                  #downloadButton('downloadEchoHist')
+                                )),
+                         column(10,
+                                plotOutput(
+                                  outputId = ns("echoHist"),
+                                  #dblclick = "fliPlot_dblclick",
+                                  #brush = brushOpts(id = "fliPlot_brush",
+                                  #                  resetOnNew = TRUE),
+                                  #height = "600px"
+                                ) %>% withSpinner(color="#0dc5c1")
+                         ))
+      )
+
+      
+    } else {
+      
+      removeTab(inputId = "x", target="Pseudograms")
+      removeTab(inputId = "x", target="Pseudotimegram")
+      removeTab(inputId = "x", target="Frequency Polygon")
+      
+    }
     
     gliderChunk_live <- reactive({
       soFar <- interval(input$date1Live, input$date2Live)
