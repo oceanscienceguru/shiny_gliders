@@ -8,7 +8,7 @@ currentData_ui <- function(id) {
   tagList(
     fluidPage(
       fluidRow(
-        box(title = "Data Filtering",
+        box(title = "Date Filtering",
             width = 12,
             collapsible = TRUE,
             collapsed = TRUE,
