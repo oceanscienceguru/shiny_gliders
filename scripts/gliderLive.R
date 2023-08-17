@@ -13,6 +13,7 @@ library(scales)
 source("/srv/shiny-server/thebrewery/scripts/ssv_to_df.R")
 source("/srv/shiny-server/thebrewery/scripts/pseudogram.R")
 source("/srv/shiny-server/thebrewery/scripts/depthInt.R")
+source("/srv/shiny-server/thebrewery/scripts/gliderGPS_to_dd.R")
   
 print(paste0(gliderName, ", ", ahrCap, "ahr capacity"))
 
@@ -107,9 +108,37 @@ gliderdfraw <- fdf %>%
 #interpolate across m_depth
 idepth <- depthInt(gliderdfraw)
 
-#join back in
+#interpolate across gps
+#lots of GPS massaging
+gps <- gliderdfraw %>%
+  select(m_present_time, m_gps_lat, m_gps_lon) %>%
+  filter(!is.na(m_gps_lat)) %>% #clean up input for conversion
+  mutate(latt = format(m_gps_lat, nsmall = 4),
+         longg = format(m_gps_lon, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
+  mutate(lat = gliderGPS_to_dd(latt),
+         long = gliderGPS_to_dd(longg)) %>%
+  # mutate(lat = gliderGPS_to_dd(m_gps_lat),
+  #        long = gliderGPS_to_dd(m_gps_lon)) %>%
+  select(m_present_time, lat, long) %>%
+  filter(lat >= -90 & lat <= 90) %>% #remove illegal values
+  filter(long >= -180 & long <= 180)
+
+library(zoo)
+
+full.time <- with(gps,seq(m_present_time[1],tail(m_present_time,1),by=1)) #grab full list of timestamps
+gps.zoo <- zoo(gps[2:3], gps$m_present_time) #convert to zoo
+result <- na.approx(gps.zoo, xout = full.time) #interpolate
+
+igps <- fortify.zoo(result) %>% #extract out as DF
+  rename(i_lat = lat) %>%
+  rename(i_lon = long) %>%
+  rename(m_present_time = Index) %>%
+  mutate(m_present_time = as_datetime(m_present_time))
+
+#join the interpolations back in
 gliderdf <- gliderdfraw %>%
-  left_join(idepth)
+  left_join(idepth) %>%
+  left_join(igps)
 
 #pull out science variables
 scivarsLive <- sdf %>%
