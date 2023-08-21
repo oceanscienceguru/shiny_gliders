@@ -3,12 +3,10 @@ depthInt <- function(inGliderdf, CTD = TRUE){
 library(tidyverse)
 library(lubridate)
 library(zoo)
-#library(echogram)
-
-#test <- palette.echogram(Svthr = -75, Svmax = -35, col.sep = 1, scheme = "echov", visu = FALSE)
 
   qf <- inGliderdf
   
+  #rename depthVar for processing
 if (CTD == TRUE){
   qf$depthVar = qf$osg_depth
 } else {

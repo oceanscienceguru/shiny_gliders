@@ -105,7 +105,7 @@ gliderdfraw <- fdf %>%
                                        osg_salinity,
                                        sci_water_temp))
 
-#interpolate across m_depth
+#interpolate across depth
 idepth <- depthInt(gliderdfraw, CTD = TRUE)
 
 #interpolate across gps
