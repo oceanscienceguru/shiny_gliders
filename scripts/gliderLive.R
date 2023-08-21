@@ -14,6 +14,8 @@ source("/srv/shiny-server/thebrewery/scripts/ssv_to_df.R")
 source("/srv/shiny-server/thebrewery/scripts/pseudogram.R")
 source("/srv/shiny-server/thebrewery/scripts/depthInt.R")
 source("/srv/shiny-server/thebrewery/scripts/gliderGPS_to_dd.R")
+source("/srv/shiny-server/thebrewery/scripts/identify_casts.R")
+source("/srv/shiny-server/thebrewery/scripts/add_yo_id.R")
   
 print(paste0(gliderName, ", ", ahrCap, "ahr capacity"))
 
@@ -135,10 +137,21 @@ igps <- fortify.zoo(result) %>% #extract out as DF
   rename(m_present_time = Index) %>%
   mutate(m_present_time = as_datetime(m_present_time))
 
-#join the interpolations back in
+#glider state algorithms
+gliderState <- gliderdfraw %>%
+  identify_casts(surface_threshold = 1) %>% #first cast identification pass with "surface" threshold
+  filter(cast != "Surface" & cast != "Unknown") %>% #strip out surface/unknown for yo ID
+  add_yo_id() %>%
+  full_join(gliderdfraw) %>% #rejoin with full set to get surface/unknown sections back
+  arrange(m_present_time) %>% #ensure chronological order
+  identify_casts(surface_threshold = 1) %>% #label cast state again
+  select(c(m_present_time, cast, yo_id)) #clean up
+
+#join the interpolations and states back in
 gliderdf <- gliderdfraw %>%
   left_join(idepth) %>%
-  left_join(igps)
+  left_join(igps) %>%
+  left_join(gliderState)
 
 #pull out science variables
 scivarsLive <- sdf %>%
