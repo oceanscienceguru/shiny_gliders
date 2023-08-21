@@ -1,4 +1,4 @@
-depthInt <- function(inGliderdf){
+depthInt <- function(inGliderdf, depthVar){
 
 library(tidyverse)
 library(lubridate)
@@ -8,7 +8,7 @@ library(zoo)
 #test <- palette.echogram(Svthr = -75, Svmax = -35, col.sep = 1, scheme = "echov", visu = FALSE)
 
 ef <- inGliderdf %>%
-  select(c(m_present_time, m_depth))
+  select(c(m_present_time, depthVar))
 
 #coerce as dataframe
 ef <- as.data.frame(ef) %>%

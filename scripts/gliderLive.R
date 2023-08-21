@@ -106,7 +106,7 @@ gliderdfraw <- fdf %>%
                                        sci_water_temp))
 
 #interpolate across m_depth
-idepth <- depthInt(gliderdfraw)
+idepth <- depthInt(gliderdfraw, osg_depth)
 
 #interpolate across gps
 #lots of GPS massaging
