@@ -7,13 +7,15 @@ library(zoo)
 
 #test <- palette.echogram(Svthr = -75, Svmax = -35, col.sep = 1, scheme = "echov", visu = FALSE)
 
+  qf <- inGliderdf
+  
 if (CTD == TRUE){
-  gliderdf$depthVar = gliderdf$osg_depth
+  qf$depthVar = qf$osg_depth
 } else {
-  gliderdf$depthVar = gliderdf$m_depth
+  qf$depthVar = qf$m_depth
 }
   
-ef <- gliderdf %>%
+ef <- qf %>%
   select(c(m_present_time, depthVar))
 
 #coerce as dataframe
