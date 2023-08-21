@@ -137,20 +137,23 @@ igps <- fortify.zoo(result) %>% #extract out as DF
   rename(m_present_time = Index) %>%
   mutate(m_present_time = as_datetime(m_present_time))
 
+#join the interpolations back in
+gliderdfInt <- gliderdfraw %>%
+  left_join(idepth) %>%
+  left_join(igps)
+
 #glider state algorithms
-gliderState <- gliderdfraw %>%
+gliderState <- gliderdfInt %>%
   identify_casts(surface_threshold = 1) %>% #first cast identification pass with "surface" threshold
   filter(cast != "Surface" & cast != "Unknown") %>% #strip out surface/unknown for yo ID
   add_yo_id() %>%
-  full_join(gliderdfraw) %>% #rejoin with full set to get surface/unknown sections back
+  full_join(gliderdfInt) %>% #rejoin with full set to get surface/unknown sections back
   arrange(m_present_time) %>% #ensure chronological order
   identify_casts(surface_threshold = 1) %>% #label cast state again
   select(c(m_present_time, cast, yo_id)) #clean up
 
-#join the interpolations and states back in
-gliderdf <- gliderdfraw %>%
-  left_join(idepth) %>%
-  left_join(igps) %>%
+#join in gliderState
+gliderdf <- gliderdfInt %>%
   left_join(gliderState)
 
 #pull out science variables
