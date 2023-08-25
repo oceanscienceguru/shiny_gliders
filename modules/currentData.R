@@ -8,7 +8,7 @@ currentData_ui <- function(id) {
   tagList(
     fluidPage(
       fluidRow(
-        box(title = "Date Filtering",
+        box(title = "Data Filtering",
             width = 12,
             collapsible = TRUE,
             collapsed = TRUE,
@@ -35,20 +35,20 @@ currentData_ui <- function(id) {
                                     timepicker = TRUE,
                                     clearButton = TRUE
                                   ),
-                                  # numericInput(
-                                  #   inputId = "min_depthLive",
-                                  #   label = "Depth Minimum (bar)",
-                                  #   value = NULL,
-                                  #   min = 0,
-                                  #   max = 1000
-                                  # ),
-                                  # numericInput(
-                                  #   inputId = "max_depthLive",
-                                  #   label = "Depth Maximum (bar)",
-                                  #   value = NULL,
-                                  #   min = 0,
-                                  #   max = 1000
-                                  # ),
+                                  numericInput(
+                                    inputId = ns("min_depth"),
+                                    label = "Depth Minimum (m)",
+                                    value = 0,
+                                    min = 0,
+                                    max = 1000
+                                  ),
+                                  numericInput(
+                                    inputId = ns("max_depth"),
+                                    label = "Depth Maximum (m)",
+                                    value = 1000,
+                                    min = 0,
+                                    max = 1500
+                                  ),
                                   # checkboxGroupInput(
                                   #   inputId = "status",
                                   #   label = "Dive only?",
@@ -352,11 +352,11 @@ currentData_server <- function(id, gliderName) {
       #soFar <- interval(force_tz(input$date1Live, "UTC"), force_tz(input$date2Live, "UTC"))
       
       df <- gliderdf %>%
-        filter(m_present_time %within% soFar)
+        filter(m_present_time %within% soFar) %>%
         #filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
       #filter(status %in% c(input$status)) %>%
       #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
-      #filter(m_depth >= input$min_depth & m_depth <= input$max_depth)
+        filter(osg_i_depth >= input$min_depth & osg_i_depth <= input$max_depth)
       
       df
     })
@@ -411,7 +411,7 @@ currentData_server <- function(id, gliderName) {
         #geom_hline(yintercept = 0) +
         scale_y_reverse() +
         scale_colour_viridis_c(limits = c(input$minLive, input$maxLive)) +
-        geom_point(data = filter(gliderChunk_live(), m_water_depth > 0),
+        geom_point(data = filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth),
                    aes(y = m_water_depth),
                    size = 0.3,
                    color = "black",
@@ -485,7 +485,7 @@ currentData_server <- function(id, gliderName) {
       
       if (input$derivedTypeLive == "TS Plot"){
         df <- filter(gliderChunk_live(), osg_salinity > 0)
-        wf <- filter(gliderChunk_live(), m_water_depth > 0)
+        wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
         
         plot <- 
           ggplot(
@@ -520,7 +520,7 @@ currentData_server <- function(id, gliderName) {
       
       if (input$derivedTypeLive == "SV Plot"){
         df <- filter(gliderChunk_live(), osg_soundvel1 > 0)
-        wf <- filter(gliderChunk_live(), m_water_depth > 0)
+        wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
         
         plot <- 
           ggplot(data = df,
@@ -556,7 +556,7 @@ currentData_server <- function(id, gliderName) {
       
       if (input$derivedTypeLive == "Density"){
         df <- filter(gliderChunk_live(), osg_rho > 0)
-        wf <- filter(gliderChunk_live(), m_water_depth > 0)
+        wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
         
         plot <- 
           ggplot(
@@ -595,7 +595,7 @@ currentData_server <- function(id, gliderName) {
       
       if (input$derivedTypeLive == "Salinity"){
         df <- filter(gliderChunk_live(), osg_salinity > 0)
-        wf <- filter(gliderChunk_live(), m_water_depth > 0)
+        wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
         
         plot <- 
           ggplot(
