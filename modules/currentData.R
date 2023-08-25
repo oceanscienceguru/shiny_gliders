@@ -153,6 +153,71 @@ currentData_ui <- function(id) {
                                             )
                                      )
                                    ),),
+                          #yo by yo
+                          tabPanel(title = "Yo by Yo",
+                                   column(2,
+                                          wellPanel(
+                                            selectInput(
+                                              inputId = ns("yo"),
+                                              label = "Which yo to display",
+                                              choices = NULL,
+                                              selected =  NULL
+                                            ),
+                                            checkboxGroupInput(
+                                              inputId = ns("cast"),
+                                              label = "Downcast or Upcast?",
+                                              choices = c("Downcast", "Upcast"),
+                                              selected =  "Downcast"
+                                            ),
+                                            selectInput(
+                                              inputId = ns("yo_var"),
+                                              label = "Which variable to display",
+                                              choices = NULL
+                                            ),
+                                          )),
+                                   column(10,
+                                          girafeOutput(
+                                            outputId = ns("yoPlot"),
+                                            #dblclick = "fliPlot_dblclick",
+                                            #brush = brushOpts(id = "fliPlot_brush",
+                                            #                  resetOnNew = TRUE),
+                                            #height = "600px"
+                                          ),
+                                          hr(),
+                                          column(3,
+                                                 actionButton(
+                                                   inputId = ns("oldestYo"),
+                                                   label = "Oldest",
+                                                   #icon("boat"),
+                                                   style =
+                                                     "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                                 ), align = "center"),
+                                          column(3,
+                                                 actionButton(
+                                                   inputId = ns("prevYo"),
+                                                   label = "Previous",
+                                                   #icon("boat"),
+                                                   style =
+                                                     "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                                 ), align = "center"),
+                                          column(3,
+                                                 actionButton(
+                                                   inputId = ns("nextYo"),
+                                                   label = "Next",
+                                                   #icon("boat"),
+                                                   style =
+                                                     "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                                 ), align = "center"),
+                                          column(3,
+                                                 actionButton(
+                                                   inputId = ns("latestYo"),
+                                                   label = "Latest",
+                                                   #icon("boat"),
+                                                   style =
+                                                     "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                                 ), align = "center"),
+                                   ),
+                                   ),
                         )
         )
       )
@@ -170,6 +235,10 @@ currentData_server <- function(id, gliderName) {
     startDateLive <- as_datetime(min(gliderdf$m_present_time), tz = "UTC")
     endDateLive <- as_datetime(max(gliderdf$m_present_time), tz = "UTC")
     
+    yoList <- unique(gliderdf$yo_id) %>%
+      na.omit() %>%
+      sort()
+    
     #get start/end days and update data filters
     updateAirDateInput(session, "date1Live", NULL, value = startDateLive, 
                        options = list(minDate = startDateLive, maxDate = endDateLive,
@@ -180,6 +249,9 @@ currentData_server <- function(id, gliderName) {
     
     updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
     updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
+    
+    updateSelectInput(session, "yo", NULL, choices = yoList, selected = tail(yoList, 1))
+    updateSelectInput(session, "yo_var", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
     
     updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
     
@@ -644,6 +716,98 @@ currentData_server <- function(id, gliderName) {
                                                opts_toolbar(position = "bottomleft")
                                              )
                                              ))
+    
+    #### yo by yo ####
+    
+    yoChunk <- reactive({
+      req(input$yo)
+      
+      qf <- gliderdf %>%
+        filter(yo_id == input$yo) %>% #grab only yo of interest
+        filter(cast %in% input$cast) %>% #grab cast as needed
+        select(c(m_present_time, m_water_depth, osg_i_depth, any_of(input$yo_var))) %>%
+        filter(!is.na(across(!c(m_present_time:osg_i_depth))))
+      
+      # if(isTRUE(input$zeroFilter)){
+      #   qf <- qf %>%
+      #     filter(input$display_varLive > 0)
+      # }
+      
+      qf
+      
+    })
+    
+    yoPlot <- reactive({
+      yoLive <- ggplot(
+        data = 
+          yoChunk(),#dynamically filter the sci variable of interest
+        aes(x=m_present_time,
+            y=osg_i_depth,
+            #z=.data[[input$display_varLive]],
+            colour = .data[[input$yo_var]],
+            tooltip = round(.data[[input$yo_var]], 3)
+        )) +
+        geom_point_interactive(
+          # size = 2,
+          na.rm = TRUE
+        ) +
+        # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
+        #geom_hline(yintercept = 0) +
+        scale_y_reverse() +
+        scale_colour_viridis_c(limits = c(input$minLive, input$maxLive)) +
+        geom_point(data = filter(yoChunk(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth),
+                   aes(y = m_water_depth),
+                   size = 0.3,
+                   color = "black",
+                   na.rm = TRUE
+        ) +
+        theme_bw() +
+        labs(title = paste0(gliderName, " yo"),
+             y = "Depth (m)",
+             x = "Date",
+             caption = "<img src='./www/cms_horiz.png' width='200'/>") +
+        theme(plot.title = element_text(size = 32)) +
+        theme(axis.title = element_text(size = 16)) +
+        theme(axis.text = element_text(size = 12)) +
+        theme(plot.caption = element_markdown())
+      
+      yoLive
+      
+    })
+    
+    output$yoPlot <- renderGirafe(girafe(code = print(yoPlot()),
+                                              width_svg = 12, height_svg = 5,
+                                              options = list(
+                                                opts_sizing(width = .7),
+                                                opts_zoom(max = 5),
+                                                opts_toolbar(position = "bottomleft")
+                                              )
+    ))
+    
+    #### Buttons to scroll through yos ####
+    #initialize reactive to track with same value as yo variable
+    selectYo <- reactiveValues(id = tail(yoList, 1))
+    
+    observeEvent(input$oldestYo, {
+      selectYo$id <- head(yoList, 1)
+      updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = head(yoList, 1))
+    })
+    observeEvent(input$prevYo, {
+      if (selectYo$id > 1) {
+        selectYo$id <- selectYo$id - 1
+        updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = yoList[selectYo$id])
+      }
+    })
+    observeEvent(input$nextYo, {
+      if (selectYo$id < length(yoList)) {
+        selectYo$id <- selectYo$id + 1
+        updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = yoList[selectYo$id])
+      }
+    })
+    observeEvent(input$latestYo, {
+      selectYo$id <- tail(yoList, 1)
+      updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = tail(yoList, 1))
+    })
     
     #### psuedograms ########
     
