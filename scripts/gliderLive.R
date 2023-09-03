@@ -15,6 +15,7 @@ source("/srv/shiny-server/thebrewery/scripts/pseudogram.R")
 source("/srv/shiny-server/thebrewery/scripts/depthInt.R")
 source("/srv/shiny-server/thebrewery/scripts/gliderGPS_to_dd.R")
 source("/srv/shiny-server/thebrewery/scripts/identify_casts.R")
+source("/srv/shiny-server/thebrewery/scripts/identify_casts_smooth.R")
 source("/srv/shiny-server/thebrewery/scripts/add_yo_id.R")
   
 print(paste0(gliderName, ", ", ahrCap, "ahr capacity"))
@@ -94,7 +95,7 @@ sdf <- bind_rows(slist, .id = "segment") %>%
 
 gliderdfraw <- fdf %>%
   select(!c(segment)) %>% #temporarily remove segment
-  full_join(sdf) %>% #merge in sci data and get segment back
+  full_join(sdf, relationship = "many-to-many") %>% #merge in sci data and get segment back
   arrange(m_present_time) %>% #ensure chronological order
   fill(segment, .direction = "downup") %>% #fill out segment ID
   distinct(m_present_time, .keep_all = TRUE) %>% #remove duplicate m_present_time rows (usually bad sci file)
@@ -144,12 +145,15 @@ gliderdfInt <- gliderdfraw %>%
 
 #glider state algorithms
 gliderState <- gliderdfInt %>%
-  identify_casts(surface_threshold = 1) %>% #first cast identification pass with "surface" threshold
+  #filter(m_present_time %within% time) %>%
+  #identify_casts(surface_threshold = 1) %>%
+  identify_casts_smooth(surface_threshold = 1, rolling_window_size = 4) %>% #first cast identification pass with "surface" threshold
   filter(cast != "Surface" & cast != "Unknown") %>% #strip out surface/unknown for yo ID
   add_yo_id() %>%
   full_join(gliderdfInt) %>% #rejoin with full set to get surface/unknown sections back
   arrange(m_present_time) %>% #ensure chronological order
-  identify_casts(surface_threshold = 1) %>% #label cast state again
+  identify_casts_smooth(surface_threshold = 1, rolling_window_size = 4) %>% 
+  #identify_casts(surface_threshold = 1) %>% #label cast state again
   select(c(m_present_time, cast, yo_id)) #clean up
 
 #join in gliderState
