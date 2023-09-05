@@ -74,11 +74,11 @@ currentData_ui <- function(id) {
                                               label = "Which science variable to display",
                                               choices = NULL
                                             ),
-                                            # checkboxInput(
-                                            #   inputId = ns("zeroFilter"),
-                                            #   label = "Filter data > 0?",
-                                            #   value = TRUE
-                                            # ),
+                                            checkboxInput(
+                                              inputId = ns("zeroFilter"),
+                                              label = "Filter data > 0?",
+                                              value = TRUE
+                                            ),
                                             h4("Color Scale Override"),
                                             numericInput(inputId = ns("minLive"),
                                                          label = "Sci Axis Minimum",
@@ -440,12 +440,15 @@ currentData_server <- function(id, gliderName) {
         select(c(m_present_time, osg_i_depth, any_of(input$display_varLive))) %>%
         filter(!is.na(across(!c(m_present_time:osg_i_depth))))
       
-      # if(isTRUE(input$zeroFilter)){
-      #   qf <- qf %>%
-      #     filter(input$display_varLive > 0)
-      # }
-      
+      if(isTRUE(input$zeroFilter)){
+        
+        zf <- qf %>%
+          filter(.data[[input$display_varLive]] > 0)
+        
+        zf
+      } else {
       qf
+      }
       
     })
     
