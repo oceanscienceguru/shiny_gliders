@@ -169,6 +169,11 @@ currentData_ui <- function(id) {
                                               choices = c("Downcast", "Upcast"),
                                               selected =  "Downcast"
                                             ),
+                                            checkboxInput(
+                                              inputId = ns("zeroFilterYo"),
+                                              label = "Filter data > 0?",
+                                              value = TRUE
+                                            ),
                                             selectInput(
                                               inputId = ns("yo_var"),
                                               label = "Which variable to display",
@@ -731,12 +736,15 @@ currentData_server <- function(id, gliderName) {
         select(c(m_present_time, m_water_depth, osg_i_depth, any_of(input$yo_var))) %>%
         filter(!is.na(across(!c(m_present_time:osg_i_depth))))
       
-      # if(isTRUE(input$zeroFilter)){
-      #   qf <- qf %>%
-      #     filter(input$display_varLive > 0)
-      # }
-      
-      qf
+      if(isTRUE(input$zeroFilterYo)){
+        
+        zf <- qf %>%
+          filter(.data[[input$yo_var]] > 0)
+        
+        zf
+      } else {
+        qf
+      }
       
     })
     
@@ -791,19 +799,24 @@ currentData_server <- function(id, gliderName) {
     #initialize reactive to track with same value as yo variable
     selectYo <- reactiveValues(id = tail(yoList, 1))
     
+    #attach IDs to yo plot reactive
+    observeEvent(input$yo, {
+      selectYo$id <- as.numeric(input$yo)
+    })
+    
     observeEvent(input$oldestYo, {
       selectYo$id <- head(yoList, 1)
       updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = head(yoList, 1))
     })
     observeEvent(input$prevYo, {
       if (selectYo$id > 1) {
-        selectYo$id <- selectYo$id - 1
+        selectYo$id <- as.numeric(input$yo) - 1
         updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = yoList[selectYo$id])
       }
     })
     observeEvent(input$nextYo, {
       if (selectYo$id < length(yoList)) {
-        selectYo$id <- selectYo$id + 1
+        selectYo$id <- as.numeric(input$yo) + 1
         updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = yoList[selectYo$id])
       }
     })
@@ -812,7 +825,7 @@ currentData_server <- function(id, gliderName) {
       updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = tail(yoList, 1))
     })
     
-    #### psuedograms ########
+    #### pseudograms ########
     
     #color palette source:
     #https://rdrr.io/github/hvillalo/echogram/src/R/palette.echogram.R
@@ -844,7 +857,7 @@ currentData_server <- function(id, gliderName) {
     if(gliderName == "usf-stella"){
       updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1))
       
-      #attach IDs to psuedogram plot reactives
+      #attach IDs to pseudogram plot reactives
       observeEvent(input$echo, {
         selectPgram$seg <- input$echo
         selectPgram$id <- match(input$echo, echoListraw$value)
