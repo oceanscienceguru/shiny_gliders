@@ -20,6 +20,7 @@ library(egg)
 library(shinyWidgets)
 library(shinyglide)
 library(ggiraph)
+library(cmocean)
 
 source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")
