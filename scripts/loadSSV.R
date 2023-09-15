@@ -160,7 +160,7 @@ gliderState <- gliderdfNext %>%
 message("Data assembly")
 
 gliderdf <- gliderdfNext %>%
-  #left_join(gliderState) %>%
+  left_join(gliderState) %>%
   #compute some derived variables with CTD data
   mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
   mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
