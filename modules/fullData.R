@@ -7,20 +7,22 @@ fullData_ui <- function(id) {
   
   tagList(
     fluidPage(
-      wellPanel(  actionButton(
+      box(  actionButton(
         inputId = ns("load"),
         label = "Load Mission Data",
         icon("plane"),
         style =
           "color: #fff; background-color: #963ab7; border-color: #2e6da4"
       ),
+      br(),
       selectInput(
         inputId = ns("mission"),
         label = "Which mission data to display",
         choices = NULL,
         selected =  NULL
       ),
-      br(),
+      ),
+      box(
       airDatepickerInput(
         inputId = ns("date1"),
         label = "Start Date:",
@@ -46,7 +48,7 @@ fullData_ui <- function(id) {
       numericInput(
         inputId = ns("min_depth"),
         label = "Depth Minimum",
-        value = 3,
+        value = 1,
         min = 0,
         max = 1000
       ),
@@ -848,7 +850,7 @@ fullData_server <- function(id) {
       ggplot(data = 
                scienceChunk(),#dynamically filter the sci variable of interest
              aes(x=m_present_time,
-                 y=m_depth,
+                 y=osg_depth,
                  z=.data[[input$display_var]])) +
         geom_point(
           aes(color = .data[[input$display_var]]),
