@@ -842,16 +842,15 @@ fullData_server <- function(id) {
       #req(input$display_var)
       
       select(chunk(), m_present_time, osg_depth, input$display_var) %>%
-        filter(!is.na(across(!c(m_present_time:osg_depth))))
+        filter(!is.na(input$display_var))
     })
     
     gg1 <- reactive({
 
       ggplot(data = 
-               scienceChunk(),#dynamically filter the sci variable of interest
+               scienceChunk(),
              aes(x=m_present_time,
-                 y=osg_depth,
-                 z=.data[[input$display_var]])) +
+                 y=osg_depth)) +
         geom_point(
           aes(color = .data[[input$display_var]]),
           na.rm = TRUE
