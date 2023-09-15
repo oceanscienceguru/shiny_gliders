@@ -525,13 +525,16 @@ currentData_server <- function(id, gliderName) {
       } else if (input$display_varLive == "sci_suna_nitrate_concentration") {
         scale_color_cmocean(limits = c(input$minLive, input$maxLive),
                             name = "tempo") 
-      } else if (input$display_varLive == "sci_flbbcd_chlor_units") {
+      } else if (input$display_varLive == "sci_flbbcd_chlor_units"|
+                 input$display_varLive == "sci_bbfl2s_chlor_scaled" ) {
         scale_color_cmocean(limits = c(input$minLive, input$maxLive),
                             name = "algae") 
-      } else if (input$display_varLive == "sci_flbbcd_cdom_units") {
+      } else if (input$display_varLive == "sci_flbbcd_cdom_units"|
+                 input$display_varLive == "sci_bbfl2s_cdom_scaled" ) {
         scale_color_cmocean(limits = c(input$minLive, input$maxLive),
                             name = "matter") 
-      } else if (input$display_varLive == "sci_flbbcd_bb_units") {
+      } else if (input$display_varLive == "sci_flbbcd_bb_units"|
+                 input$display_varLive == "sci_bbfl2s_bb_scaled" ) {
         scale_color_cmocean(limits = c(input$minLive, input$maxLive),
                             name = "turbid") 
       } else if (input$display_varLive == "sci_oxy3835_oxygen" |
