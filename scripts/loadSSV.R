@@ -142,25 +142,25 @@ gliderdfNext <- full %>%
   left_join(idepth) %>%
   left_join(igps)
 
-message("Vehicle state identification")
-
-#glider state algorithms
-gliderState <- gliderdfNext %>%
-  #filter(m_present_time %within% time) %>%
-  #identify_casts(surface_threshold = 1) %>%
-  identify_casts_smooth(surface_threshold = 1, rolling_window_size = 4) %>% #first cast identification pass with "surface" threshold
-  filter(cast != "Surface" & cast != "Unknown") %>% #strip out surface/unknown for yo ID
-  add_yo_id() %>%
-  full_join(gliderdfNext) %>% #rejoin with full set to get surface/unknown sections back
-  arrange(m_present_time) %>% #ensure chronological order
-  identify_casts_smooth(surface_threshold = 1, rolling_window_size = 4) %>%
-  #identify_casts(surface_threshold = 1) %>% #label cast state again
-  select(c(m_present_time, cast, yo_id)) #clean up
+# message("Vehicle state identification")
+# 
+# #glider state algorithms
+# gliderState <- gliderdfNext %>%
+#   #filter(m_present_time %within% time) %>%
+#   #identify_casts(surface_threshold = 1) %>%
+#   identify_casts_smooth(surface_threshold = 1, rolling_window_size = 4) %>% #first cast identification pass with "surface" threshold
+#   filter(cast != "Surface" & cast != "Unknown") %>% #strip out surface/unknown for yo ID
+#   add_yo_id() %>%
+#   full_join(gliderdfNext) %>% #rejoin with full set to get surface/unknown sections back
+#   arrange(m_present_time) %>% #ensure chronological order
+#   identify_casts_smooth(surface_threshold = 1, rolling_window_size = 4) %>%
+#   #identify_casts(surface_threshold = 1) %>% #label cast state again
+#   select(c(m_present_time, cast, yo_id)) #clean up
 
 message("Data assembly")
 
 gliderdf <- gliderdfNext %>%
-  left_join(gliderState) %>%
+  #left_join(gliderState) %>%
   #compute some derived variables with CTD data
   mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
   mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
