@@ -847,7 +847,7 @@ fullData_server <- function(id) {
     
     gg1 <- reactive({
 
-      ggplot(data = 
+      fullSci <- ggplot(data = 
                scienceChunk(),
              aes(x=m_present_time,
                  y=osg_i_depth,
@@ -858,7 +858,7 @@ fullData_server <- function(id) {
         coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
         #geom_hline(yintercept = 0) +
         scale_y_reverse() +
-        scale_colour_viridis_c(limits = c(input$min, input$max)) +
+        #scale_colour_viridis_c(limits = c(input$min, input$max)) +
         geom_point(data = filter(chunk(), m_water_depth > 0),
                    aes(x = m_present_time,
                        y = m_water_depth),
@@ -872,7 +872,42 @@ fullData_server <- function(id) {
              x = "Date") +
         theme(plot.title = element_text(size = 32)) +
         theme(axis.title = element_text(size = 16)) +
-        theme(axis.text = element_text(size = 12))
+        theme(axis.text = element_text(size = 12)) +
+      
+      if (input$display_var == "sci_water_temp") {
+        scale_color_cmocean(limits = c(input$min, input$max),
+                            name = "thermal") 
+      } else if (input$display_var == "sci_water_pressure") {
+        scale_color_cmocean(limits = c(input$min, input$max),
+                            name = "deep")
+      } else if (input$display_var == "sci_water_cond") {
+        scale_color_cmocean(limits = c(input$min, input$max),
+                            name = "haline")
+      } else if (input$display_var == "sci_suna_nitrate_concentration") {
+        scale_color_cmocean(limits = c(input$min, input$max),
+                            name = "tempo") 
+      } else if (input$display_var == "sci_flbbcd_chlor_units" |
+                 input$display_var == "sci_bbfl2s_chlor_scaled" ) {
+        scale_color_cmocean(limits = c(input$min, input$max),
+                            name = "algae") 
+      } else if (input$display_var == "sci_flbbcd_cdom_units" |
+                 input$display_var == "sci_bbfl2s_cdom_scaled" ) {
+        scale_color_cmocean(limits = c(input$min, input$max),
+                            name = "matter") 
+      } else if (input$display_var == "sci_flbbcd_bb_units" |
+                 input$display_var == "sci_bbfl2s_bb_scaled" ) {
+        scale_color_cmocean(limits = c(input$min, input$max),
+                            name = "turbid") 
+      } else if (input$display_var == "sci_oxy3835_oxygen" |
+                 input$display_var == "sci_oxy4_oxygen" ) {
+        scale_color_cmocean(limits = c(input$min, input$max),
+                            name = "oxy") 
+      } else {
+        scale_colour_viridis_c(limits = c(input$min, input$max))
+      }
+      
+      fullSci
+      
     })
     
     output$sciPlot <- renderPlot({gg1()})
@@ -1057,7 +1092,8 @@ fullData_server <- function(id) {
           ) +
           #geom_hline(yintercept = 0) +
           scale_y_reverse() +
-          scale_colour_viridis_c() +
+          scale_color_cmocean(#limits = c(input$minLive, input$maxLive),
+            name = "speed") +
           geom_point(data = wf,
                      aes(y = m_water_depth),
                      size = 0.3,
@@ -1095,7 +1131,8 @@ fullData_server <- function(id) {
           # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
           #geom_hline(yintercept = 0) +
           scale_y_reverse() +
-          scale_colour_viridis_c() +
+          scale_color_cmocean(#limits = c(input$minLive, input$maxLive),
+            name = "dense") +
           geom_point(data = wf,
                      aes(y = m_water_depth),
                      size = 0.3,
@@ -1131,7 +1168,8 @@ fullData_server <- function(id) {
           # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
           #geom_hline(yintercept = 0) +
           scale_y_reverse() +
-          scale_colour_viridis_c() +
+          scale_color_cmocean(#limits = c(input$minLive, input$maxLive),
+            name = "haline") +
           geom_point(data = wf,
                      aes(y = m_water_depth),
                      size = 0.3,
