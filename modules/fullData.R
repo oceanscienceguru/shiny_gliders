@@ -841,8 +841,8 @@ fullData_server <- function(id) {
       )
       #req(input$display_var)
       
-      select(chunk(), m_present_time, m_depth, input$display_var) %>%
-        filter(!is.na(across(!c(m_present_time:m_depth))))
+      select(chunk(), m_present_time, osg_depth, input$display_var) %>%
+        filter(!is.na(across(!c(m_present_time:osg_depth))))
     })
     
     gg1 <- reactive({
