@@ -4,7 +4,11 @@ library(tidyverse)
 library(lubridate)
   library(seacarb)
 
+  source("./scripts/depthInt.R")
   source("./scripts/gliderGPS_to_dd.R")
+  source("./scripts/identify_casts.R")
+  source("./scripts/identify_casts_smooth.R")
+  source("./scripts/add_yo_id.R")
   
   #https://rdrr.io/github/AustralianAntarcticDivision/ZooScatR/src/R/soundvelocity.R
   c_Coppens1981 <- function(D,S,T){
@@ -78,11 +82,22 @@ raw <- read.csv(inputFile,
 
 colnames(raw) <- colnames(head)
 
-raw <- raw %>%
-  mutate(m_present_time = as_datetime(m_present_time)) #convert to POSIXct
+flight <- raw %>%
+  select(starts_with(c("m_", "c_", "x_"))) %>%
+  mutate(m_present_time = as_datetime(floor(seconds(m_present_time)))) %>% #convert to POSIXct
+  filter(., rowSums(is.na(.)) != ncol(.)-1) #remove lines that are all NA except time
+  
+science <- raw %>%
+  select(starts_with("sci_")) %>%
+  mutate(sci_m_present_time = as_datetime(floor(seconds(sci_m_present_time)))) %>%
+  filter(., rowSums(is.na(.)) != ncol(.)-1) %>% #remove lines that are all NA except time
+  mutate(m_present_time = sci_m_present_time) #convert to POSIXct
 
+full <- flight %>%
+  full_join(science)
+  
 #lots of GPS massaging
-gps <- raw %>%
+gps <- full %>%
   select(m_present_time, m_gps_lat, m_gps_lon) %>%
   filter(!is.na(m_gps_lat)) %>% #clean up input for conversion
   mutate(latt = format(m_gps_lat, nsmall = 4),
@@ -94,6 +109,8 @@ gps <- raw %>%
   select(m_present_time, lat, long) %>%
   filter(lat >= -90 & lat <= 90) %>% #remove illegal values
   filter(long >= -180 & long <= 180)
+
+message("GPS interpolation")
 
 library(zoo)
 
@@ -109,22 +126,56 @@ igps <- fortify.zoo(result) %>% #extract out as DF
 
 #force both time sets to match (i.e., round to 1sec)
 igps$m_present_time <- as_datetime(floor(seconds(igps$m_present_time)))
-raw$m_present_time <- as_datetime(floor(seconds(raw$m_present_time)))
+#raw$m_present_time <- as_datetime(floor(seconds(raw$m_present_time)))
 
-gliderdf <- raw %>%
+message("Depth interpolation")
+
+gliderdfInt <- full %>%
   left_join(igps) %>%
+  mutate(osg_depth = p2d(sci_water_pressure*10, lat=i_lat)) #calculate CTD depth with interpolated latitude
+  
+#interpolate across depth
+idepth <- depthInt(gliderdfInt, CTD = TRUE)
+
+#join the interpolations back in
+gliderdfNext <- full %>%
+  left_join(idepth) %>%
+  left_join(igps)
+
+message("Vehicle state identification")
+
+#glider state algorithms
+gliderState <- gliderdfNext %>%
+  #filter(m_present_time %within% time) %>%
+  #identify_casts(surface_threshold = 1) %>%
+  identify_casts_smooth(surface_threshold = 1, rolling_window_size = 4) %>% #first cast identification pass with "surface" threshold
+  filter(cast != "Surface" & cast != "Unknown") %>% #strip out surface/unknown for yo ID
+  add_yo_id() %>%
+  full_join(gliderdfNext) %>% #rejoin with full set to get surface/unknown sections back
+  arrange(m_present_time) %>% #ensure chronological order
+  identify_casts_smooth(surface_threshold = 1, rolling_window_size = 4) %>%
+  #identify_casts(surface_threshold = 1) %>% #label cast state again
+  select(c(m_present_time, cast, yo_id)) #clean up
+
+message("Data assembly")
+
+gliderdf <- gliderdfNext %>%
+  #left_join(gliderState) %>%
   #compute some derived variables with CTD data
   mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
   mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
   mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
-  mutate(osg_depth = p2d(sci_water_pressure*10, lat=30)) %>%
+  mutate(osg_depth = p2d(sci_water_pressure*10, lat=i_lat)) %>%
   mutate(osg_soundvel1 = c_Coppens1981(osg_depth,
                                        osg_salinity,
                                        sci_water_temp))
 
+message("Saving everything")
+
 save(gliderdf, gliderName, file = paste0("./Data/",missionNum,"_",gliderName,".RData"))
 
 if(isTRUE(mapGen)){
+  message("Generating map")
   write.csv(gps, file = paste0("./KML/",missionNum,"_",gliderName,".csv"))
 }
 
