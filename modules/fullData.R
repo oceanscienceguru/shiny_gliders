@@ -860,7 +860,9 @@ fullData_server <- function(id) {
         scale_y_reverse() +
         scale_colour_viridis_c(limits = c(input$min, input$max)) +
         geom_point(data = filter(chunk(), m_water_depth > 0),
-                   aes(y = m_water_depth),
+                   aes(x = m_present_time,
+                       y = m_water_depth),
+                   color = "black",
                    size = 0.3,
                    na.rm = TRUE
         ) +
