@@ -823,7 +823,7 @@ fullData_server <- function(id) {
         filter(m_present_time %within% soFar) %>%
         #filter(status %in% c(input$status)) %>%
         #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
-        filter(m_depth >= input$min_depth & m_depth <= input$max_depth)
+        filter(osg_i_depth >= input$min_depth & osg_i_depth <= input$max_depth)
       
       df
       
@@ -841,8 +841,8 @@ fullData_server <- function(id) {
       )
       #req(input$display_var)
       
-      select(chunk(), m_present_time, osg_depth, input$display_var) %>%
-        filter(!is.na(input$display_var))
+      select(chunk(), m_present_time, osg_i_depth, input$display_var) %>%
+        filter(!is.na(across(!c(m_present_time:osg_i_depth))))
     })
     
     gg1 <- reactive({
@@ -850,9 +850,9 @@ fullData_server <- function(id) {
       ggplot(data = 
                scienceChunk(),
              aes(x=m_present_time,
-                 y=osg_depth)) +
+                 y=osg_i_depth,
+                 color = .data[[input$display_var]])) +
         geom_point(
-          aes(color = .data[[input$display_var]]),
           na.rm = TRUE
         ) +
         coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
@@ -861,7 +861,7 @@ fullData_server <- function(id) {
         scale_colour_viridis_c(limits = c(input$min, input$max)) +
         geom_point(data = filter(chunk(), m_water_depth > 0),
                    aes(y = m_water_depth),
-                   size = 0.1,
+                   size = 0.3,
                    na.rm = TRUE
         ) +
         theme_bw() +
