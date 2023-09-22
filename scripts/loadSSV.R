@@ -4,12 +4,6 @@ library(tidyverse)
 library(lubridate)
   library(seacarb)
   library(osgUtils)
-
-  # source("./scripts/depthInt.R")
-  # source("./scripts/gliderGPS_to_dd.R")
-  # source("./scripts/identify_casts.R")
-  # source("./scripts/identify_casts_smooth.R")
-  # source("./scripts/add_yo_id.R")
   
   #https://rdrr.io/github/AustralianAntarcticDivision/ZooScatR/src/R/soundvelocity.R
   c_Coppens1981 <- function(D,S,T){
