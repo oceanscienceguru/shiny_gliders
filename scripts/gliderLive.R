@@ -7,18 +7,19 @@ library(egg)
 library(lubridate)
 library(ggplot2)
 library(scales)
-  
+library(osgUtils)
+    
   load("/echos/G1AlkalineCurve.RData")
 
-source("/srv/shiny-server/thebrewery/scripts/ssv_to_df.R")
-source("/srv/shiny-server/thebrewery/scripts/pseudogram.R")
-source("/srv/shiny-server/thebrewery/scripts/depthInt.R")
-source("/srv/shiny-server/thebrewery/scripts/gliderGPS_to_dd.R")
-source("/srv/shiny-server/thebrewery/scripts/identify_casts.R")
-source("/srv/shiny-server/thebrewery/scripts/identify_casts_smooth.R")
-source("/srv/shiny-server/thebrewery/scripts/add_yo_id.R")
+# source("/srv/shiny-server/thebrewery/scripts/ssv_to_df.R")
+# source("/srv/shiny-server/thebrewery/scripts/pseudogram.R")
+# source("/srv/shiny-server/thebrewery/scripts/depthInt.R")
+# source("/srv/shiny-server/thebrewery/scripts/gliderGPS_to_dd.R")
+# source("/srv/shiny-server/thebrewery/scripts/identify_casts.R")
+# source("/srv/shiny-server/thebrewery/scripts/identify_casts_smooth.R")
+# source("/srv/shiny-server/thebrewery/scripts/add_yo_id.R")
   
-print(paste0(gliderName, ", ", ahrCap, "ahr capacity"))
+message(paste0(gliderName, ", ", ahrCap, "ahr capacity"))
 
   
 #https://rdrr.io/github/AustralianAntarcticDivision/ZooScatR/src/R/soundvelocity.R
@@ -79,6 +80,34 @@ flightList_live <- rownames(flightList_liveInfo) %>%
 flightTotal <- length(flightList_live)
 #if flightList changed ... then ... do df creation
 
+message("Checking if the data have changed")
+
+#write new file if the list doesn't exist at all and set flag to FALSE
+if (!file.exists(paste0("/echos/", gliderName, "/scienceList.csv"))){
+  writeLines(scienceList_live, 
+            paste0("/echos/", gliderName, "/scienceList.csv"))
+  sciCheck <- FALSE
+} else {
+  #if it does exist, read it and compare it, setting check value TRUE or FALSE
+  sciencePickle <- readLines(paste0("/echos/", gliderName, "/scienceList.csv"))
+  sciCheck <- length(intersect(sciencePickle, scienceList_live)) == length(scienceList_live)
+}
+
+#same for flight
+if (!file.exists(paste0("/echos/", gliderName, "/flightList.csv"))){
+  writeLines(flightList_live, 
+            paste0("/echos/", gliderName, "/flightList.csv"))
+  fliCheck <- FALSE
+} else {
+  flightPickle <- readLines(paste0("/echos/", gliderName, "/flightList.csv"))
+  fliCheck <- length(intersect(flightPickle, flightList_live)) == length(flightList_live)
+}
+
+#use check values to proceed
+if (!isTRUE(sciCheck) | !isTRUE(fliCheck)){
+  message("Data have changed, building new RData file")
+
+message("Assembling raw dataframe")
 flist <- list()
 slist <- list()
 for (i in flightList_live) {
@@ -93,6 +122,7 @@ fdf <- bind_rows(flist, .id = "segment")
 sdf <- bind_rows(slist, .id = "segment") %>%
   mutate(m_present_time = sci_m_present_time) #consider sci time same as flight time for ease of merging
 
+message("osg water calculations")
 gliderdfraw <- fdf %>%
   select(!c(segment)) %>% #temporarily remove segment
   full_join(sdf, relationship = "many-to-many") %>% #merge in sci data and get segment back
@@ -108,9 +138,11 @@ gliderdfraw <- fdf %>%
                                        osg_salinity,
                                        sci_water_temp))
 
+message("Depth interpolation")
 #interpolate across depth
 idepth <- depthInt(gliderdfraw, CTD = TRUE)
 
+message("GPS interpolation")
 #interpolate across gps
 #lots of GPS massaging
 gps <- gliderdfraw %>%
@@ -143,6 +175,7 @@ gliderdfInt <- gliderdfraw %>%
   left_join(idepth) %>%
   left_join(igps)
 
+message("Glider state algorithms")
 #glider state algorithms
 gliderState <- gliderdfInt %>%
   #filter(m_present_time %within% time) %>%
@@ -160,6 +193,7 @@ gliderState <- gliderdfInt %>%
 gliderdf <- gliderdfInt %>%
   left_join(gliderState)
 
+message("Extracting variables")
 #pull out science variables
 scivarsLive <- sdf %>%
   select(!(c(segment, m_present_time))) %>%
@@ -175,7 +209,7 @@ flightvarsLive <- fdf %>%
 endDateLive <- max(gliderdf$m_present_time)
 
 ##### dashboard calculations #####
-print("dashboard calculations")
+message("dashboard calculations")
 gliderdfChunk <- gliderdf %>%
   filter(m_present_time >= endDateLive-14400)
 
@@ -373,7 +407,7 @@ rollLive <- ggplot(
 if(gliderName == "usf-stella"){
 
 ###### pseudogram calculations #####
-print("pseudogram calculations")
+message("pseudogram calculations")
 #initial file list setup ... ensure files have data before allowing
 velInfo <- file.info(list.files(path = "/echos/layers/",
                                 full.names = TRUE)) %>%
@@ -516,7 +550,7 @@ livePlots <- list(
 # 
 # return(glider_live)
 
-print("saving everything")
+message("saving everything")
 if(gliderName == "usf-stella"){
 save(gliderdf, scivarsLive, flightvarsLive, toGliderList,
      ahrCap,
@@ -560,4 +594,7 @@ save(gliderdf, scivarsLive, flightvarsLive, toGliderList,
        file = paste0("/echos/", gliderName, "/glider_live.RData"))
 }
      
+} else {
+  message("No data change, stopping")
+}
 }
