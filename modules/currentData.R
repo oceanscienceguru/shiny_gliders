@@ -91,7 +91,14 @@ currentData_ui <- function(id) {
                                    column(
                                      9,
                                      # h4("Brush and double-click to zoom (double-click again to reset)"),
-                                     girafeOutput(
+                                     # girafeOutput(
+                                     #   outputId = ns("sciPlotLive"),
+                                     #   # dblclick = "sciPlot_dblclick",
+                                     #   # brush = brushOpts(id = "sciPlot_brush",
+                                     #   #                   resetOnNew = TRUE),
+                                     #   # height = "600px"
+                                     # ) %>% withSpinner(color="#0dc5c1")
+                                     plotlyOutput(
                                        outputId = ns("sciPlotLive"),
                                        # dblclick = "sciPlot_dblclick",
                                        # brush = brushOpts(id = "sciPlot_brush",
@@ -487,9 +494,9 @@ currentData_server <- function(id, gliderName) {
             y=osg_i_depth,
             #z=.data[[input$display_varLive]],
             colour = .data[[input$display_varLive]],
-            tooltip = round(.data[[input$display_varLive]], 3)
+            #tooltip = round(.data[[input$display_varLive]], 3)
         )) +
-        geom_point_interactive(
+        geom_point(
           # size = 2,
           na.rm = TRUE
         ) +
@@ -545,18 +552,20 @@ currentData_server <- function(id, gliderName) {
         scale_colour_viridis_c(limits = c(input$minLive, input$maxLive))
       }
       
-      sciLive
+      ggplotly(sciLive) %>% toWebGL()
       
     })
     
-    output$sciPlotLive <- renderGirafe(girafe(code = print(gg1Live()),
-                                              width_svg = 12, height_svg = 5,
-                                              options = list(
-                                                opts_sizing(width = .7),
-                                                opts_zoom(max = 5),
-                                                opts_toolbar(position = "bottomleft")
-                                              )
-                                              ))
+    # output$sciPlotLive <- renderGirafe(girafe(code = print(gg1Live()),
+    #                                           width_svg = 12, height_svg = 5,
+    #                                           options = list(
+    #                                             opts_sizing(width = .7),
+    #                                             opts_zoom(max = 5),
+    #                                             opts_toolbar(position = "bottomleft")
+    #                                           )
+    #                                           ))
+    
+    output$sciPlotLive <- renderPlotly(gg1Live())
     
     #flight plot
     gg2Live <- reactive({

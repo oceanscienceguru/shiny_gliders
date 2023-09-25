@@ -22,6 +22,7 @@ library(shinyglide)
 library(ggiraph)
 library(cmocean)
 library(osgUtils)
+library(plotly)
 
 #source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")
