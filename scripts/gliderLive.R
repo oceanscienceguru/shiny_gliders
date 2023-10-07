@@ -84,8 +84,6 @@ message("Checking if the data have changed")
 
 #write new file if the list doesn't exist at all and set flag to FALSE
 if (!file.exists(paste0("/echos/", gliderName, "/scienceList.csv"))){
-  writeLines(scienceList_live, 
-            paste0("/echos/", gliderName, "/scienceList.csv"))
   sciCheck <- FALSE
 } else {
   #if it does exist, read it and compare it, setting check value TRUE or FALSE
@@ -95,8 +93,6 @@ if (!file.exists(paste0("/echos/", gliderName, "/scienceList.csv"))){
 
 #same for flight
 if (!file.exists(paste0("/echos/", gliderName, "/flightList.csv"))){
-  writeLines(flightList_live, 
-            paste0("/echos/", gliderName, "/flightList.csv"))
   fliCheck <- FALSE
 } else {
   flightPickle <- readLines(paste0("/echos/", gliderName, "/flightList.csv"))
