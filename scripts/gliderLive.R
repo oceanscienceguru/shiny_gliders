@@ -106,6 +106,10 @@ if (!file.exists(paste0("/echos/", gliderName, "/flightList.csv"))){
 #use check values to proceed
 if (!isTRUE(sciCheck) | !isTRUE(fliCheck)){
   message("Data have changed, building new RData file")
+  writeLines(scienceList_live, 
+             paste0("/echos/", gliderName, "/scienceList.csv"))
+  writeLines(flightList_live, 
+             paste0("/echos/", gliderName, "/flightList.csv"))
 
 message("Assembling raw dataframe")
 flist <- list()
