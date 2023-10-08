@@ -438,10 +438,9 @@ currentData_server <- function(id, gliderName) {
     }
     
     gliderChunk_live <- reactive({
-      #soFar <- interval(input$date1Live, input$date2Live)
-      soFar <- interval(force_tz(input$date1Live, "UTC"), force_tz(input$date2Live, "UTC"))
-      
-      print(soFar)
+      soFar <- interval(input$date1Live, input$date2Live)
+
+      # soFar <- interval(force_tz(input$date1Live, "UTC"), force_tz(input$date2Live, "UTC"))
       
       df <- gliderdf %>%
         filter(m_present_time %within% soFar) %>%

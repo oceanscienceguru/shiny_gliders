@@ -34,6 +34,8 @@ source("./modules/currentData.R")
 source("./modules/routing.R")
 source("./modules/fullData.R")
 
+Sys.setenv(TZ="UTC")
+
 deployedGliders <- read.csv("/echos/deployedGliders.txt", 
                             sep = "",
                             header = FALSE)
