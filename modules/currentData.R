@@ -236,7 +236,7 @@ currentData_ui <- function(id) {
   )
 }
 
-currentData_server <- function(id, gliderName) {
+currentData_server <- function(id, gliderName, clientTZ) {
   
   moduleServer(id, function(input, output, session) {
     
@@ -440,11 +440,17 @@ currentData_server <- function(id, gliderName) {
     gliderChunk_live <- reactive({
       
       #potential workaround for airdate picker hijacking broswer tz
-      if(tz(input$date1Live) != "UTC"){
-        soFar <- interval(with_tz(input$date1Live, "UTC"), with_tz(input$date2Live, "UTC"))
+      if(clientTZ != 0){
+        # print("local time adjustment")
+        # print(input$date1Live)
+        # print(input$date2Live)
+        # print(clientTZ)
+        soFar <- interval(with_tz(input$date1Live + clientTZ), with_tz(input$date2Live + clientTZ, "UTC"))
       } else {
         soFar <- interval(input$date1Live, input$date2Live)
       }
+      
+     # print(soFar)
       
       df <- gliderdf %>%
         filter(m_present_time %within% soFar) %>%

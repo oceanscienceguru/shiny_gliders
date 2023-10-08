@@ -1,14 +1,38 @@
 server <- function(input, output, session) { options(shiny.usecairo = TRUE)
   
+  #client timezone function from https://stackoverflow.com/questions/24842229/how-to-retrieve-the-clients-current-time-and-time-zone-when-using-shiny/34221031#34221031
+  triggerClientTime <- function(session=shiny::getDefaultReactiveDomain()){
+    serverTime <- Sys.time()
+    serverTimeZone <- as.integer(strftime(serverTime,"%z"))/100
+    session$sendCustomMessage(
+      type="getClientTime",
+      message=list(
+        serverPosix = as.numeric(serverTime),
+        serverTimeZone = serverTimeZone
+      )
+    )
+  }
+
+  
+  # Observe and print time from client and server
+  # observe({ 
+  #   print(input$clientTime$clientTimeZone)
+  # })
+  # Ask the client for current time and time zone (hours from UTC)
+  triggerClientTime()
+  
+  
   ######### current mission data ########
   observe({
     glider <- input$gliderSelect
+    
+    clientTZ <- input$clientTime$clientTimeZone
 
     gliderDashboard_server("display", glider)
     
     if(input$tabs == "currMissData"){
       #Code for current mission data on selected glider
-    currentData_server("curDisplay", glider)
+    currentData_server("curDisplay", glider, clientTZ)
     }
     if(input$tabs == "routing"){
       routing_server("curRoute", glider)

@@ -10,6 +10,7 @@
              "
     )
   ),
+  includeScript("./www/timezone.js"),
            dashboardPage(
              dashboardHeader(title = "The Brewery"),
              dashboardSidebar(
