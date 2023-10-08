@@ -487,72 +487,157 @@ currentData_server <- function(id, gliderName) {
     })
     
     gg1Live <- reactive({
-      sciLive <- ggplot(
-        data = 
-          scienceChunk_live(),#dynamically filter the sci variable of interest
-        aes(x=m_present_time,
-            y=osg_i_depth,
-            #z=.data[[input$display_varLive]],
-            colour = .data[[input$display_varLive]],
-            #tooltip = round(.data[[input$display_varLive]], 3)
-        )) +
-        geom_point(
-          # size = 2,
-          na.rm = TRUE
-        ) +
-        # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
-        #geom_hline(yintercept = 0) +
-        scale_y_reverse() +
-        #scale_colour_viridis_c(limits = c(input$minLive, input$maxLive)) +
-        geom_point(data = filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth),
-                   aes(y = m_water_depth),
-                   size = 0.3,
-                   color = "black",
-                   na.rm = TRUE
-        ) +
-        theme_bw() +
-        labs(title = paste0(gliderName, " Current Data"),
-          y = "Depth (m)",
-          x = "Date",
-          caption = "<img src='./www/cms_horiz.png' width='200'/>") +
-        theme(plot.title = element_text(size = 32)) +
-        theme(axis.title = element_text(size = 16)) +
-        theme(axis.text = element_text(size = 12)) +
-        theme(plot.caption = element_markdown()) +
+      # sciLive <- ggplot(
+      #   data =
+      #     scienceChunk_live(),#dynamically filter the sci variable of interest
+      #   aes(x=m_present_time,
+      #       y=osg_i_depth,
+      #       #z=.data[[input$display_varLive]],
+      #       colour = .data[[input$display_varLive]],
+      #       #tooltip = round(.data[[input$display_varLive]], 3)
+      #   )) +
+      #   geom_point(
+      #     # size = 2,
+      #     na.rm = TRUE
+      #   ) +
+      #   # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
+      #   #geom_hline(yintercept = 0) +
+      #   scale_y_reverse() +
+      #   #scale_colour_viridis_c(limits = c(input$minLive, input$maxLive)) +
+      #   geom_point(data = filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth),
+      #              aes(y = m_water_depth),
+      #              size = 0.3,
+      #              color = "black",
+      #              na.rm = TRUE
+      #   ) +
+      #   theme_bw() +
+      #   labs(title = paste0(gliderName, " Current Data"),
+      #     y = "Depth (m)",
+      #     x = "Date",
+      #     caption = "<img src='./www/cms_horiz.png' width='200'/>") +
+      #   theme(plot.title = element_text(size = 32)) +
+      #   theme(axis.title = element_text(size = 16)) +
+      #   theme(axis.text = element_text(size = 12)) +
+      #   theme(plot.caption = element_markdown()) +
+      # 
+      # if (input$display_varLive == "sci_water_temp") {
+      # scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                     name = "thermal") 
+      # } else if (input$display_varLive == "sci_water_pressure") {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "deep")
+      # } else if (input$display_varLive == "sci_water_cond") {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "haline")
+      # } else if (input$display_varLive == "sci_suna_nitrate_concentration") {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "tempo") 
+      # } else if (input$display_varLive == "sci_flbbcd_chlor_units"|
+      #            input$display_varLive == "sci_bbfl2s_chlor_scaled" ) {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "algae") 
+      # } else if (input$display_varLive == "sci_flbbcd_cdom_units"|
+      #            input$display_varLive == "sci_bbfl2s_cdom_scaled" ) {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "matter") 
+      # } else if (input$display_varLive == "sci_flbbcd_bb_units"|
+      #            input$display_varLive == "sci_bbfl2s_bb_scaled" ) {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "turbid") 
+      # } else if (input$display_varLive == "sci_oxy3835_oxygen" |
+      #            input$display_varLive == "sci_oxy4_oxygen" ) {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "oxy") 
+      # } else {
+      #   scale_colour_viridis_c(limits = c(input$minLive, input$maxLive))
+      # }
+      # 
+      # ggplotly(sciLive) %>% toWebGL()
       
       if (input$display_varLive == "sci_water_temp") {
-      scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                          name = "thermal") 
+        oceanColor = cmocean("thermal")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
       } else if (input$display_varLive == "sci_water_pressure") {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "deep")
+        oceanColor = cmocean("deep")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
       } else if (input$display_varLive == "sci_water_cond") {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "haline")
+        oceanColor = cmocean("haline")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
       } else if (input$display_varLive == "sci_suna_nitrate_concentration") {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "tempo") 
+        oceanColor = cmocean("tempo")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
       } else if (input$display_varLive == "sci_flbbcd_chlor_units"|
                  input$display_varLive == "sci_bbfl2s_chlor_scaled" ) {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "algae") 
+        oceanColor = cmocean("algae")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
       } else if (input$display_varLive == "sci_flbbcd_cdom_units"|
                  input$display_varLive == "sci_bbfl2s_cdom_scaled" ) {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "matter") 
+        oceanColor = cmocean("matter")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
       } else if (input$display_varLive == "sci_flbbcd_bb_units"|
                  input$display_varLive == "sci_bbfl2s_bb_scaled" ) {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "turbid") 
+        oceanColor = cmocean("turbid")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
       } else if (input$display_varLive == "sci_oxy3835_oxygen" |
                  input$display_varLive == "sci_oxy4_oxygen" ) {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "oxy") 
+        oceanColor = cmocean("oxy")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
+      } else if (startsWith(input$display_varLive, "sci_ocr507")) {
+        oceanColor = cmocean("solar")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
       } else {
-        scale_colour_viridis_c(limits = c(input$minLive, input$maxLive))
+        oceanColor = NULL
       }
+     
+      fig <- plot_ly(data = scienceChunk_live(),
+                     x = ~as.character(m_present_time),
+                     y = ~osg_i_depth
+                  ) %>%
+        add_trace(   type = "scatter",
+                     mode = "markers",
+                     color = ~.data[[input$display_varLive]],
+                     colors = oceanColor,
+                     text = ~paste0("Date: ", m_present_time, "\ni_depth: ", round(osg_i_depth, 3), "\n",
+                       input$display_varLive, ": ", round(.data[[input$display_varLive]], 3)),
+                     hoverinfo = "text",
+                     hoverlabel = list(bgcolor = oceanColor)
+                  ) %>%
+        add_trace(data = filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth),
+                  x = ~as.character(m_present_time),
+                  y = ~m_water_depth,
+                  type = "scatter",
+                  mode = "markers",
+                  text = ~paste0("Date: ", m_present_time, "\nm_water_depth: ", round(m_water_depth, 3)),
+                  hoverinfo = "text",
+                  marker = list(size = 1, color = "black"),
+                  showlegend = FALSE
+        ) %>%
+        layout(title = list(text = paste0(gliderName, " real-time data"),
+                            x = 0.03,
+                            y = 0.97),
+               yaxis = list(autorange = "reversed",
+                            title = "Depth (m)"),
+               legend = list(title = as.character(input$display_varLive)),
+               xaxis = list(title = "Date",
+                            type = 'date',
+                            tickformatstops = list(
+                              list(dtickrange=list(NULL, 1000), value="%H:%M:%S.%L ms"),
+                              list(dtickrange=list(1000, 60000), value="%H:%M:%S"),
+                              list(dtickrange=list(60000, 3600000), value="%m/%d, %H:%M"),
+                              list(dtickrange=list(3600000, 86400000), value="%m/%d, %H:%M"),
+                              list(dtickrange=list(86400000, 604800000), value="%Y/%m/%d"),
+                              list(dtickrange=list(604800000, "M1"), value="%Y/%m/%d"),
+                              list(dtickrange=list("M1", "M12"), value="%b '%y"),
+                              list(dtickrange=list("M12", NULL), value="%Y")
+                            )),
+               images = list(
+                 list(source = base64enc::dataURI(file = "./www/cms_horiz.png"),
+                      xref = "paper",
+                      yref = "paper",
+                      x= 1.2,
+                      y= 0.03,
+                      sizex = 0.2,
+                      sizey = 0.2,
+                      xanchor="right",
+                      yanchor="bottom" 
+                 ))
+        ) %>%
+        colorbar(title = as.character(input$display_varLive)
+        ) %>%
+        config(displayModeBar = FALSE)
       
-      ggplotly(sciLive) %>% toWebGL()
+      fig %>% toWebGL()
       
     })
     
@@ -802,16 +887,17 @@ currentData_server <- function(id, gliderName) {
       yoLive <- ggplot(
         data = 
           yoChunk(),#dynamically filter the sci variable of interest
-        aes(x=m_present_time,
+        aes(x=.data[[input$yo_var]],
             y=osg_i_depth,
             #z=.data[[input$display_varLive]],
-            colour = .data[[input$yo_var]],
-            tooltip = round(.data[[input$yo_var]], 3)
+            #colour = .data[[input$yo_var]],
+            #tooltip = round(.data[[input$yo_var]], 3)
         )) +
-        geom_point_interactive(
-          # size = 2,
-          na.rm = TRUE
-        ) +
+        # geom_point_interactive(
+        #   # size = 2,
+        #   na.rm = TRUE
+        # ) +
+        geom_path() +
         # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
         #geom_hline(yintercept = 0) +
         scale_y_reverse() +
