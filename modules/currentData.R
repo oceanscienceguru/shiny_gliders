@@ -441,16 +441,20 @@ currentData_server <- function(id, gliderName, clientTZ) {
       
       #potential workaround for airdate picker hijacking broswer tz
       if(clientTZ != 0){
-        # print("local time adjustment")
-        # print(input$date1Live)
-        # print(input$date2Live)
-        # print(clientTZ)
+        print("local time adjustment")
+        print(input$date1Live)
+        print(input$date2Live)
+        print(clientTZ)
         soFar <- interval(with_tz(input$date1Live + clientTZ), with_tz(input$date2Live + clientTZ, "UTC"))
       } else {
+        print("no local time adjustment")
+        print(input$date1Live)
+        print(input$date2Live)
+        print(clientTZ)
         soFar <- interval(input$date1Live, input$date2Live)
       }
       
-     # print(soFar)
+      print(soFar)
       
       df <- gliderdf %>%
         filter(m_present_time %within% soFar) %>%
