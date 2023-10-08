@@ -244,8 +244,8 @@ currentData_server <- function(id, gliderName) {
     
     load(paste0("/echos/", gliderName, "/glider_live.RData"))
     
-    #startDateLive <- as_datetime(min(gliderdf$m_present_time), tz = "UTC")
-    #endDateLive <- as_datetime(max(gliderdf$m_present_time), tz = "UTC")
+    # startDateLive <- as_datetime(min(gliderdf$m_present_time), tz = "UTC")
+    # endDateLive <- as_datetime(max(gliderdf$m_present_time), tz = "UTC")
     
     startDateLive <- min(gliderdf$m_present_time)
     endDateLive <- max(gliderdf$m_present_time)
@@ -438,8 +438,10 @@ currentData_server <- function(id, gliderName) {
     }
     
     gliderChunk_live <- reactive({
-      soFar <- interval(input$date1Live, input$date2Live)
-      #soFar <- interval(force_tz(input$date1Live, "UTC"), force_tz(input$date2Live, "UTC"))
+      #soFar <- interval(input$date1Live, input$date2Live)
+      soFar <- interval(force_tz(input$date1Live, "UTC"), force_tz(input$date2Live, "UTC"))
+      
+      print(soFar)
       
       df <- gliderdf %>%
         filter(m_present_time %within% soFar) %>%
