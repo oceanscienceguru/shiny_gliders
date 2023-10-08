@@ -441,20 +441,20 @@ currentData_server <- function(id, gliderName, clientTZ) {
       
       #potential workaround for airdate picker hijacking broswer tz
       if(clientTZ != 0){
-        print("local time adjustment")
-        print(input$date1Live)
-        print(input$date2Live)
-        print(clientTZ)
+        # print("local time adjustment")
+        # print(input$date1Live)
+        # print(input$date2Live)
+        # print(clientTZ)
         soFar <- interval(force_tz(input$date1Live - hours(clientTZ)), force_tz(input$date2Live - hours(clientTZ), "UTC"))
       } else {
-        print("no local time adjustment")
-        print(input$date1Live)
-        print(input$date2Live)
-        print(clientTZ)
+        # print("no local time adjustment")
+        # print(input$date1Live)
+        # print(input$date2Live)
+        # print(clientTZ)
         soFar <- interval(input$date1Live, input$date2Live)
       }
       
-      print(soFar)
+      #print(soFar)
       
       df <- gliderdf %>%
         filter(m_present_time %within% soFar) %>%
@@ -570,30 +570,38 @@ currentData_server <- function(id, gliderName, clientTZ) {
       # ggplotly(sciLive) %>% toWebGL()
       
       if (input$display_varLive == "sci_water_temp") {
-        oceanColor = cmocean("thermal")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
+        oceanColor = cmocean("thermal")(length(unique(scienceChunk_live()[[input$display_varLive]])))
       } else if (input$display_varLive == "sci_water_pressure") {
-        oceanColor = cmocean("deep")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
+        oceanColor = cmocean("deep")(length(unique(scienceChunk_live()[[input$display_varLive]])))
       } else if (input$display_varLive == "sci_water_cond") {
-        oceanColor = cmocean("haline")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
+        oceanColor = cmocean("haline")(length(unique(scienceChunk_live()[[input$display_varLive]])))
       } else if (input$display_varLive == "sci_suna_nitrate_concentration") {
-        oceanColor = cmocean("tempo")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
+        oceanColor = cmocean("tempo")(length(unique(scienceChunk_live()[[input$display_varLive]])))
       } else if (input$display_varLive == "sci_flbbcd_chlor_units"|
                  input$display_varLive == "sci_bbfl2s_chlor_scaled" ) {
-        oceanColor = cmocean("algae")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
+        oceanColor = cmocean("algae")(length(unique(scienceChunk_live()[[input$display_varLive]])))
       } else if (input$display_varLive == "sci_flbbcd_cdom_units"|
                  input$display_varLive == "sci_bbfl2s_cdom_scaled" ) {
-        oceanColor = cmocean("matter")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
+        oceanColor = cmocean("matter")(length(unique(scienceChunk_live()[[input$display_varLive]])))
       } else if (input$display_varLive == "sci_flbbcd_bb_units"|
                  input$display_varLive == "sci_bbfl2s_bb_scaled" ) {
-        oceanColor = cmocean("turbid")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
+        oceanColor = cmocean("turbid")(length(unique(scienceChunk_live()[[input$display_varLive]])))
       } else if (input$display_varLive == "sci_oxy3835_oxygen" |
                  input$display_varLive == "sci_oxy4_oxygen" ) {
-        oceanColor = cmocean("oxy")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
+        oceanColor = cmocean("oxy")(length(unique(scienceChunk_live()[[input$display_varLive]])))
       } else if (startsWith(input$display_varLive, "sci_ocr507")) {
-        oceanColor = cmocean("solar")(diff(range(scienceChunk_live()[[input$display_varLive]]))*10)
+        oceanColor = cmocean("solar")(length(unique(scienceChunk_live()[[input$display_varLive]])))
       } else {
         oceanColor = NULL
       }
+      
+      # #requires arranging data in order or bgcolor breaks in webGL
+      # X <- scienceChunk_live() %>%
+      #   ungroup() %>%
+      #   arrange(.data[[input$display_varLive]])
+      # 
+      # #factorize color vector for bgcolor
+      # oceanColor <- oceanColor[factor(X[[input$display_varLive]])]
      
       fig <- plot_ly(data = scienceChunk_live(),
                      x = ~as.character(m_present_time),
@@ -606,7 +614,7 @@ currentData_server <- function(id, gliderName, clientTZ) {
                      text = ~paste0("Date: ", m_present_time, "\ni_depth: ", round(osg_i_depth, 3), "\n",
                        input$display_varLive, ": ", round(.data[[input$display_varLive]], 3)),
                      hoverinfo = "text",
-                     hoverlabel = list(bgcolor = oceanColor)
+                     hoverlabel = list(bgcolor = "black")
                   ) %>%
         add_trace(data = filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth),
                   x = ~as.character(m_present_time),
