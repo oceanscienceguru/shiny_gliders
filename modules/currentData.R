@@ -445,7 +445,7 @@ currentData_server <- function(id, gliderName, clientTZ) {
         print(input$date1Live)
         print(input$date2Live)
         print(clientTZ)
-        soFar <- interval(with_tz(input$date1Live + clientTZ), with_tz(input$date2Live + clientTZ, "UTC"))
+        soFar <- interval(force_tz(input$date1Live - hours(clientTZ)), force_tz(input$date2Live - hours(clientTZ), "UTC"))
       } else {
         print("no local time adjustment")
         print(input$date1Live)
