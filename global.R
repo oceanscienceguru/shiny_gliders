@@ -33,6 +33,7 @@ source("./modules/gliderDashboard.R")
 source("./modules/currentData.R")
 source("./modules/routing.R")
 source("./modules/fullData.R")
+source("./scripts/sciPlot.R")
 
 Sys.setenv(TZ="UTC")
 
