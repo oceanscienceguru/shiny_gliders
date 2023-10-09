@@ -102,7 +102,6 @@ sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, colorMin = 
     #explicitly name title
     colorbar(title = as.character(plotVar)
     ) %>%
-    config(displayModeBar = FALSE) %>% 
     #much faster rendering
     toWebGL()
   
