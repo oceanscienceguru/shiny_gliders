@@ -31,7 +31,7 @@ invisible(lapply(seq(length(plotVar)), FUN = function(i) {
                 name = paste0(plotVar[i]),
                 xaxis = paste0("x", i),
                 text = ~paste0("Date: ", m_present_time, "\ni_depth: ", round(y, 3), "\n",
-                               plotVar, ": ", round(x, 3)),
+                               plotVar[i], ": ", round(x, 3)),
                 hoverinfo = "text",
                 hoverlabel = list(bgcolor = "black")) %>%
       layout(
