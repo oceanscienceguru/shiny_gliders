@@ -23,6 +23,7 @@ library(ggiraph)
 library(cmocean)
 library(osgUtils)
 library(plotly)
+library(rjson)
 
 #source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")
@@ -34,8 +35,12 @@ source("./modules/currentData.R")
 source("./modules/routing.R")
 source("./modules/fullData.R")
 source("./scripts/sciPlot.R")
+source("./scripts/yoPlot.R")
 
 Sys.setenv(TZ="UTC")
+
+sensor_defs <- fromJSON(file = "https://github.com/kerfoot/gncutils/raw/master/resources/sensor-def-masters/slocum-sensor_defs.json"
+)
 
 deployedGliders <- read.csv("/echos/deployedGliders.txt", 
                             sep = "",

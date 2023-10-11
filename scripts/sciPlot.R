@@ -34,6 +34,14 @@ sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, colorMin = 
     oceanColor = NULL
   }
   
+  #set up units
+  if (exists(plotVar, where = sensor_defs)){
+    varUnits <- sensor_defs[[plotVar]]$attrs$units
+  } else {
+    varUnits <- NULL
+  }
+
+  
   # #requires arranging data in order or bgcolor breaks in webGL
   # X <- scienceChunk_live() %>%
   #   ungroup() %>%
@@ -100,7 +108,7 @@ sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, colorMin = 
              ))
     ) %>%
     #explicitly name title
-    colorbar(title = as.character(plotVar)
+    colorbar(title = paste0(plotVar, "\n", varUnits)
     ) %>%
     #much faster rendering
     toWebGL()
