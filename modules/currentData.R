@@ -132,7 +132,7 @@ currentData_ui <- function(id) {
                                      column(
                                        9,
                                        # h4("Brush and double-click to zoom (double-click again to reset)"),
-                                       girafeOutput(
+                                       plotlyOutput(
                                          outputId = ns("fliPlotLive"),
                                          # dblclick = "fliPlot_dblclick",
                                          # brush = brushOpts(id = "fliPlot_brush",
@@ -502,13 +502,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
       req(input$date1Live)
       
       df <- gliderChunk_live() %>%
-        dplyr::select(c(m_present_time, all_of(input$flight_varLive))) %>%
-        filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live) %>%
-        pivot_longer(
-          cols = !m_present_time,
-          names_to = "variable",
-          values_to = "count") %>%
-        filter(!is.na(count))
+        dplyr::select(c(m_present_time, osg_i_depth, any_of(input$flight_varLive))) %>%
+        filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
       
       df
       
@@ -531,43 +526,52 @@ currentData_server <- function(id, gliderName, clientTZ) {
     
     #flight plot
     gg2Live <- reactive({
+      
+      req(input$flight_varLive)
+      
+      fliPlot(gliderName,
+              inGliderdf = flightChunk_live(),
+              plotVar = input$flight_varLive)
+      
       # if (input$flight_var == "m_roll") {
       #   flightxlabel <- "roll"
       # } else if (input$flight_var == "m_heading") {
       #   flightxlabel <- "heading"
       # }
       #req(input$load)
-      fliLive <- ggplot(
-        data =
-          flightChunk_live(),
-        aes(x = m_present_time,
-            y = count,
-            color = variable,
-            shape = variable,
-            tooltip = round(count, 3))) +
-        geom_point_interactive() +
-        #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
-        theme_bw() +
-        labs(title = paste0(gliderName, " Current Data"),
-          x = "Date",
-          caption = "<img src='./www/cms_horiz.png' width='200'/>") +
-        theme(plot.title = element_text(size = 32)) +
-        theme(axis.title = element_text(size = 16)) +
-        theme(axis.text = element_text(size = 12),
-              plot.caption = element_markdown())
-      
-      fliLive 
+      # fliLive <- ggplot(
+      #   data =
+      #     flightChunk_live(),
+      #   aes(x = m_present_time,
+      #       y = count,
+      #       color = variable,
+      #       shape = variable,
+      #       tooltip = round(count, 3))) +
+      #   geom_point() +
+      #   #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
+      #   theme_bw() +
+      #   labs(title = paste0(gliderName, " Current Data"),
+      #     x = "Date",
+      #     caption = "<img src='./www/cms_horiz.png' width='200'/>") +
+      #   theme(plot.title = element_text(size = 32)) +
+      #   theme(axis.title = element_text(size = 16)) +
+      #   theme(axis.text = element_text(size = 12),
+      #         plot.caption = element_markdown())
+      # 
+      # ggplotly(fliLive) 
       
     })
     
-    output$fliPlotLive <- renderGirafe(girafe(code = print(gg2Live()),
-                                              width_svg = 12, height_svg = 5,
-                                              options = list(
-                                                opts_sizing(width = .7),
-                                                opts_zoom(max = 5),
-                                                opts_toolbar(position = "bottomleft")
-                                              )
-                                              ))
+    output$fliPlotLive <- renderPlotly(gg2Live())
+      
+      # renderGirafe(girafe(code = print(gg2Live()),
+      #                     width_svg = 12, height_svg = 5,
+      #                     options = list(
+      #                       opts_sizing(width = .7),
+      #                       opts_zoom(max = 5),
+      #                       opts_toolbar(position = "bottomleft")
+      #                     )
+      # ))
     
     ##### derived Live plots #########
     gg3Live <- reactive({
