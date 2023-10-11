@@ -186,9 +186,16 @@ currentData_ui <- function(id) {
                                               label = "Which variable to display",
                                               choices = NULL
                                             ),
+                                            # selectizeInput(
+                                            #   inputId = ns("yo_var"),
+                                            #   label = "Which variable to display",
+                                            #   choices = NULL,
+                                            #   multiple = TRUE,
+                                            #   options = list(plugins = list('remove_button'))
+                                            # ),
                                           )),
                                    column(10,
-                                          girafeOutput(
+                                          plotlyOutput(
                                             outputId = ns("yoPlot"),
                                             #dblclick = "fliPlot_dblclick",
                                             #brush = brushOpts(id = "fliPlot_brush",
@@ -250,9 +257,15 @@ currentData_server <- function(id, gliderName, clientTZ) {
     startDateLive <- min(gliderdf$m_present_time)
     endDateLive <- max(gliderdf$m_present_time)
     
-    yoList <- unique(gliderdf$yo_id) %>%
-      na.omit() %>%
-      sort()
+    yoList <- reactive({
+      unique(gliderdf$yo_id) %>%
+        na.omit() %>%
+        sort()
+    })
+    
+    # yoList <- unique(gliderdf$yo_id) %>%
+    #   na.omit() %>%
+    #   sort()
     
     #get start/end days and update data filters
     #default to last 3 weeks of data
@@ -268,7 +281,7 @@ currentData_server <- function(id, gliderName, clientTZ) {
     updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
     updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
     
-    updateSelectInput(session, "yo", NULL, choices = yoList, selected = tail(yoList, 1))
+    updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = tail(yoList(), 1))
     updateSelectInput(session, "yo_var", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
     
     updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
@@ -735,17 +748,25 @@ currentData_server <- function(id, gliderName, clientTZ) {
     
     yoChunk <- reactive({
       req(input$yo)
-      
+
       qf <- gliderdf %>%
         filter(yo_id == input$yo) %>% #grab only yo of interest
         filter(cast %in% input$cast) %>% #grab cast as needed
-        select(c(m_present_time, m_water_depth, osg_i_depth, any_of(input$yo_var))) %>%
-        filter(!is.na(across(!c(m_present_time:osg_i_depth))))
+        select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, i_lat, i_lon, any_of(input$yo_var))) 
+        #filter(!is.na(across(!c(m_present_time:osg_i_depth))))
+      
+      # qf <- gliderdf %>%
+      #   filter(yo_id == 98) %>% #grab only yo of interest
+      #   filter(cast %in% "Downcast") %>% #grab cast as needed
+      #   select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, any_of(plotVar))) 
+      #filter(!is.na(across(!c(m_present_time:osg_i_depth))))
       
       if(isTRUE(input$zeroFilterYo)){
         
         zf <- qf %>%
-          filter(.data[[input$yo_var]] > 0)
+          pivot_longer(cols = !c(m_present_time:i_lon)) %>%
+          filter(value > 0) %>%
+          pivot_wider(names_from = name)
         
         zf
       } else {
@@ -754,86 +775,93 @@ currentData_server <- function(id, gliderName, clientTZ) {
       
     })
     
-    yoPlot <- reactive({
-      yoLive <- ggplot(
-        data = 
-          yoChunk(),#dynamically filter the sci variable of interest
-        aes(x=.data[[input$yo_var]],
-            y=osg_i_depth,
-            #z=.data[[input$display_varLive]],
-            #colour = .data[[input$yo_var]],
-            #tooltip = round(.data[[input$yo_var]], 3)
-        )) +
-        # geom_point_interactive(
-        #   # size = 2,
-        #   na.rm = TRUE
-        # ) +
-        geom_path() +
-        # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
-        #geom_hline(yintercept = 0) +
-        scale_y_reverse() +
-        #scale_colour_viridis_c(limits = c(input$minLive, input$maxLive)) +
-        geom_point(data = filter(yoChunk(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth),
-                   aes(y = m_water_depth),
-                   size = 0.3,
-                   color = "black",
-                   na.rm = TRUE
-        ) +
-        theme_bw() +
-        labs(title = paste0(gliderName, " yo"),
-             y = "Depth (m)",
-             x = "Date",
-             caption = "<img src='./www/cms_horiz.png' width='200'/>") +
-        theme(plot.title = element_text(size = 32)) +
-        theme(axis.title = element_text(size = 16)) +
-        theme(axis.text = element_text(size = 12)) +
-        theme(plot.caption = element_markdown()) +
+    yoPlot_live <- reactive({
       
-      if (input$yo_var == "sci_water_temp") {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "thermal") 
-      } else if (input$yo_var == "sci_water_pressure") {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "deep")
-      } else if (input$yo_var == "sci_water_cond") {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "haline")
-      } else if (input$yo_var == "sci_suna_nitrate_concentration") {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "tempo") 
-      } else if (input$yo_var == "sci_flbbcd_chlor_units") {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "algae") 
-      } else if (input$yo_var == "sci_flbbcd_cdom_units") {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "matter") 
-      } else if (input$yo_var == "sci_flbbcd_bb_units") {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "turbid") 
-      } else if (input$yo_var == "sci_oxy3835_oxygen" |
-                 input$yo_var == "sci_oxy4_oxygen" ) {
-        scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-                            name = "oxy") 
-      } else {
-        scale_colour_viridis_c(limits = c(input$minLive, input$maxLive))
-      }
+      yoPlot(gliderName, 
+             yoChunk(), 
+             input$yo_var)
       
-      yoLive
+      # yoLive <- ggplot(
+      #   data = 
+      #     yoChunk(),#dynamically filter the sci variable of interest
+      #   aes(x=.data[[input$yo_var]],
+      #       y=osg_i_depth,
+      #       #z=.data[[input$display_varLive]],
+      #       #colour = .data[[input$yo_var]],
+      #       #tooltip = round(.data[[input$yo_var]], 3)
+      #   )) +
+      #   # geom_point_interactive(
+      #   #   # size = 2,
+      #   #   na.rm = TRUE
+      #   # ) +
+      #   geom_path() +
+      #   # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
+      #   #geom_hline(yintercept = 0) +
+      #   scale_y_reverse() +
+      #   #scale_colour_viridis_c(limits = c(input$minLive, input$maxLive)) +
+      #   geom_point(data = filter(yoChunk(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth),
+      #              aes(y = m_water_depth),
+      #              size = 0.3,
+      #              color = "black",
+      #              na.rm = TRUE
+      #   ) +
+      #   theme_bw() +
+      #   labs(title = paste0(gliderName, " yo"),
+      #        y = "Depth (m)",
+      #        x = "Date",
+      #        caption = "<img src='./www/cms_horiz.png' width='200'/>") +
+      #   theme(plot.title = element_text(size = 32)) +
+      #   theme(axis.title = element_text(size = 16)) +
+      #   theme(axis.text = element_text(size = 12)) +
+      #   theme(plot.caption = element_markdown()) +
+      # 
+      # if (input$yo_var == "sci_water_temp") {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "thermal") 
+      # } else if (input$yo_var == "sci_water_pressure") {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "deep")
+      # } else if (input$yo_var == "sci_water_cond") {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "haline")
+      # } else if (input$yo_var == "sci_suna_nitrate_concentration") {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "tempo") 
+      # } else if (input$yo_var == "sci_flbbcd_chlor_units") {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "algae") 
+      # } else if (input$yo_var == "sci_flbbcd_cdom_units") {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "matter") 
+      # } else if (input$yo_var == "sci_flbbcd_bb_units") {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "turbid") 
+      # } else if (input$yo_var == "sci_oxy3835_oxygen" |
+      #            input$yo_var == "sci_oxy4_oxygen" ) {
+      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
+      #                       name = "oxy") 
+      # } else {
+      #   scale_colour_viridis_c(limits = c(input$minLive, input$maxLive))
+      # }
+      # 
+      # yoLive
       
     })
     
-    output$yoPlot <- renderGirafe(girafe(code = print(yoPlot()),
-                                              width_svg = 12, height_svg = 5,
-                                              options = list(
-                                                opts_sizing(width = .7),
-                                                opts_zoom(max = 5),
-                                                opts_toolbar(position = "bottomleft")
-                                              )
-    ))
+    output$yoPlot <- renderPlotly(yoPlot_live())
+      
+    #   renderGirafe(girafe(code = print(yoPlot()),
+    #                                           width_svg = 12, height_svg = 5,
+    #                                           options = list(
+    #                                             opts_sizing(width = .7),
+    #                                             opts_zoom(max = 5),
+    #                                             opts_toolbar(position = "bottomleft")
+    #                                           )
+    # ))
     
     #### Buttons to scroll through yos ####
     #initialize reactive to track with same value as yo variable
-    selectYo <- reactiveValues(id = tail(yoList, 1))
+    selectYo <- reactiveValues(id = tail(yoList(), 1))
     
     #attach IDs to yo plot reactive
     observeEvent(input$yo, {
@@ -841,24 +869,24 @@ currentData_server <- function(id, gliderName, clientTZ) {
     })
     
     observeEvent(input$oldestYo, {
-      selectYo$id <- head(yoList, 1)
-      updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = head(yoList, 1))
+      selectYo$id <- head(yoList(), 1)
+      updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = head(yoList(), 1))
     })
     observeEvent(input$prevYo, {
       if (selectYo$id > 1) {
         selectYo$id <- as.numeric(input$yo) - 1
-        updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = yoList[selectYo$id])
+        updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = yoList()[selectYo$id])
       }
     })
     observeEvent(input$nextYo, {
-      if (selectYo$id < length(yoList)) {
+      if (selectYo$id < length(yoList())) {
         selectYo$id <- as.numeric(input$yo) + 1
-        updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = yoList[selectYo$id])
+        updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = yoList()[selectYo$id])
       }
     })
     observeEvent(input$latestYo, {
-      selectYo$id <- tail(yoList, 1)
-      updateSelectInput(session, "yo", NULL, choices = c(yoList), selected = tail(yoList, 1))
+      selectYo$id <- tail(yoList(), 1)
+      updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = tail(yoList(), 1))
     })
     
     #### pseudograms ########
