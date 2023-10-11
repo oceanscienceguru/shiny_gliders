@@ -10,88 +10,17 @@ yoPlot <- function(gliderName, inGliderdf, plotVar){
   # %>%
   #   pivot_longer(cols = !c(m_present_time, osg_i_depth)) %>%
   #   filter(value > 0)
-  
-  #setup color schemes
-  # if (plotVar == "sci_water_temp") {
-  #   oceanColor = cmocean("thermal")(length(unique(inGliderdf[[plotVar]])))
-  # } else if (plotVar == "sci_water_pressure") {
-  #   oceanColor = cmocean("deep")(length(unique(inGliderdf[[plotVar]])))
-  # } else if (plotVar == "sci_water_cond") {
-  #   oceanColor = cmocean("haline")(length(unique(inGliderdf[[plotVar]])))
-  # } else if (plotVar == "sci_suna_nitrate_concentration") {
-  #   oceanColor = cmocean("tempo")(length(unique(inGliderdf[[plotVar]])))
-  # } else if (plotVar == "sci_flbbcd_chlor_units"|
-  #            plotVar == "sci_bbfl2s_chlor_scaled" ) {
-  #   oceanColor = cmocean("algae")(length(unique(inGliderdf[[plotVar]])))
-  # } else if (plotVar == "sci_flbbcd_cdom_units"|
-  #            plotVar == "sci_bbfl2s_cdom_scaled" ) {
-  #   oceanColor = cmocean("matter")(length(unique(inGliderdf[[plotVar]])))
-  # } else if (plotVar == "sci_flbbcd_bb_units"|
-  #            plotVar == "sci_bbfl2s_bb_scaled" ) {
-  #   oceanColor = cmocean("turbid")(length(unique(inGliderdf[[plotVar]])))
-  # } else if (plotVar == "sci_oxy3835_oxygen" |
-  #            plotVar == "sci_oxy4_oxygen" ) {
-  #   oceanColor = cmocean("oxy")(length(unique(inGliderdf[[plotVar]])))
-  # } else if (startsWith(plotVar, "sci_ocr507")) {
-  #   oceanColor = cmocean("solar")(length(unique(inGliderdf[[plotVar]])))
-  # } else {
-  #   oceanColor = NULL
-  # }
-  
-  # #set up units
-  # if (exists(plotVar, where = sensor_defs)){
-  #   varUnits <- list()
-  #   for(i in plotVar){
-  #   varUnits[[i]] <- sensor_defs[[i]]$attrs$units
-  #   }
-  # } else {
-  #   varUnits <- NULL
-  # }
-  
-  # #build figure
-  # fig <- plot_ly(data = inGliderdf)
-  # 
-  # # need to use lapply because for loop is lazy eval
-  # invisible(lapply(seq(length(plotVar)), FUN = function(i) {
-  #   #init data
-  #   dfk <- data.frame(x = inGliderdf[[plotVar[i]]], y = inGliderdf[["osg_i_depth"]], m_present_time = inGliderdf[["m_present_time"]])
-  #   
-  #   #grab global fig and reassign to global fig
-  #   fig <<- get("fig", envir = globalenv()) %>%
-  #     add_trace(fig,
-  #                    data = dfk,
-  #                    x = ~x,
-  #                    y = ~y,
-  #                    type = "scatter",
-  #                    mode = "line",
-  #               #color = 
-  #               name = paste0(plotVar[i]),
-  #                    xaxis = paste0("x", i),
-  #               text = ~paste0("Date: ", m_present_time, "\ni_depth: ", round(y, 3), "\n",
-  #                              plotVar, ": ", round(x, 3)),
-  #               hoverinfo = "text",
-  #               hoverlabel = list(bgcolor = "black")) %>%
-  #                 layout(
-  #                   yaxis = list(#rangemode = "tozero",
-  #                                    range = c(max(dfk$y), 0)),
-  #                   legend = list(orientation = "h",   # show entries horizontally
-  #                                 xanchor = "center",  # use center of legend as anchor
-  #                                 x = 0.5)
-  #                   #xaxis = list(title = paste0(plotVar[i]))
-  #                   )
-  #   
-  #   return(fig)
-  # }))
-  
 
-  
+fig <- plot_ly()
+
   # need to use lapply because for loop is lazy eval
-  fig <- invisible(lapply(seq(length(plotVar)), FUN = function(i) {
+invisible(lapply(seq(length(plotVar)), FUN = function(i) {
     #init data
     dfk <- data.frame(x = inGliderdf[[plotVar[i]]], y = inGliderdf[["osg_i_depth"]], m_present_time = inGliderdf[["m_present_time"]])
     
     #grab global fig and reassign to global fig
-    plot_ly() %>%
+    fig <<- get("fig", envir = environment()) %>% 
+    #plot_ly() %>%
       add_trace(#fig,
                 data = dfk,
                 x = ~x,
