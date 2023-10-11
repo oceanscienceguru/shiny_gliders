@@ -155,7 +155,7 @@ currentData_ui <- function(id) {
                                               #downloadButton('downloadSouPlot')
                                             )),
                                      column(9,
-                                            girafeOutput(outputId = ns("tsPlotLive"),
+                                            plotlyOutput(outputId = ns("tsPlotLive"),
                                                        #height = "600px"
                                             )
                                      )
@@ -181,18 +181,18 @@ currentData_ui <- function(id) {
                                               label = "Filter data > 0?",
                                               value = TRUE
                                             ),
-                                            selectInput(
-                                              inputId = ns("yo_var"),
-                                              label = "Which variable to display",
-                                              choices = NULL
-                                            ),
-                                            # selectizeInput(
+                                            # selectInput(
                                             #   inputId = ns("yo_var"),
                                             #   label = "Which variable to display",
-                                            #   choices = NULL,
-                                            #   multiple = TRUE,
-                                            #   options = list(plugins = list('remove_button'))
+                                            #   choices = NULL
                                             # ),
+                                            selectizeInput(
+                                              inputId = ns("yo_var"),
+                                              label = "Which variable to display",
+                                              choices = NULL,
+                                              multiple = TRUE,
+                                              options = list(plugins = list('remove_button'))
+                                            ),
                                           )),
                                    column(10,
                                           plotlyOutput(
@@ -516,6 +516,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
     
     gg1Live <- reactive({
       
+      req(input$display_varLive)
+      
       sciPlot(gliderName, 
               inGliderdf = scienceChunk_live(), 
               gliderFlightdf = gliderChunk_live(), 
@@ -524,15 +526,6 @@ currentData_server <- function(id, gliderName, clientTZ) {
               colorMax= input$maxLive)
       
     })
-    
-    # output$sciPlotLive <- renderGirafe(girafe(code = print(gg1Live()),
-    #                                           width_svg = 12, height_svg = 5,
-    #                                           options = list(
-    #                                             opts_sizing(width = .7),
-    #                                             opts_zoom(max = 5),
-    #                                             opts_toolbar(position = "bottomleft")
-    #                                           )
-    #                                           ))
     
     output$sciPlotLive <- renderPlotly(gg1Live())
     
@@ -579,6 +572,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
     ##### derived Live plots #########
     gg3Live <- reactive({
       
+      req(input$derivedTypeLive)
+      
       if (input$derivedTypeLive == "TS Plot"){
         df <- filter(gliderChunk_live(), osg_salinity > 0)
         wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
@@ -591,13 +586,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
                 #color = segment,
                 #shape = variable
             )) +
-          geom_point_interactive(size = 3,
+          geom_point(size = 3,
                      pch = 1) +
-          # scale_color_gradient(
-          #   low = "red",
-          #   high = "blue",
-          # ) +
-          #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
           theme_bw() +
           labs(title = "TS Plot",
                x = "Salinity",
@@ -611,139 +601,55 @@ currentData_server <- function(id, gliderName, clientTZ) {
                 axis.text = element_text(size = 12),
                 plot.caption = element_markdown(),
                 legend.position ="none",
-          ) 
+          )
+        
+        plot <- ggplotly(plot) %>%
+          toWebGL()
       }
       
       if (input$derivedTypeLive == "SV Plot"){
         df <- filter(gliderChunk_live(), osg_soundvel1 > 0)
         wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
         
-        plot <- 
-          ggplot(data = df,
-                 aes(x=m_present_time,
-                     y=osg_depth,
-                     #z=osg_soundvel1
-                 )) +
-          geom_point_interactive(
-            aes(color = osg_soundvel1, tooltip = round(osg_soundvel1, 3))
-          ) +
-          #geom_hline(yintercept = 0) +
-          scale_y_reverse() +
-          scale_color_cmocean(#limits = c(input$minLive, input$maxLive),
-                              name = "speed") +
-          geom_point(data = wf,
-                     aes(y = m_water_depth),
-                     size = 0.3,
-                     color = "black",
-                     na.rm = TRUE
-          ) +
-          theme_bw() +
-          labs(title = "Sound Velocity",
-               caption = "Calculated using Coppens <i>et al.</i> (1981) 
-               <br>
-               <br>
-               <img src='./www/cms_horiz.png' width='200'/>",
-               y = "Depth (m)",
-               x = "Date") +
-          theme(plot.title = element_text(size = 32)) +
-          theme(axis.title = element_text(size = 16)) +
-          theme(axis.text = element_text(size = 12)) +
-          theme(plot.caption = element_markdown())
+        plot <- sciPlot(gliderName, 
+                        inGliderdf = df, 
+                        gliderFlightdf = wf, 
+                        plotVar = input$derivedTypeLive,
+                        colorMin = NULL,
+                        colorMax= NULL)
       }
       
       if (input$derivedTypeLive == "Density"){
         df <- filter(gliderChunk_live(), osg_rho > 0)
         wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
         
-        plot <- 
-          ggplot(
-            data = 
-              df,
-            aes(x=m_present_time,
-                y=osg_depth,
-                #z=.data[[input$display_varLive]],
-                colour = osg_rho,
-                tooltip = round(osg_rho, 3)
-            )) +
-          geom_point_interactive(
-            # size = 2,
-            # na.rm = TRUE
-          ) +
-          # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
-          #geom_hline(yintercept = 0) +
-          scale_y_reverse() +
-          scale_color_cmocean(#limits = c(input$minLive, input$maxLive),
-                              name = "dense") +
-          geom_point(data = wf,
-                     aes(y = m_water_depth),
-                     size = 0.3,
-                     color = "black",
-                     na.rm = TRUE
-          ) +
-          theme_bw() +
-          labs(title = "Density at Depth",
-               y = "Depth (m)",
-               x = "Date",
-               caption = "<img src='./www/cms_horiz.png' width='200'/>") +
-          theme(plot.title = element_text(size = 32)) +
-          theme(axis.title = element_text(size = 16)) +
-          theme(axis.text = element_text(size = 12),
-                plot.caption = element_markdown())
+        plot <- sciPlot(gliderName, 
+                        inGliderdf = df, 
+                        gliderFlightdf = wf, 
+                        plotVar = input$derivedTypeLive,
+                        colorMin = NULL,
+                        colorMax= NULL)
+
       }
       
       if (input$derivedTypeLive == "Salinity"){
         df <- filter(gliderChunk_live(), osg_salinity > 0)
         wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
         
-        plot <- 
-          ggplot(
-            data = 
-              df,
-            aes(x=m_present_time,
-                y=osg_depth,
-                #z=.data[[input$display_varLive]],
-                colour = osg_salinity,
-                tooltip = round(osg_salinity, 3)
-            )) +
-          geom_point_interactive(
-            # size = 2,
-            # na.rm = TRUE
-          ) +
-          # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
-          #geom_hline(yintercept = 0) +
-          scale_y_reverse() +
-          scale_color_cmocean(#limits = c(input$minLive, input$maxLive),
-                              name = "haline") +
-          geom_point(data = wf,
-                     aes(y = m_water_depth),
-                     size = 0.3,
-                     color = "black",
-                     na.rm = TRUE
-          ) +
-          theme_bw() +
-          labs(title = "Salinity at Depth",
-               y = "Depth (m)",
-               x = "Date",
-               caption = "<img src='./www/cms_horiz.png' width='200'/>") +
-          theme(plot.title = element_text(size = 32)) +
-          theme(axis.title = element_text(size = 16)) +
-          theme(axis.text = element_text(size = 12),
-                plot.caption = element_markdown())
+        plot <- sciPlot(gliderName, 
+                inGliderdf = df, 
+                gliderFlightdf = wf, 
+                plotVar = input$derivedTypeLive,
+                colorMin = NULL,
+                colorMax= NULL)
       }
       
       plot
       
     })
     
-    output$tsPlotLive <- renderGirafe(girafe(code = print(gg3Live()),
-                                             width_svg = 12, height_svg = 5,
-                                             options = list(
-                                               opts_sizing(width = .7),
-                                               opts_zoom(max = 5),
-                                               opts_toolbar(position = "bottomleft")
-                                             )
-                                             ))
-    
+    output$tsPlotLive <- renderPlotly(gg3Live())
+      
     #### yo by yo ####
     
     yoChunk <- reactive({

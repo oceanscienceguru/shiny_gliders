@@ -30,6 +30,15 @@ sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, colorMin = 
     oceanColor = cmocean("oxy")(length(unique(inGliderdf[[plotVar]])))
   } else if (startsWith(plotVar, "sci_ocr507")) {
     oceanColor = cmocean("solar")(length(unique(inGliderdf[[plotVar]])))
+  } else if (plotVar == "Salinity"){
+    plotVar <- "osg_salinity"
+    oceanColor = cmocean("haline")(length(unique(inGliderdf[[plotVar]])))
+  } else if (plotVar == "SV Plot"){
+    plotVar <- "osg_soundvel1"
+    oceanColor = cmocean("speed")(length(unique(inGliderdf[[plotVar]])))
+  } else if (plotVar == "Density"){
+    plotVar <- "osg_rho"
+    oceanColor = cmocean("dense")(length(unique(inGliderdf[[plotVar]])))
   } else {
     oceanColor = NULL
   }
