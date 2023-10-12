@@ -166,12 +166,25 @@ currentData_ui <- function(id) {
                           tabPanel(title = "Yo by Yo",
                                    column(2,
                                           wellPanel(
+                                            h4("Which yo to display?"),
+                                            airDatepickerInput(
+                                              inputId = ns("yoDate"),
+                                              label = "Time of interest:",
+                                              value = NULL,
+                                              range = FALSE,
+                                              minDate = NULL,
+                                              maxDate = NULL,
+                                              update_on = "close",
+                                              timepicker = TRUE,
+                                              clearButton = TRUE
+                                            ),
                                             selectInput(
                                               inputId = ns("yo"),
                                               label = "Which yo to display",
                                               choices = NULL,
                                               selected =  NULL
                                             ),
+                                            br(),
                                             checkboxGroupInput(
                                               inputId = ns("cast"),
                                               label = "Downcast or Upcast?",
@@ -277,6 +290,9 @@ currentData_server <- function(id, gliderName, clientTZ) {
                        options = list(minDate = startDateLive, maxDate = endDateLive,
                                       timeFormat = "HH:mm"))
     updateAirDateInput(session, "date2Live", NULL, value = endDateLive, 
+                       options = list(minDate = startDateLive, maxDate = endDateLive,
+                                      timeFormat = "HH:mm"))
+    updateAirDateInput(session, "yoDate", NULL, value = endDateLive, 
                        options = list(minDate = startDateLive, maxDate = endDateLive,
                                       timeFormat = "HH:mm"))
     
@@ -631,6 +647,15 @@ currentData_server <- function(id, gliderName, clientTZ) {
       
     #### yo by yo ####
     
+    #date matching to find yo in time
+    observeEvent(input$yoDate, {
+      yoFinder <- gliderdf %>%
+        slice(which.min(abs(m_present_time - input$yoDate)))
+      
+      selectYo$id <- yoFinder$yo_id
+      updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = yoFinder$yo_id)
+    })
+    
     yoChunk <- reactive({
       req(input$yo)
 
@@ -682,22 +707,34 @@ currentData_server <- function(id, gliderName, clientTZ) {
     observeEvent(input$oldestYo, {
       selectYo$id <- head(yoList(), 1)
       updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = head(yoList(), 1))
+      # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
+      #                    options = list(minDate = startDateLive, maxDate = endDateLive,
+      #                                   timeFormat = "HH:mm"))
     })
     observeEvent(input$prevYo, {
       if (selectYo$id > 1) {
         selectYo$id <- as.numeric(input$yo) - 1
         updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = yoList()[selectYo$id])
+        # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
+        #                    options = list(minDate = startDateLive, maxDate = endDateLive,
+        #                                   timeFormat = "HH:mm"))
       }
     })
     observeEvent(input$nextYo, {
       if (selectYo$id < length(yoList())) {
         selectYo$id <- as.numeric(input$yo) + 1
         updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = yoList()[selectYo$id])
+        # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
+        #                    options = list(minDate = startDateLive, maxDate = endDateLive,
+        #                                   timeFormat = "HH:mm"))
       }
     })
     observeEvent(input$latestYo, {
       selectYo$id <- tail(yoList(), 1)
       updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = tail(yoList(), 1))
+      # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
+      #                    options = list(minDate = startDateLive, maxDate = endDateLive,
+      #                                   timeFormat = "HH:mm"))
     })
     
     #### pseudograms ########
