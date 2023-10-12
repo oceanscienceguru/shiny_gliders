@@ -824,13 +824,13 @@ fullData_server <- function(id, clientTZ) {
     #dynamically filter for plotting
     chunk <- reactive({
       #potential workaround for airdate picker hijacking broswer tz
-      if(clientTZ != 0){
-        soFar <- interval(force_tz(input$date1 - hours(clientTZ)), force_tz(input$date2 - hours(clientTZ), "UTC"))
-      } else {
-        soFar <- interval(input$date1, input$date2)
-      }
+      # if(clientTZ != 0){
+      #   soFar <- interval(force_tz(input$date1 - hours(clientTZ)), force_tz(input$date2 - hours(clientTZ), "UTC"))
+      # } else {
+      #   soFar <- interval(input$date1, input$date2)
+      # }
       
-      #soFar <- interval(input$date1, input$date2)
+      soFar <- interval(input$date1, input$date2)
       
       df <- glider$full %>%
         filter(m_present_time %within% soFar) %>%
