@@ -367,6 +367,7 @@ fullData_server <- function(id, clientTZ) {
     
     #mission map 
     output$missionmap <- renderLeaflet({
+      req(input$mission)
       
       if(file.exists(paste0("./KML/", input$mission, ".kml"))){
       #grab .kml per mission number
@@ -870,12 +871,15 @@ fullData_server <- function(id, clientTZ) {
     })
     
     gg1 <- reactive({
-
+            validate(
+        need(gliderReactor$name != "", "Please click the Load Mission Data button")
+      )
+      
       sciPlot(
-        gliderReactor$name,
-        scienceChunk(),
-        chunk(),
-        input$display_var,
+        gliderName = gliderReactor$name,
+        inGliderdf = scienceChunk(),
+        gliderFlightdf = chunk(),
+        plotVar = input$display_var,
         colorMin = input$min,
         colorMax = input$max
       )
@@ -909,7 +913,7 @@ fullData_server <- function(id, clientTZ) {
       
       req(input$flight_var)
       
-      fliPlot(gliderReactor$name,
+      fliPlot(gliderName = gliderReactor$name,
               inGliderdf = flightChunk(),
               plotVar = input$flight_var)
       

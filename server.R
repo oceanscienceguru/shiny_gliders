@@ -37,11 +37,20 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
     if(input$tabs == "routing"){
       routing_server("curRoute", glider)
     }
+    if(input$tabs == "fullMissData"){
+      fullData_server("gliding", clientTZ)
+    }
 
   })
   
+  
   ####### archived flight data ########
-  fullData_server("gliding", input$clientTime$clientTimeZone)
+  # observe({
+  # 
+  #   clientTZ <- input$clientTime$clientTimeZone
+  #   print(clientTZ)
+  # fullData_server("gliding", clientTZ)
+  # })
   
   ###### download handlers #########
   
