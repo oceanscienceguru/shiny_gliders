@@ -74,24 +74,29 @@ fullData_ui <- function(id) {
                                    label = "Which science variable to display",
                                    choices = NULL
                                  ),
-                                 #title = "Color Scale Override",
+                                 checkboxInput(
+                                   inputId = ns("zeroFilter"),
+                                   label = "Filter data > 0?",
+                                   value = TRUE
+                                 ),
+                                 h4("Color Scale Override"),
                                  numericInput(inputId = ns("min"),
                                               label = "Sci Axis Minimum",
                                               NULL),
                                  numericInput(inputId = ns("max"),
                                               label = "Sci Axis Maximum",
                                               NULL),
-                                 downloadButton('downloadSciPlot')
+                                 #downloadButton('downloadSciPlot')
                                )),
                         column(
                           9,
                           #"Brush and double-click to zoom (double-click again to reset)",
-                          plotOutput(
-                            outputId = ns("sciPlot"),
-                            dblclick = "sciPlot_dblclick",
-                            brush = brushOpts(id = ns("sciPlot_brush"),
-                                              resetOnNew = TRUE),
-                            height = "600px"
+                          plotlyOutput(
+                            outputId = ns("sciPlot")
+                            # dblclick = "sciPlot_dblclick",
+                            # brush = brushOpts(id = ns("sciPlot_brush"),
+                            #                   resetOnNew = TRUE),
+                            #height = "600px"
                           ) %>% withSpinner(color="#0dc5c1")
                         )
                ),
@@ -114,18 +119,18 @@ fullData_ui <- function(id) {
                                      multiple = TRUE,
                                      options = list(plugins = list('remove_button'))
                                    ),
-                                   downloadButton('downloadFliPlot'),
+                                   #downloadButton('downloadFliPlot'),
                                    verbatimTextOutput("summary")
                                  )),
                           column(
                             9,
                             #h4("Brush and double-click to zoom (double-click again to reset)"),
-                            plotOutput(
-                              outputId = ns("fliPlot"),
-                              dblclick = "fliPlot_dblclick",
-                              brush = brushOpts(id = ns("fliPlot_brush"),
-                                                resetOnNew = TRUE),
-                              height = "600px"
+                            plotlyOutput(
+                              outputId = ns("fliPlot")
+                              # dblclick = "fliPlot_dblclick",
+                              # brush = brushOpts(id = ns("fliPlot_brush"),
+                              #                   resetOnNew = TRUE),
+                              # height = "600px"
                             ) %>% withSpinner(color="#0dc5c1")
                           )
                         )),
@@ -143,7 +148,7 @@ fullData_ui <- function(id) {
                                    #downloadButton('downloadSouPlot')
                                  )),
                           column(9,
-                                 plotOutput(outputId = ns("tsPlot"),
+                                 plotlyOutput(outputId = ns("tsPlot"),
                                             #height = "600px"
                                  ) %>% withSpinner(color="#0dc5c1")
                           )
@@ -349,7 +354,7 @@ fullData_ui <- function(id) {
   )
 }
 
-fullData_server <- function(id) {
+fullData_server <- function(id, clientTZ) {
   
   moduleServer(id, function(input, output, session) {
     
@@ -817,7 +822,14 @@ fullData_server <- function(id) {
     
     #dynamically filter for plotting
     chunk <- reactive({
-      soFar <- interval(input$date1, input$date2)
+      #potential workaround for airdate picker hijacking broswer tz
+      if(clientTZ != 0){
+        soFar <- interval(force_tz(input$date1 - hours(clientTZ)), force_tz(input$date2 - hours(clientTZ), "UTC"))
+      } else {
+        soFar <- interval(input$date1, input$date2)
+      }
+      
+      #soFar <- interval(input$date1, input$date2)
       
       df <- glider$full %>%
         filter(m_present_time %within% soFar) %>%
@@ -841,90 +853,36 @@ fullData_server <- function(id) {
       )
       #req(input$display_var)
       
-      select(chunk(), m_present_time, osg_i_depth, input$display_var) %>%
+      qf <- chunk() %>%
+        select(m_present_time, osg_i_depth, input$display_var) %>%
         filter(!is.na(across(!c(m_present_time:osg_i_depth))))
+      
+      if(isTRUE(input$zeroFilter)){
+        
+        zf <- qf %>%
+          filter(.data[[input$display_var]] > 0)
+        
+        zf
+      } else {
+        qf
+      }
+      
     })
     
     gg1 <- reactive({
 
-      fullSci <- ggplot(data = 
-               scienceChunk(),
-             aes(x=m_present_time,
-                 y=osg_i_depth,
-                 color = .data[[input$display_var]])) +
-        geom_point(
-          na.rm = TRUE
-        ) +
-        coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
-        #geom_hline(yintercept = 0) +
-        scale_y_reverse() +
-        #scale_colour_viridis_c(limits = c(input$min, input$max)) +
-        geom_point(data = filter(chunk(), m_water_depth > 0),
-                   aes(x = m_present_time,
-                       y = m_water_depth),
-                   color = "black",
-                   size = 0.3,
-                   na.rm = TRUE
-        ) +
-        theme_bw() +
-        labs(title = paste0(missionNum$id, " Science Data"),
-             y = "Depth (m)",
-             x = "Date") +
-        theme(plot.title = element_text(size = 32)) +
-        theme(axis.title = element_text(size = 16)) +
-        theme(axis.text = element_text(size = 12)) +
-      
-      if (input$display_var == "sci_water_temp") {
-        scale_color_cmocean(limits = c(input$min, input$max),
-                            name = "thermal") 
-      } else if (input$display_var == "sci_water_pressure") {
-        scale_color_cmocean(limits = c(input$min, input$max),
-                            name = "deep")
-      } else if (input$display_var == "sci_water_cond") {
-        scale_color_cmocean(limits = c(input$min, input$max),
-                            name = "haline")
-      } else if (input$display_var == "sci_suna_nitrate_concentration") {
-        scale_color_cmocean(limits = c(input$min, input$max),
-                            name = "tempo") 
-      } else if (input$display_var == "sci_flbbcd_chlor_units" |
-                 input$display_var == "sci_bbfl2s_chlor_scaled" ) {
-        scale_color_cmocean(limits = c(input$min, input$max),
-                            name = "algae") 
-      } else if (input$display_var == "sci_flbbcd_cdom_units" |
-                 input$display_var == "sci_bbfl2s_cdom_scaled" ) {
-        scale_color_cmocean(limits = c(input$min, input$max),
-                            name = "matter") 
-      } else if (input$display_var == "sci_flbbcd_bb_units" |
-                 input$display_var == "sci_bbfl2s_bb_scaled" ) {
-        scale_color_cmocean(limits = c(input$min, input$max),
-                            name = "turbid") 
-      } else if (input$display_var == "sci_oxy3835_oxygen" |
-                 input$display_var == "sci_oxy4_oxygen" ) {
-        scale_color_cmocean(limits = c(input$min, input$max),
-                            name = "oxy") 
-      } else {
-        scale_colour_viridis_c(limits = c(input$min, input$max))
-      }
-      
-      fullSci
+      sciPlot(
+        gliderReactor$name,
+        scienceChunk(),
+        chunk(),
+        input$display_var,
+        colorMin = input$min,
+        colorMax = input$max
+      )
       
     })
     
-    output$sciPlot <- renderPlot({gg1()})
-    
-    #science plot zoom/click
-    observeEvent(input$sciPlot_dblclick, {
-      brush <- input$sciPlot_brush
-      if (!is.null(brush)) {
-        rangesci$x <- as.POSIXct(c(brush$xmin, brush$xmax), origin = "1970-01-01")
-        #REVERSED RANGE DUE TO REVERSED Y see: https://github.com/tidyverse/ggplot2/issues/4021
-        rangesci$y <- c(brush$ymax, brush$ymin)
-        
-      } else {
-        rangesci$x <- NULL
-        rangesci$y <- NULL
-      }
-    })
+    output$sciPlot <- renderPlotly({gg1()})
     
     ##### flight plot #####
     
@@ -932,12 +890,14 @@ fullData_server <- function(id) {
       validate(
         need(gliderReactor$name != "", "Please click the Load Mission Data button")
       )
-      select(chunk(), m_present_time, all_of(input$flight_var)) %>%
-        pivot_longer(
-          cols = !m_present_time,
-          names_to = "variable",
-          values_to = "count") %>%
-        filter(!is.na(count))
+      
+      select(chunk(), m_present_time, osg_i_depth, any_of(input$flight_var)) 
+      # %>%
+      #   pivot_longer(
+      #     cols = !m_present_time,
+      #     names_to = "variable",
+      #     values_to = "count") %>%
+      #   filter(!is.na(count))
     })
     
     # output$summary <- renderPrint({
@@ -946,27 +906,34 @@ fullData_server <- function(id) {
     
     #flight plot
     gg2 <- reactive({
+      
+      req(input$flight_var)
+      
+      fliPlot(gliderReactor$name,
+              inGliderdf = flightChunk(),
+              plotVar = input$flight_var)
+      
       # if (input$flight_var == "m_roll") {
       #   flightxlabel <- "roll"
       # } else if (input$flight_var == "m_heading") {
       #   flightxlabel <- "heading"
       # }
       #req(input$load)
-      ggplot(
-        data =
-          flightChunk(),
-        aes(x = m_present_time,
-            y = count,
-            color = variable,
-            shape = variable)) +
-        geom_point() +
-        coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
-        theme_bw() +
-        labs(title = paste0(missionNum$id, " Flight Data"),
-             x = "Date") +
-        theme(plot.title = element_text(size = 32)) +
-        theme(axis.title = element_text(size = 16)) +
-        theme(axis.text = element_text(size = 12))
+      # ggplot(
+      #   data =
+      #     flightChunk(),
+      #   aes(x = m_present_time,
+      #       y = count,
+      #       color = variable,
+      #       shape = variable)) +
+      #   geom_point() +
+      #   coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
+      #   theme_bw() +
+      #   labs(title = paste0(missionNum$id, " Flight Data"),
+      #        x = "Date") +
+      #   theme(plot.title = element_text(size = 32)) +
+      #   theme(axis.title = element_text(size = 16)) +
+      #   theme(axis.text = element_text(size = 12))
       
       # plotup <- list()
       # for (i in input$flight_var){
@@ -987,56 +954,21 @@ fullData_server <- function(id) {
       # wrap_plots(plotup, ncol = 1)
     })
     
-    output$fliPlot <- renderPlot({gg2()})
+    output$fliPlot <- renderPlotly({gg2()})
     
     #flight plot zoom/click
-    observeEvent(input$fliPlot_dblclick, {
-      brush <- input$fliPlot_brush
-      if (!is.null(brush)) {
-        rangefli$x <- as.POSIXct(c(brush$xmin, brush$xmax), origin = "1970-01-01")
-        rangefli$y <- c(brush$ymin, brush$ymax)
-        
-      } else {
-        rangefli$x <- NULL
-        rangefli$y <- NULL
-      }
-    })
-    
-    ######### sound velocity plot ##########
-    
-    # gg3 <- reactive({
-    #   req(input$load)
-    #   # create plot
-    #   ggplot(data = filter(chunk(), !is.nan(soundvel1)),
-    #          aes(x=m_present_time,
-    #              y=m_depth,
-    #              z=soundvel1)) +
-    #     geom_point(
-    #       aes(color = soundvel1)
-    #     ) +
-    #     geom_point(data = filter(chunk(), m_water_depth > 0),
-    #                aes(y = m_water_depth),
-    #                size = 0.1,
-    #                na.rm = TRUE
-    #     ) +
-    #     #geom_hline(yintercept = 0) +
-    #     scale_y_reverse() +
-    #     scale_colour_viridis_c(limits = c(limits = c(input$soundmin, input$soundmax))) +
-    #     theme_bw() +
-    #     labs(title = paste0(missionNum$id, " Sound Velocity"),
-    #          caption = "Calculated using Coppens <i>et al.</i> (1981)",
-    #          y = "Depth (m)",
-    #          x = "Date") +
-    #     theme(plot.title = element_text(size = 32)) +
-    #     theme(axis.title = element_text(size = 16)) +
-    #     theme(axis.text = element_text(size = 12)) +
-    #     theme(plot.caption = element_markdown())
-    #   
+    # observeEvent(input$fliPlot_dblclick, {
+    #   brush <- input$fliPlot_brush
+    #   if (!is.null(brush)) {
+    #     rangefli$x <- as.POSIXct(c(brush$xmin, brush$xmax), origin = "1970-01-01")
+    #     rangefli$y <- c(brush$ymin, brush$ymax)
+    #     
+    #   } else {
+    #     rangefli$x <- NULL
+    #     rangefli$y <- NULL
+    #   }
     # })
-    # 
-    # output$souPlot <- renderPlot({gg3()})
-    
-    
+
     ##### derived plots #########
     gg3 <- reactive({
       validate(
@@ -1074,122 +1006,57 @@ fullData_server <- function(id) {
                 axis.text = element_text(size = 12),
                 plot.caption = element_text(size = 16),
                 legend.position ="none",
-          ) 
+          )
+        
+        plot <- ggplotly(plot)
       }
       
       if (input$derivedType == "SV Plot"){
         df <- filter(chunk(), osg_soundvel1 > 0)
         wf <- filter(chunk(), m_water_depth > 0)
         
-        plot <- 
-          ggplot(data = df,
-                 aes(x=m_present_time,
-                     y=osg_depth,
-                     #z=osg_soundvel1
-                 )) +
-          geom_point(
-            aes(color = osg_soundvel1)
-          ) +
-          #geom_hline(yintercept = 0) +
-          scale_y_reverse() +
-          scale_color_cmocean(#limits = c(input$minLive, input$maxLive),
-            name = "speed") +
-          geom_point(data = wf,
-                     aes(y = m_water_depth),
-                     size = 0.3,
-                     color = "black",
-                     na.rm = TRUE
-          ) +
-          theme_bw() +
-          labs(title = "Sound Velocity",
-               caption = "Calculated using Coppens <i>et al.</i> (1981)",
-               y = "Depth (m)",
-               x = "Date") +
-          theme(plot.title = element_text(size = 32)) +
-          theme(axis.title = element_text(size = 16)) +
-          theme(axis.text = element_text(size = 12)) +
-          theme(plot.caption = element_markdown())
+       plot <- sciPlot(
+          gliderReactor$name,
+          df,
+          wf,
+          input$derivedType
+        )
+
       }
       
       if (input$derivedType == "Density"){
         df <- filter(chunk(), osg_rho > 0)
         wf <- filter(chunk(), m_water_depth > 0)
         
-        plot <- 
-          ggplot(
-            data = 
-              df,
-            aes(x=m_present_time,
-                y=osg_depth,
-                #z=.data[[input$display_varLive]],
-                colour = osg_rho,
-            )) +
-          geom_point(
-            # size = 2,
-            # na.rm = TRUE
-          ) +
-          # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
-          #geom_hline(yintercept = 0) +
-          scale_y_reverse() +
-          scale_color_cmocean(#limits = c(input$minLive, input$maxLive),
-            name = "dense") +
-          geom_point(data = wf,
-                     aes(y = m_water_depth),
-                     size = 0.3,
-                     color = "black",
-                     na.rm = TRUE
-          ) +
-          theme_bw() +
-          labs(title = "Density at Depth",
-               y = "Depth (m)",
-               x = "Date") +
-          theme(plot.title = element_text(size = 32)) +
-          theme(axis.title = element_text(size = 16)) +
-          theme(axis.text = element_text(size = 12))
+       plot <- sciPlot(
+          gliderReactor$name,
+          df,
+          wf,
+          input$derivedType
+        )
+        
+      
       }
       
       if (input$derivedType == "Salinity"){
         df <- filter(chunk(), osg_salinity > 0)
         wf <- filter(chunk(), m_water_depth > 0)
         
-        plot <- 
-          ggplot(
-            data = 
-              df,
-            aes(x=m_present_time,
-                y=osg_depth,
-                #z=.data[[input$display_varLive]],
-                colour = osg_salinity,
-            )) +
-          geom_point(
-            # size = 2,
-            # na.rm = TRUE
-          ) +
-          # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
-          #geom_hline(yintercept = 0) +
-          scale_y_reverse() +
-          scale_color_cmocean(#limits = c(input$minLive, input$maxLive),
-            name = "haline") +
-          geom_point(data = wf,
-                     aes(y = m_water_depth),
-                     size = 0.3,
-                     color = "black",
-                     na.rm = TRUE
-          ) +
-          theme_bw() +
-          labs(title = "Salinity at Depth",
-               y = "Depth (m)",
-               x = "Date") +
-          theme(plot.title = element_text(size = 32)) +
-          theme(axis.title = element_text(size = 16)) +
-          theme(axis.text = element_text(size = 12))
+       plot <- sciPlot(
+          gliderReactor$name,
+          df,
+          wf,
+          input$derivedType
+        )
+        
+  
       }
       
       plot
       
     })
     
-    output$tsPlot <- renderPlot({gg3()})
+    output$tsPlot <- renderPlotly({gg3()})
     
     ########## explorer plot #########
     
