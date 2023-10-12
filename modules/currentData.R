@@ -104,7 +104,9 @@ currentData_ui <- function(id) {
                                        # brush = brushOpts(id = "sciPlot_brush",
                                        #                   resetOnNew = TRUE),
                                        # height = "600px"
-                                     ) %>% withSpinner(color="#0dc5c1")
+                                     ) %>% withSpinner(color="#0dc5c1"),
+                                     h4("Summary"),
+                                     tableOutput(outputId = ns("sciSummary"))
                                    )
                           ),
                           #flight variable settings
@@ -498,6 +500,11 @@ currentData_server <- function(id, gliderName, clientTZ) {
       
     })
     
+    output$sciSummary <- renderTable({
+      req(input$display_varLive)
+      tibble::tibble(!!!summary(scienceChunk_live()[[input$display_varLive]]))
+    })
+    
     flightChunk_live <- reactive({
       req(input$date1Live)
       
@@ -517,6 +524,7 @@ currentData_server <- function(id, gliderName, clientTZ) {
               inGliderdf = scienceChunk_live(), 
               gliderFlightdf = gliderChunk_live(), 
               plotVar = input$display_varLive,
+              liveData = TRUE,
               colorMin = input$minLive,
               colorMax= input$maxLive)
       
@@ -533,46 +541,10 @@ currentData_server <- function(id, gliderName, clientTZ) {
               inGliderdf = flightChunk_live(),
               plotVar = input$flight_varLive)
       
-      # if (input$flight_var == "m_roll") {
-      #   flightxlabel <- "roll"
-      # } else if (input$flight_var == "m_heading") {
-      #   flightxlabel <- "heading"
-      # }
-      #req(input$load)
-      # fliLive <- ggplot(
-      #   data =
-      #     flightChunk_live(),
-      #   aes(x = m_present_time,
-      #       y = count,
-      #       color = variable,
-      #       shape = variable,
-      #       tooltip = round(count, 3))) +
-      #   geom_point() +
-      #   #coord_cartesian(xlim = rangefli$x, ylim = rangefli$y, expand = FALSE) +
-      #   theme_bw() +
-      #   labs(title = paste0(gliderName, " Current Data"),
-      #     x = "Date",
-      #     caption = "<img src='./www/cms_horiz.png' width='200'/>") +
-      #   theme(plot.title = element_text(size = 32)) +
-      #   theme(axis.title = element_text(size = 16)) +
-      #   theme(axis.text = element_text(size = 12),
-      #         plot.caption = element_markdown())
-      # 
-      # ggplotly(fliLive) 
-      
     })
     
     output$fliPlotLive <- renderPlotly(gg2Live())
       
-      # renderGirafe(girafe(code = print(gg2Live()),
-      #                     width_svg = 12, height_svg = 5,
-      #                     options = list(
-      #                       opts_sizing(width = .7),
-      #                       opts_zoom(max = 5),
-      #                       opts_toolbar(position = "bottomleft")
-      #                     )
-      # ))
-    
     ##### derived Live plots #########
     gg3Live <- reactive({
       
@@ -619,6 +591,7 @@ currentData_server <- function(id, gliderName, clientTZ) {
                         inGliderdf = df, 
                         gliderFlightdf = wf, 
                         plotVar = input$derivedTypeLive,
+                        liveData = TRUE,
                         colorMin = NULL,
                         colorMax= NULL)
       }
@@ -631,6 +604,7 @@ currentData_server <- function(id, gliderName, clientTZ) {
                         inGliderdf = df, 
                         gliderFlightdf = wf, 
                         plotVar = input$derivedTypeLive,
+                        liveData = TRUE,
                         colorMin = NULL,
                         colorMax= NULL)
 
@@ -644,6 +618,7 @@ currentData_server <- function(id, gliderName, clientTZ) {
                 inGliderdf = df, 
                 gliderFlightdf = wf, 
                 plotVar = input$derivedTypeLive,
+                liveData = TRUE,
                 colorMin = NULL,
                 colorMax= NULL)
       }
@@ -691,84 +666,10 @@ currentData_server <- function(id, gliderName, clientTZ) {
              yoChunk(), 
              input$yo_var)
       
-      # yoLive <- ggplot(
-      #   data = 
-      #     yoChunk(),#dynamically filter the sci variable of interest
-      #   aes(x=.data[[input$yo_var]],
-      #       y=osg_i_depth,
-      #       #z=.data[[input$display_varLive]],
-      #       #colour = .data[[input$yo_var]],
-      #       #tooltip = round(.data[[input$yo_var]], 3)
-      #   )) +
-      #   # geom_point_interactive(
-      #   #   # size = 2,
-      #   #   na.rm = TRUE
-      #   # ) +
-      #   geom_path() +
-      #   # coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
-      #   #geom_hline(yintercept = 0) +
-      #   scale_y_reverse() +
-      #   #scale_colour_viridis_c(limits = c(input$minLive, input$maxLive)) +
-      #   geom_point(data = filter(yoChunk(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth),
-      #              aes(y = m_water_depth),
-      #              size = 0.3,
-      #              color = "black",
-      #              na.rm = TRUE
-      #   ) +
-      #   theme_bw() +
-      #   labs(title = paste0(gliderName, " yo"),
-      #        y = "Depth (m)",
-      #        x = "Date",
-      #        caption = "<img src='./www/cms_horiz.png' width='200'/>") +
-      #   theme(plot.title = element_text(size = 32)) +
-      #   theme(axis.title = element_text(size = 16)) +
-      #   theme(axis.text = element_text(size = 12)) +
-      #   theme(plot.caption = element_markdown()) +
-      # 
-      # if (input$yo_var == "sci_water_temp") {
-      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-      #                       name = "thermal") 
-      # } else if (input$yo_var == "sci_water_pressure") {
-      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-      #                       name = "deep")
-      # } else if (input$yo_var == "sci_water_cond") {
-      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-      #                       name = "haline")
-      # } else if (input$yo_var == "sci_suna_nitrate_concentration") {
-      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-      #                       name = "tempo") 
-      # } else if (input$yo_var == "sci_flbbcd_chlor_units") {
-      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-      #                       name = "algae") 
-      # } else if (input$yo_var == "sci_flbbcd_cdom_units") {
-      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-      #                       name = "matter") 
-      # } else if (input$yo_var == "sci_flbbcd_bb_units") {
-      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-      #                       name = "turbid") 
-      # } else if (input$yo_var == "sci_oxy3835_oxygen" |
-      #            input$yo_var == "sci_oxy4_oxygen" ) {
-      #   scale_color_cmocean(limits = c(input$minLive, input$maxLive),
-      #                       name = "oxy") 
-      # } else {
-      #   scale_colour_viridis_c(limits = c(input$minLive, input$maxLive))
-      # }
-      # 
-      # yoLive
-      
     })
     
     output$yoPlot <- renderPlotly(yoPlot_live())
       
-    #   renderGirafe(girafe(code = print(yoPlot()),
-    #                                           width_svg = 12, height_svg = 5,
-    #                                           options = list(
-    #                                             opts_sizing(width = .7),
-    #                                             opts_zoom(max = 5),
-    #                                             opts_toolbar(position = "bottomleft")
-    #                                           )
-    # ))
-    
     #### Buttons to scroll through yos ####
     #initialize reactive to track with same value as yo variable
     selectYo <- reactiveValues(id = tail(yoList(), 1))

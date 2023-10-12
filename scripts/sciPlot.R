@@ -1,4 +1,12 @@
-sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, colorMin = NULL, colorMax = NULL){
+sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, liveData = FALSE, colorMin = NULL, colorMax = NULL){
+  
+  #gliderName <- name of glider for plot displays
+  #inGliderdf <- dataframe containing m_present_time, osg_i_depth and all of plotVar
+  #gliderFlightdf <- dataframe containing m_present_time and m_water_depth. Can be same as inGliderdf
+  #plotVar <- vector of strings of column names of variables of interest within inGliderdf
+  #liveData <- boolean, whether data is "real-time" or not
+  #colorMin <- color scale minimum value override
+  #colorMax <- color scale maximum value override
   
   #check if incoming color values are legitimate (only numeric if non-Null or non-NA passed in on reactive)
   if(is.numeric(colorMin) | is.numeric(colorMax)){
@@ -85,10 +93,7 @@ sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, colorMin = 
               showlegend = FALSE
     ) %>%
     #formatting
-    layout(title = list(text = paste0(gliderName, " real-time data"),
-                        x = 0.03,
-                        y = 0.97),
-           yaxis = list(autorange = "reversed",
+    layout(yaxis = list(autorange = "reversed",
                         title = "Depth (m)"),
            legend = list(title = as.character(plotVar)),
            xaxis = list(title = "Date",
@@ -121,6 +126,18 @@ sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, colorMin = 
     ) %>%
     #much faster rendering
     toWebGL()
+  
+  if(isTRUE(liveData)){
+    fig <- fig %>%
+      layout(title = list(text = paste0(gliderName, " real-time data"),
+                          x = 0.03,
+                          y = 0.97))
+  } else {
+    fig <- fig %>%
+      layout(title = list(text = paste0(gliderName, " delayed data"),
+                          x = 0.03,
+                          y = 0.97))
+  }
   
   #handle color override conditions
   #plotly needs both limits defined when overriding so provide min/max as appropriate
