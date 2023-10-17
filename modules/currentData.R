@@ -555,7 +555,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
       
       fliPlot(gliderName,
               inGliderdf = flightChunk_live(),
-              plotVar = input$flight_varLive)
+              plotVar = input$flight_varLive,
+              liveData = TRUE)
       
     })
     

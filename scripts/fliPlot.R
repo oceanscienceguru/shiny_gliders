@@ -1,4 +1,4 @@
-fliPlot <- function(gliderName, inGliderdf, plotVar){
+fliPlot <- function(gliderName, inGliderdf, plotVar, liveData = FALSE){
   
   # gliderName <- "usf-gansett"
   # load(paste0("/echos/", gliderName, "/glider_live.RData"))
@@ -48,10 +48,7 @@ fliPlot <- function(gliderName, inGliderdf, plotVar){
   out <- 
     subplot(fig, nrows = length(plotVar),
             shareX = TRUE, titleY = F) %>%
-    layout(title = list(text = paste0(gliderName, " real-time flight data"),
-                        x = 0.03,
-                        y = 0.96),
-           margin = list(
+    layout(margin = list(
              t = 50
            ),
            #yaxis = list(title = "Depth (m)"),
@@ -71,6 +68,18 @@ fliPlot <- function(gliderName, inGliderdf, plotVar){
              ))) %>% 
     #much faster rendering
     toWebGL()
+  
+  if(isTRUE(liveData)){
+    out <- out %>%
+      layout(title = list(text = paste0(gliderName, " real-time data"),
+                          x = 0.03,
+                          y = 0.97))
+  } else {
+    out <- out %>%
+      layout(title = list(text = paste0(gliderName, " delayed data"),
+                          x = 0.03,
+                          y = 0.97))
+  }
   
   # #build figure
   # fig <- plot_ly(data = inGliderdf,
