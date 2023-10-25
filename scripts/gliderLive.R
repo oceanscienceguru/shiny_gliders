@@ -175,17 +175,18 @@ gliderdfInt <- gliderdfraw %>%
   left_join(idepth) %>%
   left_join(igps)
 
-message("Glider state algorithms")
+message("Glider state algorithms, first pass")
 #glider state algorithms
-gliderState <- gliderdfInt %>%
-  #filter(m_present_time %within% time) %>%
-  #identify_casts(surface_threshold = 1) %>%
-  identify_casts_smooth(surface_threshold = 1, rolling_window_size = 4) %>% #first cast identification pass with "surface" threshold
+gliderTemp <- identify_casts_smooth(gliderdfInt, surface_threshold = 1, rolling_window_size = 4) #first cast identification pass with "surface" threshold
+  
+gliderNext <- gliderTemp %>%
   filter(cast != "Surface" & cast != "Unknown") %>% #strip out surface/unknown for yo ID
   add_yo_id() %>%
   full_join(gliderdfInt) %>% #rejoin with full set to get surface/unknown sections back
-  arrange(m_present_time) %>% #ensure chronological order
-  identify_casts_smooth(surface_threshold = 1, rolling_window_size = 4) %>% 
+  arrange(m_present_time) #ensure chronological order
+  
+message("Glider state algorithms, second pass")
+gliderState <- identify_casts_smooth(gliderNext, surface_threshold = 1, rolling_window_size = 4) %>% 
   #identify_casts(surface_threshold = 1) %>% #label cast state again
   select(c(m_present_time, cast, yo_id)) #clean up
 
