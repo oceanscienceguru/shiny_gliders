@@ -153,6 +153,96 @@ fullData_ui <- function(id) {
                                  ) %>% withSpinner(color="#0dc5c1")
                           )
                         ),),
+               #yo by yo
+               tabPanel(title = "Yo by Yo",
+                        column(2,
+                               wellPanel(
+                                 h4("Which yo to display?"),
+                                 airDatepickerInput(
+                                   inputId = ns("yoDate"),
+                                   label = "Time of interest:",
+                                   value = NULL,
+                                   range = FALSE,
+                                   minDate = NULL,
+                                   maxDate = NULL,
+                                   update_on = "close",
+                                   timepicker = TRUE,
+                                   clearButton = TRUE
+                                 ),
+                                 numericInput(
+                                   inputId = ns("yo"),
+                                   label = "Which yo to display",
+                                   value = NA
+                                   #selected =  NULL
+                                 ),
+                                 br(),
+                                 checkboxGroupInput(
+                                   inputId = ns("cast"),
+                                   label = "Downcast or Upcast?",
+                                   choices = c("Downcast", "Upcast"),
+                                   selected =  "Downcast"
+                                 ),
+                                 checkboxInput(
+                                   inputId = ns("zeroFilterYo"),
+                                   label = "Filter data > 0?",
+                                   value = TRUE
+                                 ),
+                                 # selectInput(
+                                 #   inputId = ns("yo_var"),
+                                 #   label = "Which variable to display",
+                                 #   choices = NULL
+                                 # ),
+                                 selectizeInput(
+                                   inputId = ns("yo_var"),
+                                   label = "Which variable to display",
+                                   choices = NULL,
+                                   multiple = TRUE,
+                                   options = list(plugins = list('remove_button'))
+                                 ),
+                               )),
+                        column(10,
+                               plotlyOutput(
+                                 outputId = ns("yoPlot"),
+                                 #dblclick = "fliPlot_dblclick",
+                                 #brush = brushOpts(id = "fliPlot_brush",
+                                 #                  resetOnNew = TRUE),
+                                 #height = "600px"
+                               ),
+                               hr(),
+                               column(3,
+                                      actionButton(
+                                        inputId = ns("oldestYo"),
+                                        label = "Oldest",
+                                        #icon("boat"),
+                                        style =
+                                          "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                      ), align = "center"),
+                               column(3,
+                                      actionButton(
+                                        inputId = ns("prevYo"),
+                                        label = "Previous",
+                                        #icon("boat"),
+                                        style =
+                                          "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                      ), align = "center"),
+                               column(3,
+                                      actionButton(
+                                        inputId = ns("nextYo"),
+                                        label = "Next",
+                                        #icon("boat"),
+                                        style =
+                                          "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                      ), align = "center"),
+                               column(3,
+                                      actionButton(
+                                        inputId = ns("latestYo"),
+                                        label = "Latest",
+                                        #icon("boat"),
+                                        style =
+                                          "color: #fff; background-color: #000000; border-color: #2e6da4"
+                                      ), align = "center"),
+                        ),
+               ),
                #data explorer tab
                tabPanel(title = "Data Explorer",
                         fluidRow(
@@ -454,26 +544,21 @@ fullData_server <- function(id, clientTZ) {
     selectPgram <- reactiveValues(seg = NULL, id = NULL)
     
     observeEvent(input$load, {
-      #req(input$load)
-      #on load add salinty + SV
       load(paste0("./Data/", isolate(input$mission), ".RData"))
       
       gliderReactor$name <- gliderName
       
-      df <- gliderdf 
+      df <- gliderdf
       
-      # df <- readRDS(paste0("./Data/", isolate(input$mission), ".RData")) %>%
-      #   mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
-      #   mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%
-      #   mutate(osg_rho = rho(osg_salinity, osg_theta, sci_water_pressure)) %>%
-      #   mutate(soundvel1 = c_Coppens1981(m_depth,
-      #                                    osg_salinity,
-      #                                    sci_water_temp))
+      #yoList$ids <- sort(na.omit(unique(df$yo_id)))
+
       #possible add ... from masterdata
       #mutate(new_water_depth = m_water_depth * (1500/soundvel1))
       
       allvars <- colnames(df)
       
+      yoNums <- sort(na.omit(unique(df$yo_id)))
+
       #pull out science variables
       scivars <- df %>%
         select(starts_with(c("sci","osg"))) %>%
@@ -501,6 +586,12 @@ fullData_server <- function(id, clientTZ) {
       
       updateSelectInput(session, "exploreVar1", NULL, choices = c(allvars), selected = "m_present_time")
       updateSelectInput(session, "exploreVar2", NULL, choices = c(allvars), selected = head(allvars, 1))
+      
+      updateAirDateInput(session, "yoDate", NULL, value = endDate, 
+                         options = list(minDate = startDate, maxDate = endDate,
+                                        timeFormat = "HH:mm"))
+      updateNumericInput(session, "yo", NULL, min = 0, max = max(yoNums), value = max(yoNums))
+      updateSelectInput(session, "yo_var", NULL, choices = c(scivars), selected = tail(scivars, 1))
       
       showNotification("Data loaded", type = "message")
       
@@ -842,10 +933,6 @@ fullData_server <- function(id, clientTZ) {
       
     })
     
-    #ranges for plot zooms
-    rangefli <- reactiveValues(x = NULL, y = NULL)
-    rangesci <- reactiveValues(x = NULL, y = NULL)
-    
     ########## science plot #########
     
     scienceChunk <- reactive({
@@ -874,67 +961,10 @@ fullData_server <- function(id, clientTZ) {
             validate(
         need(gliderReactor$name != "", "Please click the Load Mission Data button")
       )
-      
-      # fullSci <- ggplot(data = 
-      #                     scienceChunk(),
-      #                   aes(x=m_present_time,
-      #                       y=osg_i_depth,
-      #                       color = .data[[input$display_var]])) +
-      #   geom_point(
-      #     na.rm = TRUE
-      #   ) +
-      #   coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
-      #   #geom_hline(yintercept = 0) +
-      #   scale_y_reverse() +
-      #   #scale_colour_viridis_c(limits = c(input$min, input$max)) +
-      #   geom_point(data = filter(chunk(), m_water_depth > 0),
-      #              aes(x = m_present_time,
-      #                  y = m_water_depth),
-      #              color = "black",
-      #              size = 0.3,
-      #              na.rm = TRUE
-      #   ) +
-      #   theme_bw() +
-      #   labs(title = paste0(missionNum$id, " Science Data"),
-      #        y = "Depth (m)",
-      #        x = "Date") +
-      #   theme(plot.title = element_text(size = 32)) +
-      #   theme(axis.title = element_text(size = 16)) +
-      #   theme(axis.text = element_text(size = 12)) +
-      #   
-      #   if (input$display_var == "sci_water_temp") {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "thermal") 
-      #   } else if (input$display_var == "sci_water_pressure") {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "deep")
-      #   } else if (input$display_var == "sci_water_cond") {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "haline")
-      #   } else if (input$display_var == "sci_suna_nitrate_concentration") {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "tempo") 
-      #   } else if (input$display_var == "sci_flbbcd_chlor_units" |
-      #              input$display_var == "sci_bbfl2s_chlor_scaled" ) {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "algae") 
-      #   } else if (input$display_var == "sci_flbbcd_cdom_units" |
-      #              input$display_var == "sci_bbfl2s_cdom_scaled" ) {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "matter") 
-      #   } else if (input$display_var == "sci_flbbcd_bb_units" |
-      #              input$display_var == "sci_bbfl2s_bb_scaled" ) {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "turbid") 
-      #   } else if (input$display_var == "sci_oxy3835_oxygen" |
-      #              input$display_var == "sci_oxy4_oxygen" ) {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "oxy") 
-      #   } else {
-      #     scale_colour_viridis_c(limits = c(input$min, input$max))
-      #   }
-      # 
-      # fullSci
+      message(nrow(scienceChunk()))
+      if(nrow(scienceChunk()) > 1000000){
+        message("Long")
+      }
       
       sciPlot(
         gliderName = gliderReactor$name,
@@ -1021,19 +1051,6 @@ fullData_server <- function(id, clientTZ) {
     
     output$fliPlot <- renderPlotly({gg2()})
     
-    #flight plot zoom/click
-    # observeEvent(input$fliPlot_dblclick, {
-    #   brush <- input$fliPlot_brush
-    #   if (!is.null(brush)) {
-    #     rangefli$x <- as.POSIXct(c(brush$xmin, brush$xmax), origin = "1970-01-01")
-    #     rangefli$y <- c(brush$ymin, brush$ymax)
-    #     
-    #   } else {
-    #     rangefli$x <- NULL
-    #     rangefli$y <- NULL
-    #   }
-    # })
-
     ##### derived plots #########
     gg3 <- reactive({
       validate(
@@ -1122,6 +1139,106 @@ fullData_server <- function(id, clientTZ) {
     })
     
     output$tsPlot <- renderPlotly({gg3()})
+    
+    #### yo by yo ####
+    
+    #date matching to find yo in time
+    observeEvent(input$yoDate, {
+      yoFinder <- glider$full %>%
+        slice(which.min(abs(m_present_time - input$yoDate)))
+      
+      selectYo$id <- yoFinder$yo_id
+      updateNumericInput(session, "yo", NULL, value = yoFinder$yo_id)
+    })
+    
+    yoChunk <- reactive({
+      req(input$yo)
+      
+      qf <- glider$full %>%
+        filter(yo_id == input$yo) %>% #grab only yo of interest
+        filter(cast %in% input$cast) %>% #grab cast as needed
+        select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, i_lat, i_lon, any_of(input$yo_var))) 
+      #filter(!is.na(across(!c(m_present_time:osg_i_depth))))
+      
+      # qf <- gliderdf %>%
+      #   filter(yo_id == 98) %>% #grab only yo of interest
+      #   filter(cast %in% "Downcast") %>% #grab cast as needed
+      #   select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, any_of(plotVar))) 
+      #filter(!is.na(across(!c(m_present_time:osg_i_depth))))
+      
+      if(isTRUE(input$zeroFilterYo)){
+        
+        zf <- qf %>%
+          pivot_longer(cols = !c(m_present_time:i_lon)) %>%
+          filter(value > 0) %>%
+          pivot_wider(names_from = name)
+        
+        zf
+      } else {
+        qf
+      }
+      
+    })
+    
+    yoList <- reactive({
+      qf <- isolate(glider$full)
+
+      unique(qf$yo_id) %>%
+        na.omit() %>%
+        sort()
+    })
+    
+    yoPlot_live <- reactive({
+      
+      yoPlot(gliderReactor$name, 
+             yoChunk(), 
+             input$yo_var)
+      
+    })
+    
+    output$yoPlot <- renderPlotly(yoPlot_live())
+    
+    #### Buttons to scroll through yos ####
+    #initialize reactive to track with same value as yo variable
+    selectYo <- reactiveValues(id = tail(yoList(), 1))
+    
+    #attach IDs to yo plot reactive
+    observeEvent(input$yo, {
+      selectYo$id <- as.numeric(input$yo)
+    })
+    
+    observeEvent(input$oldestYo, {
+      selectYo$id <- head(yoList(), 1)
+      updateNumericInput(session, "yo", NULL, value = head(yoList(), 1))
+      # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
+      #                    options = list(minDate = startDateLive, maxDate = endDateLive,
+      #                                   timeFormat = "HH:mm"))
+    })
+    observeEvent(input$prevYo, {
+      if (selectYo$id > 1) {
+        selectYo$id <- as.numeric(input$yo) - 1
+        updateNumericInput(session, "yo", NULL, value = yoList()[selectYo$id])
+        # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
+        #                    options = list(minDate = startDateLive, maxDate = endDateLive,
+        #                                   timeFormat = "HH:mm"))
+      }
+    })
+    observeEvent(input$nextYo, {
+      if (selectYo$id < length(yoList())) {
+        selectYo$id <- as.numeric(input$yo) + 1
+        updateNumericInput(session, "yo", NULL, value = yoList()[selectYo$id])
+        # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
+        #                    options = list(minDate = startDateLive, maxDate = endDateLive,
+        #                                   timeFormat = "HH:mm"))
+      }
+    })
+    observeEvent(input$latestYo, {
+      selectYo$id <- tail(yoList(), 1)
+      updateNumericInput(session, "yo", NULL, value = tail(yoList(), 1))
+      # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
+      #                    options = list(minDate = startDateLive, maxDate = endDateLive,
+      #                                   timeFormat = "HH:mm"))
+    })
     
     ########## explorer plot #########
     
