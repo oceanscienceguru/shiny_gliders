@@ -89,7 +89,7 @@ sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, liveData = 
               mode = "markers",
               text = ~paste0("Date: ", m_present_time, "\nm_water_depth: ", round(m_water_depth, 3)),
               hoverinfo = "text",
-              marker = list(size = 1, color = "black"),
+              marker = list(size = 2, color = "black"),
               showlegend = FALSE
     ) %>%
     #formatting
