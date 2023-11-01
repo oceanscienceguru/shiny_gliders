@@ -961,13 +961,9 @@ fullData_server <- function(id, clientTZ) {
             validate(
         need(gliderReactor$name != "", "Please click the Load Mission Data button")
       )
-      message(nrow(scienceChunk()))
-      if(nrow(scienceChunk()) > 1000000){
-        message("Long")
-      }
       
       sciPlot(
-        gliderName = gliderReactor$name,
+        gliderName = missionNum$id,
         inGliderdf = scienceChunk(),
         gliderFlightdf = chunk(),
         plotVar = input$display_var,
@@ -975,9 +971,11 @@ fullData_server <- function(id, clientTZ) {
         colorMax = input$max
       )
       
-    })
+    }) 
     
-    output$sciPlot <- renderPlotly({gg1()})
+    output$sciPlot <- renderPlotly({gg1()}) %>%
+      bindCache(missionNum$id, input$display_var)
+    
     
     ##### flight plot #####
     

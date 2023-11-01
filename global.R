@@ -38,6 +38,8 @@ source("./scripts/sciPlot.R")
 source("./scripts/fliPlot.R")
 source("./scripts/yoPlot.R")
 
+shinyOptions(cache = cachem::cache_mem(max_size = 500e6))
+
 Sys.setenv(TZ="UTC")
 
 sensor_defs <- fromJSON(file = "https://github.com/kerfoot/gncutils/raw/master/resources/sensor-def-masters/slocum-sensor_defs.json"
