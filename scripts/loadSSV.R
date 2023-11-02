@@ -152,6 +152,7 @@ gliderStateFirst <- identify_casts_smooth(gliderdfNext, surface_threshold = 1, r
 
 temp <- gliderStateFirst %>%
   filter(cast != "Surface" & cast != "Unknown") %>% #strip out surface/unknown for yo ID
+  arrange(m_present_time) %>% 
   add_yo_id() %>%
   full_join(gliderdfNext) %>% #rejoin with full set to get surface/unknown sections back
   arrange(m_present_time) #ensure chronological order
@@ -166,6 +167,7 @@ message("Data assembly")
 
 gliderdf <- gliderdfNext %>%
   left_join(gliderState) %>%
+  arrange(m_present_time) %>% #ensure chronological order
   #compute some derived variables with CTD data
   mutate(osg_salinity = ec2pss(sci_water_cond*10, sci_water_temp, sci_water_pressure*10)) %>%
   mutate(osg_theta = theta(osg_salinity, sci_water_temp, sci_water_pressure)) %>%

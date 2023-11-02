@@ -181,6 +181,7 @@ gliderTemp <- identify_casts_smooth(gliderdfInt, surface_threshold = 1, rolling_
   
 gliderNext <- gliderTemp %>%
   filter(cast != "Surface" & cast != "Unknown") %>% #strip out surface/unknown for yo ID
+  arrange(m_present_time) %>% #ensure chronological order
   add_yo_id() %>%
   full_join(gliderdfInt) %>% #rejoin with full set to get surface/unknown sections back
   arrange(m_present_time) #ensure chronological order
@@ -192,7 +193,8 @@ gliderState <- identify_casts_smooth(gliderNext, surface_threshold = 1, rolling_
 
 #join in gliderState
 gliderdf <- gliderdfInt %>%
-  left_join(gliderState)
+  left_join(gliderState) %>%
+  arrange(m_present_time) #ensure chronological order
 
 message("Extracting variables")
 #pull out science variables
