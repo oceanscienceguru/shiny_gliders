@@ -27,6 +27,7 @@ routing_server <- function(id, gliderName) {
   
   moduleServer(id, function(input, output, session) {
     
+    if (length(gliderName) > 0) {
     load(paste0("/echos/", gliderName, "/glider_live.RData"))
     
     #massage gps data a lot
@@ -233,6 +234,7 @@ routing_server <- function(id, gliderName) {
     output$routingMap <- renderLeaflet({
       routingMap()})
     
+    } 
 })
 }
   

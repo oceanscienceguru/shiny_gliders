@@ -53,6 +53,8 @@ gliderDashboard_server <- function(id, gliderName) {
   
   moduleServer(id, function(input, output, session) {
     # print(gliderName())
+    
+    if (length(gliderName) > 0) {
     load(paste0("/echos/", gliderName, "/glider_live.RData"))
 
 
@@ -298,7 +300,7 @@ gliderDashboard_server <- function(id, gliderName) {
     output$missionmapLive <- renderLeaflet({
       liveMissionMap})
     
-    
+    } 
     })
   
 }

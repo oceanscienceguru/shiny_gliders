@@ -21,6 +21,13 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
   # Ask the client for current time and time zone (hours from UTC)
   triggerClientTime()
   
+  if (nrow(deployedGliders) == 0) {
+    showModal(modalDialog(
+      title = "No deployed gliders",
+      "There are no deployed USF gliders at this time.",
+      easyClose = TRUE
+    ))
+  }
   
   ######### current mission data ########
   observe({

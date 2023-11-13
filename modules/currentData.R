@@ -264,6 +264,7 @@ currentData_server <- function(id, gliderName, clientTZ) {
     
     ns <- NS(id)
     
+    if (length(gliderName) > 0) {
     load(paste0("/echos/", gliderName, "/glider_live.RData"))
     
     # startDateLive <- as_datetime(min(gliderdf$m_present_time), tz = "UTC")
@@ -1056,6 +1057,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
       output$echoTime <- renderPlot({gg6()})
       
     }
+    
+  } 
   })
   
 }
