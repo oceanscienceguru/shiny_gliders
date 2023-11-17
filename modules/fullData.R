@@ -91,7 +91,7 @@ fullData_ui <- function(id) {
                         column(
                           9,
                           #"Brush and double-click to zoom (double-click again to reset)",
-                          plotlyOutput(
+                          plotOutput(
                             outputId = ns("sciPlot")
                             # dblclick = "sciPlot_dblclick",
                             # brush = brushOpts(id = ns("sciPlot_brush"),
@@ -970,19 +970,92 @@ fullData_server <- function(id, clientTZ) {
         select(m_present_time, m_water_depth) %>%
         filter(!is.na(m_water_depth))
       
-      sciPlot(
-        gliderName = missionNum$id,
-        inGliderdf = scf,
-        gliderFlightdf = gcf,
-        plotVar = input$display_var,
-        colorMin = input$min,
-        colorMax = input$max
-      )
+      # sciPlot(
+      #   gliderName = missionNum$id,
+      #   inGliderdf = scf,
+      #   gliderFlightdf = gcf,
+      #   plotVar = input$display_var,
+      #   colorMin = input$min,
+      #   colorMax = input$max
+      # )
+      
+      #w = 0.02 * as.numeric((max(scf$m_present_time)-min(scf$m_present_time)))
+      #h = 0.02 * (max(scf$osg_i_depth)-min(scf$osg_i_depth))
+      
+      fullSci <- ggplot(data = 
+                          scf,
+                        aes(x=m_present_time,
+                            y=round(osg_i_depth, 2))) +
+        geom_tile(aes(fill = .data[[input$display_var]]),
+                  width = 2000,
+                  height = 8
+        ) +
+        scale_y_reverse() +
+        geom_point(data = filter(gcf, m_water_depth > 0),
+                   aes(x = m_present_time,
+                       y = m_water_depth),
+                   color = "black",
+                   size = 0.3,
+                   na.rm = TRUE
+        ) +
+        theme_bw() +
+        labs(title = paste0(missionNum$id, " delayed data"),
+             y = "Depth (m)",
+             x = "Date") +
+        theme(plot.title = element_text(size = 24)) +
+        theme(axis.title = element_text(size = 16)) +
+        theme(axis.text = element_text(size = 12)) +
+        
+        if (input$display_var == "sci_water_temp") {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "thermal") 
+        } else if (input$display_var == "sci_water_pressure") {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "deep")
+        } else if (input$display_var == "sci_water_cond") {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "haline")
+        } else if (input$display_var == "sci_suna_nitrate_concentration") {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "tempo") 
+        } else if (input$display_var == "sci_flbbcd_chlor_units" |
+                   input$display_var == "sci_bbfl2s_chlor_scaled" ) {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "algae") 
+        } else if (input$display_var == "sci_flbbcd_cdom_units" |
+                   input$display_var == "sci_bbfl2s_cdom_scaled" ) {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "matter") 
+        } else if (input$display_var == "sci_flbbcd_bb_units" |
+                   input$display_var == "sci_bbfl2s_bb_scaled" ) {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "turbid") 
+        } else if (input$display_var == "sci_oxy3835_oxygen" |
+                   input$display_var == "sci_oxy4_oxygen" ) {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "oxy") 
+        } else if (startsWith(input$display_var, "sci_ocr")) {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "solar") 
+        } else if (input$display_var == "osg_soundvel1") {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "speed") 
+        } else if (input$display_var == "osg_rho") {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "dense") 
+        } else if (input$display_var == "osg_salinity") {
+          scale_fill_cmocean(limits = c(input$min, input$max),
+                              name = "haline") 
+        } else {
+          scale_fill_viridis_c(limits = c(input$min, input$max))
+        }
+      
+      fullSci
       
     }) 
     
-    output$sciPlot <- renderPlotly({gg1()}) %>%
-      bindCache(missionNum$id, input$display_var)
+    output$sciPlot <- renderPlot({gg1()}) 
+     #bindCache(missionNum$id, input$display_var)
     
     
     ##### flight plot #####
