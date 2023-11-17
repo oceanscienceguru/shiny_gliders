@@ -72,7 +72,7 @@ for (i in routesList_files$names) {
 }
 
 #maximum file upload size of 500mb
-options(shiny.maxRequestSize = 2000*1024^2)
+options(shiny.maxRequestSize = 3000*1024^2)
 
 icon.start <- makeAwesomeIcon(
   icon = "flag", markerColor = "green",
