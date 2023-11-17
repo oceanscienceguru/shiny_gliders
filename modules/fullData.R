@@ -962,10 +962,18 @@ fullData_server <- function(id, clientTZ) {
         need(gliderReactor$name != "", "Please click the Load Mission Data button")
       )
       
+      scf <- scienceChunk() %>%
+        select(m_present_time, osg_i_depth, .data[[input$display_var]]) %>%
+        filter(!is.na(.data[[input$display_var]]))
+      
+      gcf <- chunk() %>%
+        select(m_present_time, m_water_depth) %>%
+        filter(!is.na(m_water_depth))
+      
       sciPlot(
         gliderName = missionNum$id,
-        inGliderdf = scienceChunk(),
-        gliderFlightdf = chunk(),
+        inGliderdf = scf,
+        gliderFlightdf = gcf,
         plotVar = input$display_var,
         colorMin = input$min,
         colorMax = input$max
