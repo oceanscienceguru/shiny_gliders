@@ -1,4 +1,4 @@
-yoPlot <- function(gliderName, inGliderdf, plotVar){
+yoPlot <- function(gliderName, inGliderdf, plotVar, liveData = FALSE){
   
   # gliderName <- "usf-gansett"
   # load(paste0("/echos/", gliderName, "/glider_live.RData"))
@@ -49,11 +49,7 @@ invisible(lapply(seq(length(plotVar)), FUN = function(i) {
   out <- 
     subplot(fig,
           shareY = TRUE, titleX = F) %>%
-    layout(title = list(text = paste0(gliderName, " real-time data - yo: ", max(inGliderdf$yo_id, na.rm = TRUE), "\n",
-                                      "profile position: ", round(mean(inGliderdf$i_lat), 4), ", ", round(mean(inGliderdf$i_lon), 4)),
-                        x = 0.03,
-                        y = 0.96),
-           margin = list(
+    layout(margin = list(
              t = 50
            ),
            yaxis = list(title = "Depth (m)"),
@@ -73,6 +69,19 @@ invisible(lapply(seq(length(plotVar)), FUN = function(i) {
       #much faster rendering
       toWebGL()
   
+  if(isTRUE(liveData)){
+    out <- out %>%
+      layout(title = list(text = paste0(gliderName, " real-time data - yo: ", max(inGliderdf$yo_id, na.rm = TRUE), "\n",
+                                        "profile position: ", round(mean(inGliderdf$i_lat), 4), ", ", round(mean(inGliderdf$i_lon), 4)),
+                          x = 0.03,
+                          y = 0.96))
+  } else {
+    out <- out %>%
+      layout(title = list(text = paste0(gliderName, " delayed data - yo: ", max(inGliderdf$yo_id, na.rm = TRUE), "\n",
+                                        "profile position: ", round(mean(inGliderdf$i_lat), 4), ", ", round(mean(inGliderdf$i_lon), 4)),
+                          x = 0.03,
+                          y = 0.96))
+  }
   
   ##### Overlapped axes version ####
   
