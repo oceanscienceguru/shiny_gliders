@@ -1097,7 +1097,7 @@ fullData_server <- function(id, clientTZ) {
       
       req(input$flight_var)
       
-      fliPlot(gliderName = gliderReactor$name,
+      fliPlot(gliderName = missionNum$id,
               inGliderdf = flightChunk(),
               plotVar = input$flight_var)
       
@@ -1191,7 +1191,7 @@ fullData_server <- function(id, clientTZ) {
         wf <- filter(chunk(), m_water_depth > 0)
         
        plot <- sciPlot(
-          gliderReactor$name,
+          missionNum$id,
           df,
           wf,
           input$derivedType
@@ -1204,7 +1204,7 @@ fullData_server <- function(id, clientTZ) {
         wf <- filter(chunk(), m_water_depth > 0)
         
        plot <- sciPlot(
-          gliderReactor$name,
+          missionNum$id,
           df,
           wf,
           input$derivedType
@@ -1218,7 +1218,7 @@ fullData_server <- function(id, clientTZ) {
         wf <- filter(chunk(), m_water_depth > 0)
         
        plot <- sciPlot(
-          gliderReactor$name,
+          missionNum$id,
           df,
           wf,
           input$derivedType
@@ -1283,7 +1283,7 @@ fullData_server <- function(id, clientTZ) {
     
     yoPlot_live <- reactive({
       
-      yoPlot(gliderReactor$name, 
+      yoPlot(missionNum$id, 
              yoChunk(), 
              input$yo_var)
       
