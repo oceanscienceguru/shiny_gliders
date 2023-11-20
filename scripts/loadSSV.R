@@ -1,4 +1,4 @@
-ssv_to_rds <- function(inputFile, missionNumber, gliderName, mapGen = FALSE) {
+ssv_to_rds <- function(inputFile, missionNumber, gliderName, mapGen = FALSE, updateProgress = NULL) {
 
 library(tidyverse)
 library(lubridate)
@@ -67,7 +67,10 @@ missing_columns <- setdiff(requiredVars, colnames(head))
 if (length(missing_columns) > 0) {
   stop(paste("Missing column(s):", paste(missing_columns, collapse = ", ")))
 } else {
-  message("All required columns are present.")
+  if (is.function(updateProgress)) {
+    updateProgress(detail = "All required columns are present")
+  }
+  message("All required columns are present")
 }
 
 raw <- read.csv(inputFile,
@@ -113,6 +116,9 @@ gps <- full %>%
   filter(lat >= -90 & lat <= 90) %>% #remove illegal values
   filter(long >= -180 & long <= 180)
 
+if (is.function(updateProgress)) {
+  updateProgress(detail = "GPS interpolation")
+}
 message("GPS interpolation")
 
 library(zoo)
@@ -131,6 +137,9 @@ igps <- fortify.zoo(result) %>% #extract out as DF
 igps$m_present_time <- as_datetime(floor(seconds(igps$m_present_time)))
 #raw$m_present_time <- as_datetime(floor(seconds(raw$m_present_time)))
 
+if (is.function(updateProgress)) {
+  updateProgress(detail = "Depth interpolation")
+}
 message("Depth interpolation")
 
 gliderdfInt <- full %>%
@@ -145,6 +154,9 @@ gliderdfNext <- full %>%
   left_join(idepth) %>%
   left_join(igps)
 
+if (is.function(updateProgress)) {
+  updateProgress(detail = "Vehicle state identification, first pass")
+}
 message("Vehicle state identification, first pass")
 # 
 #glider state algorithms
@@ -157,12 +169,18 @@ temp <- gliderStateFirst %>%
   full_join(gliderdfNext) %>% #rejoin with full set to get surface/unknown sections back
   arrange(m_present_time) #ensure chronological order
 
+if (is.function(updateProgress)) {
+  updateProgress(detail = "Vehicle state identification, second pass")
+}
 message("Vehicle state identification, second pass")
 
 gliderState <- identify_casts_smooth(temp, surface_threshold = 1, rolling_window_size = 4) %>%
   #identify_casts(surface_threshold = 1) %>% #label cast state again
   select(c(m_present_time, cast, yo_id)) #clean up
 
+if (is.function(updateProgress)) {
+  updateProgress(detail = "Data assembly")
+}
 message("Data assembly")
 
 gliderdf <- gliderdfNext %>%
@@ -177,9 +195,16 @@ gliderdf <- gliderdfNext %>%
                                        osg_salinity,
                                        sci_water_temp))
 
+if (is.function(updateProgress)) {
+  updateProgress(detail = "Saving everything")
+}
 message("Saving everything")
 
 save(gliderdf, gliderName, file = paste0("./Data/",missionNum,"_",gliderName,".RData"))
+
+if (is.function(updateProgress)) {
+  updateProgress(detail = "Wrapping up")
+}
 
 if(isTRUE(mapGen)){
   message("Generating map")

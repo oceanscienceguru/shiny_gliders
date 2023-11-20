@@ -129,10 +129,26 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
     #if SSV
     if (ext == "ssv") {
       message("SSV!")
+      # Create a Progress object
+      progress <- shiny::Progress$new()
+      progress$set(message = "Processing SSV", value = 0)
+      # Close the progress when this reactive exits (even if there's an error)
+      on.exit(progress$close())
+      
+      # Create a callback function to update progress.
+      # Each time this is called:
+      # - If `value` is NULL, it will move the progress bar 1/5 of the remaining
+      #   distance. If non-NULL, it will set the progress to that value.
+      # - It also accepts optional detail text.
+      n <- 8
+      updateProgress <- function(value = NULL, detail = NULL) {
+        progress$inc(amount = 1/n, detail = detail)
+      }
       newGlider <- ssv_to_rds(inputFile = input$upload$datapath,
                               missionNum = input$upload$name,
                               gliderName = input$uploadGliderName,
-                              mapGen = input$generateMap)
+                              mapGen = input$generateMap,
+                              updateProgress = updateProgress)
       session$reload()
       #if kml
     } else if (ext == "kml"){
