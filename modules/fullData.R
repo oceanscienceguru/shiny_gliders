@@ -176,6 +176,11 @@ fullData_ui <- function(id) {
                                    #selected =  NULL
                                  ),
                                  br(),
+                                 # Button
+                                 downloadButton(
+                                   outputId = ns("yoDown"), 
+                                   label = "Download plotted data"),
+                                 br(),
                                  checkboxGroupInput(
                                    inputId = ns("cast"),
                                    label = "Downcast or Upcast?",
@@ -1276,6 +1281,15 @@ fullData_server <- function(id, clientTZ) {
     })
     
     output$yoPlot <- renderPlotly(yoPlot_live())
+    
+    output$yoDown <- downloadHandler(
+      filename = function() {
+        paste0(missionNum$id, "_yo", input$yo, ".csv")
+      },
+      content = function(file) {
+        write.csv(yoChunk(), file, row.names = FALSE)
+      }
+    )
     
     #### Buttons to scroll through yos ####
     #initialize reactive to track with same value as yo variable
