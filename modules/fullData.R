@@ -67,7 +67,7 @@ fullData_ui <- function(id) {
                         leafletOutput(outputId = ns("missionmap"),
                                       height = "600px")),
                tabPanel(title = "Science Data",
-                        column(3,
+                        column(2,
                                wellPanel(
                                  selectInput(
                                    inputId = ns("display_var"),
@@ -98,12 +98,17 @@ fullData_ui <- function(id) {
                             #                   resetOnNew = TRUE),
                             #height = "600px"
                           ) %>% withSpinner(color="#0dc5c1")
+                        ),
+                        column(
+                          1,
+                          h4("Summary"),
+                          tableOutput(outputId = ns("sciSummary"))
                         )
                ),
                #flight variable settings
                tabPanel(title = "Flight Data",
                         fluidRow(
-                          column(3,
+                          column(2,
                                  wellPanel(
                                    #   selectInput(
                                    #     "flight_var",
@@ -123,7 +128,7 @@ fullData_ui <- function(id) {
                                    verbatimTextOutput("summary")
                                  )),
                           column(
-                            9,
+                            8,
                             #h4("Brush and double-click to zoom (double-click again to reset)"),
                             plotlyOutput(
                               outputId = ns("fliPlot")
@@ -132,6 +137,11 @@ fullData_ui <- function(id) {
                               #                   resetOnNew = TRUE),
                               # height = "600px"
                             ) %>% withSpinner(color="#0dc5c1")
+                          ),
+                          column(
+                            2,
+                            h4("Summary"),
+                            tableOutput(outputId = ns("fliSummary"))
                           )
                         )),
                #sound velocity tab
@@ -1071,6 +1081,10 @@ fullData_server <- function(id, clientTZ) {
     output$sciPlot <- renderPlot({gg1()}) 
      #bindCache(missionNum$id, input$display_var)
     
+    output$sciSummary <- renderTable({
+      req(input$display_var)
+      tibble::enframe(summary(scienceChunk()[[input$display_var]]))
+    })
     
     ##### flight plot #####
     
@@ -1143,6 +1157,24 @@ fullData_server <- function(id, clientTZ) {
     })
     
     output$fliPlot <- renderPlotly({gg2()})
+    
+    output$fliSummary <- renderTable({
+      req(input$flight_var)
+      
+      summs <- flightChunk() %>%
+        pivot_longer(cols = !c(m_present_time, osg_i_depth), names_to = "vars") %>%
+        group_by(vars) %>%
+        summarise(min = min(value, na.rm = TRUE),
+               q1  = quantile(value, 0.25, na.rm = TRUE),
+               mean = mean(value, na.rm = TRUE),
+               median = median(value, na.rm = TRUE),
+               q3  = quantile(value, 0.75, na.rm = TRUE),
+               max = max(value, na.rm = TRUE),
+               sd = sd(value, na.rm = TRUE)) %>%
+        pivot_longer(cols = min:sd, names_to = "stat")
+      
+      summs
+    })
     
     ##### derived plots #########
     gg3 <- reactive({

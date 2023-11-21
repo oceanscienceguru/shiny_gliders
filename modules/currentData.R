@@ -67,7 +67,7 @@ currentData_ui <- function(id) {
                           #          leafletOutput(outputId = "missionmapLive",
                           #                        height = "600px")),
                           tabPanel(title = "Science Data",
-                                   column(3,
+                                   column(2,
                                           wellPanel(
                                             selectInput(
                                               inputId = ns("display_varLive"),
@@ -104,7 +104,9 @@ currentData_ui <- function(id) {
                                        # brush = brushOpts(id = "sciPlot_brush",
                                        #                   resetOnNew = TRUE),
                                        # height = "600px"
-                                     ) %>% withSpinner(color="#0dc5c1"),
+                                     ) %>% withSpinner(color="#0dc5c1")),
+                                   column(
+                                     1,
                                      h4("Summary"),
                                      tableOutput(outputId = ns("sciSummary"))
                                    )
@@ -112,7 +114,7 @@ currentData_ui <- function(id) {
                           #flight variable settings
                           tabPanel(title = "Flight Data",
                                    fluidRow(
-                                     column(3,
+                                     column(2,
                                             wellPanel(
                                               #   selectInput(
                                               #     "flight_var",
@@ -132,7 +134,7 @@ currentData_ui <- function(id) {
                                               # verbatimTextOutput("summary")
                                             )),
                                      column(
-                                       9,
+                                       8,
                                        # h4("Brush and double-click to zoom (double-click again to reset)"),
                                        plotlyOutput(
                                          outputId = ns("fliPlotLive"),
@@ -141,6 +143,11 @@ currentData_ui <- function(id) {
                                          #                   resetOnNew = TRUE),
                                          # height = "600px"
                                        ) %>% withSpinner(color="#0dc5c1")
+                                     ),
+                                     column(
+                                       2,
+                                       h4("Summary"),
+                                       tableOutput(outputId = ns("fliSummary"))
                                      )
                                    )),
                           #sound velocity tab
@@ -519,7 +526,7 @@ currentData_server <- function(id, gliderName, clientTZ) {
     
     output$sciSummary <- renderTable({
       req(input$display_varLive)
-      tibble::tibble(!!!summary(scienceChunk_live()[[input$display_varLive]]))
+      tibble::enframe(summary(scienceChunk_live()[[input$display_varLive]]))
     })
     
     flightChunk_live <- reactive({
@@ -562,6 +569,24 @@ currentData_server <- function(id, gliderName, clientTZ) {
     })
     
     output$fliPlotLive <- renderPlotly(gg2Live())
+    
+    output$fliSummary <- renderTable({
+      req(input$flight_varLive)
+      
+      summs <- flightChunk_live() %>%
+        pivot_longer(cols = !c(m_present_time, osg_i_depth), names_to = "vars") %>%
+        group_by(vars) %>%
+        summarise(min = min(value, na.rm = TRUE),
+                  q1  = quantile(value, 0.25, na.rm = TRUE),
+                  mean = mean(value, na.rm = TRUE),
+                  median = median(value, na.rm = TRUE),
+                  q3  = quantile(value, 0.75, na.rm = TRUE),
+                  max = max(value, na.rm = TRUE),
+                  sd = sd(value, na.rm = TRUE)) %>%
+        pivot_longer(cols = min:sd, names_to = "stat")
+      
+      summs
+    })
       
     ##### derived Live plots #########
     gg3Live <- reactive({
