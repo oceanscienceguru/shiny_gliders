@@ -140,7 +140,7 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
       # - If `value` is NULL, it will move the progress bar 1/5 of the remaining
       #   distance. If non-NULL, it will set the progress to that value.
       # - It also accepts optional detail text.
-      n <- 8
+      n <- 7
       updateProgress <- function(value = NULL, detail = NULL) {
         progress$inc(amount = 1/n, detail = detail)
       }

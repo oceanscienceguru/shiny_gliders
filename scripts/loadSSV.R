@@ -46,6 +46,46 @@ library(lubridate)
                                                                     y^0.5 + y + y^1.5))
     }
   
+  identify_casts <- function(data, depth_col, surface_threshold = 0.1) {
+    # Initialize vectors to store cast information
+    casts <- character(nrow(data))
+    
+    # Find the index where depth data becomes available
+    first_depth_index <- which(!is.na(data[[depth_col]]))[1]
+    
+    # Initialize casts for missing depth rows as "Unknown"
+    casts[1:(first_depth_index - 1)] <- "Unknown"
+    
+    # Initialize the first cast based on the second data point with depth
+    if (!is.na(data[[depth_col]][first_depth_index + 1])) {
+      if (data[[depth_col]][first_depth_index + 1] > data[[depth_col]][first_depth_index]) {
+        casts[first_depth_index] <- "Downcast"
+      } else {
+        casts[first_depth_index] <- "Upcast"
+      }
+    }
+    
+    # Loop through the data to identify casts
+    for (i in (first_depth_index + 1):nrow(data)) {
+      if (!is.na(data[[depth_col]][i]) && !is.na(data[[depth_col]][i - 1])) {
+        if (data[[depth_col]][i] > data[[depth_col]][i - 1]) {
+          casts[i] <- "Downcast"
+        } else if (data[[depth_col]][i] < data[[depth_col]][i - 1]) {
+          casts[i] <- "Upcast"
+        } else {
+          casts[i] <- "Surface"
+        }
+      }
+    }
+    
+    # Assign "Surface" to points with depth near zero or below the surface threshold
+    casts[data[[depth_col]] < surface_threshold] <- "Surface"
+    
+    # Create a new column in the dataframe to store the cast information
+    data$cast <- casts
+    
+    return(data)
+  }
   
 missionNum <- sub(".ssv", "", missionNumber)
 
@@ -152,31 +192,41 @@ idepth <- depthInt(gliderdfInt, CTD = TRUE)
 #join the interpolations back in
 gliderdfNext <- full %>%
   left_join(idepth) %>%
-  left_join(igps)
+  left_join(igps) %>%
+  arrange(m_present_time)
 
 if (is.function(updateProgress)) {
-  updateProgress(detail = "Vehicle state identification, first pass")
+  updateProgress(detail = "Vehicle state identification")
 }
-message("Vehicle state identification, first pass")
-# 
-#glider state algorithms
-gliderStateFirst <- identify_casts_smooth(gliderdfNext, surface_threshold = 1, rolling_window_size = 4)
+message("Vehicle state identification")
 
-temp <- gliderStateFirst %>%
-  filter(cast != "Surface" & cast != "Unknown") %>% #strip out surface/unknown for yo ID
+#glider state algorithms
+inDF <- gliderdfNext %>%
+  select(m_present_time, osg_i_depth) %>%
+  filter(!is.na(osg_i_depth)) %>%
+  arrange(m_present_time)
+
+#setup bandpass filter
+bf <- signal::butter(3, .05) 
+
+#filter both directions using above
+inDF$filt_depth <- signal::filtfilt(filt = bf, x = inDF$osg_i_depth)
+
+#label using filtered depth
+gliderStateFirst <- identify_casts(inDF, "filt_depth", surface_threshold = 1)
+
+surfDF <- gliderStateFirst %>%
+  filter(cast != "Downcast" & cast != "Upcast") %>%
+  select(m_present_time, cast)
+
+castDF <- gliderStateFirst %>%
+  filter(cast == "Downcast" | cast == "Upcast") %>% #strip out surface/unknown for yo ID
   arrange(m_present_time) %>% 
   add_yo_id() %>%
-  full_join(gliderdfNext) %>% #rejoin with full set to get surface/unknown sections back
-  arrange(m_present_time) #ensure chronological order
+  select(m_present_time, cast, yo_id)
 
-if (is.function(updateProgress)) {
-  updateProgress(detail = "Vehicle state identification, second pass")
-}
-message("Vehicle state identification, second pass")
-
-gliderState <- identify_casts_smooth(temp, surface_threshold = 1, rolling_window_size = 4) %>%
-  #identify_casts(surface_threshold = 1) %>% #label cast state again
-  select(c(m_present_time, cast, yo_id)) #clean up
+gliderState <- surfDF %>%
+  bind_rows(castDF) 
 
 if (is.function(updateProgress)) {
   updateProgress(detail = "Data assembly")
