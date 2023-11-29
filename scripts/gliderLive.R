@@ -63,6 +63,47 @@ ec2pss <-
                                                                   y^0.5 + y + y^1.5))
   }
 
+identify_casts <- function(data, depth_col, surface_threshold = 0.1) {
+  # Initialize vectors to store cast information
+  casts <- character(nrow(data))
+  
+  # Find the index where depth data becomes available
+  first_depth_index <- which(!is.na(data[[depth_col]]))[1]
+  
+  # Initialize casts for missing depth rows as "Unknown"
+  casts[1:(first_depth_index - 1)] <- "Unknown"
+  
+  # Initialize the first cast based on the second data point with depth
+  if (!is.na(data[[depth_col]][first_depth_index + 1])) {
+    if (data[[depth_col]][first_depth_index + 1] > data[[depth_col]][first_depth_index]) {
+      casts[first_depth_index] <- "Downcast"
+    } else {
+      casts[first_depth_index] <- "Upcast"
+    }
+  }
+  
+  # Loop through the data to identify casts
+  for (i in (first_depth_index + 1):nrow(data)) {
+    if (!is.na(data[[depth_col]][i]) && !is.na(data[[depth_col]][i - 1])) {
+      if (data[[depth_col]][i] > data[[depth_col]][i - 1]) {
+        casts[i] <- "Downcast"
+      } else if (data[[depth_col]][i] < data[[depth_col]][i - 1]) {
+        casts[i] <- "Upcast"
+      } else {
+        casts[i] <- "Surface"
+      }
+    }
+  }
+  
+  # Assign "Surface" to points with depth near zero or below the surface threshold
+  casts[data[[depth_col]] < surface_threshold] <- "Surface"
+  
+  # Create a new column in the dataframe to store the cast information
+  data$cast <- casts
+  
+  return(data)
+}
+
 scienceList_liveInfo <- file.info(list.files(path = paste0("/echos/gliders/", gliderName, "/science/"),
                                              full.names = TRUE)) %>%
   filter(size > 0)
@@ -175,21 +216,35 @@ gliderdfInt <- gliderdfraw %>%
   left_join(idepth) %>%
   left_join(igps)
 
-message("Glider state algorithms, first pass")
+message("Vehicle state identification")
+
 #glider state algorithms
-gliderTemp <- identify_casts_smooth(gliderdfInt, surface_threshold = 1, rolling_window_size = 4) #first cast identification pass with "surface" threshold
-  
-gliderNext <- gliderTemp %>%
-  filter(cast != "Surface" & cast != "Unknown") %>% #strip out surface/unknown for yo ID
-  arrange(m_present_time) %>% #ensure chronological order
+inDF <- gliderdfInt %>%
+  select(m_present_time, osg_i_depth) %>%
+  filter(!is.na(osg_i_depth)) %>%
+  arrange(m_present_time)
+
+#setup bandpass filter
+bf <- signal::butter(3, .05) 
+
+#filter both directions using above
+inDF$filt_depth <- signal::filtfilt(filt = bf, x = inDF$osg_i_depth)
+
+#label using filtered depth
+gliderStateFirst <- identify_casts(inDF, "filt_depth", surface_threshold = 1)
+
+surfDF <- gliderStateFirst %>%
+  filter(cast != "Downcast" & cast != "Upcast") %>%
+  select(m_present_time, cast)
+
+castDF <- gliderStateFirst %>%
+  filter(cast == "Downcast" | cast == "Upcast") %>% #strip out surface/unknown for yo ID
+  arrange(m_present_time) %>% 
   add_yo_id() %>%
-  full_join(gliderdfInt) %>% #rejoin with full set to get surface/unknown sections back
-  arrange(m_present_time) #ensure chronological order
-  
-message("Glider state algorithms, second pass")
-gliderState <- identify_casts_smooth(gliderNext, surface_threshold = 1, rolling_window_size = 4) %>% 
-  #identify_casts(surface_threshold = 1) %>% #label cast state again
-  select(c(m_present_time, cast, yo_id)) #clean up
+  select(m_present_time, cast, yo_id)
+
+gliderState <- surfDF %>%
+  bind_rows(castDF) 
 
 #join in gliderState
 gliderdf <- gliderdfInt %>%
