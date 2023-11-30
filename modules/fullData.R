@@ -6,6 +6,7 @@ fullData_ui <- function(id) {
   ns <- NS(id)
   
   tagList(
+    useShinyjs(),
     fluidPage(
       box(  actionButton(
         inputId = ns("load"),
@@ -75,6 +76,11 @@ fullData_ui <- function(id) {
                                    choices = NULL
                                  ),
                                  checkboxInput(
+                                   inputId = ns("interactiveSci"),
+                                   label = "Make this plot interactive",
+                                   value = FALSE
+                                 ),
+                                 checkboxInput(
                                    inputId = ns("zeroFilter"),
                                    label = "Filter data > 0?",
                                    value = TRUE
@@ -90,14 +96,12 @@ fullData_ui <- function(id) {
                                )),
                         column(
                           9,
-                          #"Brush and double-click to zoom (double-click again to reset)",
                           plotOutput(
                             outputId = ns("sciPlot")
-                            # dblclick = "sciPlot_dblclick",
-                            # brush = brushOpts(id = ns("sciPlot_brush"),
-                            #                   resetOnNew = TRUE),
-                            #height = "600px"
-                          ) %>% withSpinner(color="#0dc5c1")
+                          ),
+                          plotlyOutput(
+                            outputId = ns("sciPlotly")
+                          )
                         ),
                         column(
                           1,
@@ -985,33 +989,12 @@ fullData_server <- function(id, clientTZ) {
         select(m_present_time, m_water_depth) %>%
         filter(!is.na(m_water_depth))
       
-      # sciPlot(
-      #   gliderName = missionNum$id,
-      #   inGliderdf = scf,
-      #   gliderFlightdf = gcf,
-      #   plotVar = input$display_var,
-      #   colorMin = input$min,
-      #   colorMax = input$max
-      # )
-      
-      #w = 0.02 * as.numeric((max(scf$m_present_time)-min(scf$m_present_time)))
-      #h = 0.02 * (max(scf$osg_i_depth)-min(scf$osg_i_depth))
-      
       baseSci <- ggplot(data = 
                           scf,
                         aes(x=m_present_time,
                             y=round(osg_i_depth, 2))) +
-      
-      # if (nrow(scf) > 2000000){
-      #   message("big data")
-      #   geom_tile(aes(fill = .data[[input$display_var]]),
-      #             width = 2000,
-      #             height = 8
-      #   ) 
-      # } else {
         geom_point(aes(color = .data[[input$display_var]]),
                    size = 2) 
-      # }
       
       fullSci <- baseSci +
         scale_y_reverse() +
@@ -1076,15 +1059,67 @@ fullData_server <- function(id, clientTZ) {
       
       fullSci
       
+      
     }) 
     
+    gg1ly <- reactive({
+      validate(
+        need(gliderReactor$name != "", "Please click the Load Mission Data button")
+      )
+      
+      scf <- scienceChunk() %>%
+        select(m_present_time, osg_i_depth, .data[[input$display_var]]) %>%
+        filter(!is.na(.data[[input$display_var]]))
+      
+      gcf <- chunk() %>%
+        select(m_present_time, m_water_depth) %>%
+        filter(!is.na(m_water_depth))
+      
+      #setup for interactivity if desired and warn if needed
+      if (isTRUE(input$interactiveSci)) {
+        if (nrow(scf) > 1000000) {
+          showModal(modalDialog(
+            title = "Large dataset",
+            "Loading this plot may take some time",
+            easyClose = TRUE
+          ))
+        }
+        sciPlot(
+          gliderName = missionNum$id,
+          inGliderdf = scf,
+          gliderFlightdf = gcf,
+          plotVar = input$display_var,
+          colorMin = input$min,
+          colorMax = input$max
+        )
+      }
+      })
+    
     output$sciPlot <- renderPlot({gg1()}) 
+    output$sciPlotly <- renderPlotly({gg1ly()}) 
      #bindCache(missionNum$id, input$display_var)
     
     output$sciSummary <- renderTable({
       req(input$display_var)
       tibble::enframe(summary(scienceChunk()[[input$display_var]]))
     })
+    
+    #switch for interactivitiy using shinyjs
+    observeEvent(c(input$interactiveSci), {
+      #req(input$group)
+      if (isTRUE(input$interactiveSci)) {
+        hide("sciPlot")
+        #hideSpinner("sciPlot")
+        show("sciPlotly")
+        #showSpinner("sciPlotly")
+      } else {
+        hide("sciPlotly")
+        #hideSpinner("sciPlotly")
+        show("sciPlot")
+        #showSpinner("sciPlot")
+      }
+    })
+  
     
     ##### flight plot #####
     

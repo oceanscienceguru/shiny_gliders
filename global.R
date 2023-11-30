@@ -24,6 +24,7 @@ library(cmocean)
 library(osgUtils)
 library(plotly)
 library(rjson)
+library(shinyjs)
 
 #source("./scripts/ssv_to_df.R")
 source("./scripts/loadSSV.R")
