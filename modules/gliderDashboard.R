@@ -168,7 +168,7 @@ gliderDashboard_server <- function(id, gliderName) {
       ## remotes::install_github("yonicd/slickR@1ab229e4c400e54187a406130610852b0300986c")
       plotItUp <- list()
       for (i in 1:length(livePlots)){
-        plotItUp[[i]] <- xmlSVG({show(livePlots[[i]])},standalone=TRUE, width = 9.5)
+        plotItUp[[i]] <- xmlSVG({methods::show(livePlots[[i]])},standalone=TRUE, width = 9.5)
       }
 
       x <- slickR(obj = plotItUp,
