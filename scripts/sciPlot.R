@@ -1,4 +1,4 @@
-sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, liveData = FALSE, colorMin = NULL, colorMax = NULL){
+sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, liveData = FALSE, colorMin = NULL, colorMax = NULL, logoFile = NULL){
   
   #gliderName <- name of glider for plot displays
   #inGliderdf <- dataframe containing m_present_time, osg_i_depth and all of plotVar
@@ -107,25 +107,30 @@ sciPlot <- function(gliderName, inGliderdf, gliderFlightdf, plotVar, liveData = 
                           list(dtickrange=list(604800000, "M1"), value="%Y/%m/%d"),
                           list(dtickrange=list("M1", "M12"), value="%b '%y"),
                           list(dtickrange=list("M12", NULL), value="%Y")
-                        )),
-           #add logo
-           images = list(
-             list(source = base64enc::dataURI(file = "./www/cms_horiz.png"),
-                  xref = "paper",
-                  yref = "paper",
-                  x= 1.2,
-                  y= 0.03,
-                  sizex = 0.2,
-                  sizey = 0.2,
-                  xanchor="right",
-                  yanchor="bottom" 
-             ))
+                        ))
     ) %>%
     #explicitly name title
     colorbar(title = paste0(plotVar, "\n", varUnits)
     ) %>%
     #much faster rendering
     toWebGL()
+  
+  #add logo
+  if(!is.null(logoFile)){
+    fig <- fig %>%
+      layout(           
+      images = list(
+        list(source = base64enc::dataURI(file = logoFile),
+             xref = "paper",
+             yref = "paper",
+             x= 1.2,
+             y= 0.03,
+             sizex = 0.2,
+             sizey = 0.2,
+             xanchor="right",
+             yanchor="bottom" 
+        )))
+  }
   
   if(isTRUE(liveData)){
     fig <- fig %>%

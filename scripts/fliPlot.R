@@ -1,4 +1,4 @@
-fliPlot <- function(gliderName, inGliderdf, plotVar, liveData = FALSE){
+fliPlot <- function(gliderName, inGliderdf, plotVar, liveData = FALSE, logoFile = NULL){
   
   # gliderName <- "usf-gansett"
   # load(paste0("/echos/", gliderName, "/glider_live.RData"))
@@ -53,21 +53,26 @@ fliPlot <- function(gliderName, inGliderdf, plotVar, liveData = FALSE){
            ),
            #yaxis = list(title = "Depth (m)"),
            showlegend = T,
-           hovermode = "x unified",
-           #add logo
-           images = list(
-             list(source = base64enc::dataURI(file = "./www/cms_horiz.png"),
-                  xref = "paper",
-                  yref = "paper",
-                  x= .5,
-                  y= 0.03,
-                  sizex = 0.2,
-                  sizey = 0.2,
-                  xanchor="right",
-                  yanchor="bottom" 
-             ))) %>% 
+           hovermode = "x unified") %>% 
     #much faster rendering
     toWebGL()
+  
+  #add logo
+  if(!is.null(logoFile)){
+    out <- out %>%
+      layout(
+      images = list(
+        list(source = base64enc::dataURI(file = logoFile),
+             xref = "paper",
+             yref = "paper",
+             x= 0.01,
+             y= 0.03,
+             sizex = 0.2,
+             sizey = 0.2,
+             xanchor="right",
+             yanchor="bottom" 
+        )))
+  }
   
   if(isTRUE(liveData)){
     out <- out %>%

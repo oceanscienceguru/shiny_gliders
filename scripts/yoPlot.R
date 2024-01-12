@@ -1,4 +1,4 @@
-yoPlot <- function(gliderName, inGliderdf, plotVar, liveData = FALSE){
+yoPlot <- function(gliderName, inGliderdf, plotVar, liveData = FALSE, logoFile = NULL){
   
   # gliderName <- "usf-gansett"
   # load(paste0("/echos/", gliderName, "/glider_live.RData"))
@@ -53,21 +53,26 @@ invisible(lapply(seq(length(plotVar)), FUN = function(i) {
              t = 50
            ),
            yaxis = list(title = "Depth (m)"),
-           showlegend = T,
-           #add logo
-           images = list(
-             list(source = base64enc::dataURI(file = "./www/cms_horiz.png"),
-                  xref = "paper",
-                  yref = "paper",
-                  x= .5,
-                  y= 0.03,
-                  sizex = 0.2,
-                  sizey = 0.2,
-                  xanchor="right",
-                  yanchor="bottom" 
-             ))) %>% 
+           showlegend = T) %>% 
       #much faster rendering
       toWebGL()
+  
+  #add logo
+  if(!is.null(logoFile)){
+    out <- out %>%
+      layout(
+        images = list(
+          list(source = base64enc::dataURI(file = logoFile),
+               xref = "paper",
+               yref = "paper",
+               x= .5,
+               y= 0.03,
+               sizex = 0.2,
+               sizey = 0.2,
+               xanchor="right",
+               yanchor="bottom" 
+          )))
+  }
   
   if(isTRUE(liveData)){
     out <- out %>%
