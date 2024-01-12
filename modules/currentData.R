@@ -272,7 +272,7 @@ currentData_server <- function(id, gliderName, clientTZ) {
     ns <- NS(id)
     
     if (length(gliderName) > 0) {
-    load(paste0("/echos/", gliderName, "/glider_live.RData"))
+    load(paste0(liveDir, "/", gliderName, "/glider_live.RData"))
     
     # startDateLive <- as_datetime(min(gliderdf$m_present_time), tz = "UTC")
     # endDateLive <- as_datetime(max(gliderdf$m_present_time), tz = "UTC")

@@ -55,7 +55,7 @@ gliderDashboard_server <- function(id, gliderName) {
     # print(gliderName())
     
     if (length(gliderName) > 0) {
-    load(paste0("/echos/", gliderName, "/glider_live.RData"))
+    load(paste0(liveDir, "/", gliderName, "/glider_live.RData"))
 
 
 
@@ -212,7 +212,7 @@ gliderDashboard_server <- function(id, gliderName) {
     #build goto history
     gotoHistory <- list()
     for (i in 1:gotoN) {
-      gotoHistory[[i]] <- gotoLoad(paste0("/gliders/gliders/", gliderName, "/archive/", gotoFiles[i,]))
+      gotoHistory[[i]] <- gotoLoad(paste0(rawDir, "/gliders/", gliderName, "/archive/", gotoFiles[i,]))
     }
     
     #get most recent goto file

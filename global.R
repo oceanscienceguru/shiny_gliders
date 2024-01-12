@@ -46,14 +46,19 @@ Sys.setenv(TZ="UTC")
 sensor_defs <- fromJSON(file = "https://github.com/kerfoot/gncutils/raw/master/resources/sensor-def-masters/slocum-sensor_defs.json"
 )
 
-deployedGliders <- read.csv("/echos/deployedGliders.txt", 
+servDir <- "/echos"
+liveDir <- "/echos"
+rawDir <- "/gliders"
+fullDir <- "./"
+
+deployedGliders <- read.csv(paste0(servDir, "/deployedGliders.txt"), 
                             sep = "",
                             header = FALSE)
 
 colnames(deployedGliders)[1] = "Name"
 colnames(deployedGliders)[2] = "ahrCap"
 
-fleetGliders <- read.csv("/echos/fleetGliders.txt", 
+fleetGliders <- read.csv(paste0(servDir, "/fleetGliders.txt"), 
                          sep = "",
                          header = FALSE) %>%
   arrange(V1)
@@ -61,7 +66,7 @@ fleetGliders <- read.csv("/echos/fleetGliders.txt",
 deployedGliders <- deployedGliders %>%
   filter(!str_starts(Name,"#")) #remove any commented lines
 
-routesList_files <- file.info(list.files(path = "/echos/routes",
+routesList_files <- file.info(list.files(path = paste0(servDir, "/routes"),
                                          pattern = "*.ma"))
 
 routesList_files$names <- rownames(routesList_files)
@@ -69,7 +74,7 @@ routesList_files$names <- rownames(routesList_files)
 #build route list
 routesList <- list()
 for (i in routesList_files$names) {
-  routesList[[i]] <- gotoLoad(paste0("/echos/routes/", i))
+  routesList[[i]] <- gotoLoad(paste0(servDir, "/routes/", i))
 }
 
 #maximum file upload size of 500mb

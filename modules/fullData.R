@@ -467,7 +467,7 @@ fullData_server <- function(id, clientTZ) {
   
   moduleServer(id, function(input, output, session) {
     
-    fileList_archive <- list.files(path = "./Data/",
+    fileList_archive <- list.files(path = paste0(fullDir, "Data/"),
                                    pattern = "*.RData")
     
     missionList_archive <- str_remove(fileList_archive, pattern = ".RData")
@@ -478,9 +478,9 @@ fullData_server <- function(id, clientTZ) {
     output$missionmap <- renderLeaflet({
       req(input$mission)
       
-      if(file.exists(paste0("./KML/", input$mission, ".kml"))){
+      if(file.exists(paste0(fullDir, "KML/", input$mission, ".kml"))){
       #grab .kml per mission number
-      raw_sf <- st_read(paste0("./KML/", input$mission, ".kml"),
+      raw_sf <- st_read(paste0(fullDir, "KML/", input$mission, ".kml"),
                         layer = "Surfacings")
       
       # raw_sf <- st_read(paste0("./thebrewery/KML/", "M112", ".kml"),
@@ -499,7 +499,7 @@ fullData_server <- function(id, clientTZ) {
                lat = st_coordinates(.)[,2]) %>%
         st_drop_geometry()
       } else {
-        mapUp <- read.csv(paste0("./KML/", input$mission, ".csv")) %>%
+        mapUp <- read.csv(paste0(fullDir, "KML/", input$mission, ".csv")) %>%
           select(m_present_time, long, lat)
         #mapUp2 <- read.csv(paste0("./thebrewery/KML/", "M103_usf-bass", ".csv"))
         
@@ -563,7 +563,7 @@ fullData_server <- function(id, clientTZ) {
     selectPgram <- reactiveValues(seg = NULL, id = NULL)
     
     observeEvent(input$load, {
-      load(paste0("./Data/", isolate(input$mission), ".RData"))
+      load(paste0(fullDir, "Data/", isolate(input$mission), ".RData"))
       
       gliderReactor$name <- gliderName
       
