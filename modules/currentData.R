@@ -550,7 +550,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
               plotVar = input$display_varLive,
               liveData = TRUE,
               colorMin = input$minLive,
-              colorMax= input$maxLive)
+              colorMax= input$maxLive,
+              logoFile = "./www/cms_horiz.png")
       
     })
     
@@ -564,7 +565,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
       fliPlot(gliderName,
               inGliderdf = flightChunk_live(),
               plotVar = input$flight_varLive,
-              liveData = TRUE)
+              liveData = TRUE,
+              logoFile = "./www/cms_horiz.png")
       
     })
     
@@ -636,7 +638,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
                         plotVar = input$derivedTypeLive,
                         liveData = TRUE,
                         colorMin = NULL,
-                        colorMax= NULL)
+                        colorMax= NULL,
+                        logoFile = "./www/cms_horiz.png")
       }
       
       if (input$derivedTypeLive == "Density"){
@@ -649,7 +652,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
                         plotVar = input$derivedTypeLive,
                         liveData = TRUE,
                         colorMin = NULL,
-                        colorMax= NULL)
+                        colorMax= NULL,
+                        logoFile = "./www/cms_horiz.png")
 
       }
       
@@ -663,7 +667,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
                 plotVar = input$derivedTypeLive,
                 liveData = TRUE,
                 colorMin = NULL,
-                colorMax= NULL)
+                colorMax= NULL,
+                logoFile = "./www/cms_horiz.png")
       }
       
       plot
@@ -716,7 +721,8 @@ currentData_server <- function(id, gliderName, clientTZ) {
       
       yoPlot(gliderName, 
              yoChunk(), 
-             input$yo_var)
+             input$yo_var,
+             logoFile = "./www/cms_horiz.png")
       
     })
     
