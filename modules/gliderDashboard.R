@@ -60,15 +60,17 @@ gliderDashboard_server <- function(id, gliderName) {
 
 
     output$LDBox <- renderValueBox({
-      if(LDmin >= 2.3){
+      if(is.null(LDmin)){
+        Mycolor = "black"
+      } else if(LDmin >= 2.3){
         Mycolor = "green"
       } else if(LDmin >= 2 & LDmin < 2.3) {
         Mycolor = "yellow"
-      } else {
+      } else if(LDmin >= 0 & LDmin < 2) {
         Mycolor = "red"
       }
       valueBox(
-        round(LDmin, 3), "LD min", icon = icon("tint", lib = "glyphicon"),
+        ifelse(!is.null(LDmin), round(LDmin, 3), "N/A"), "LD min", icon = icon("tint", lib = "glyphicon"),
         color = Mycolor
       )
     })
