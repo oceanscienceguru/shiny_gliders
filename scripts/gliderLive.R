@@ -402,7 +402,10 @@ battLive <- ggplot(
 LDvars <- c("m_leakdetect_voltage", "m_leakdetect_voltage_forward", "m_leakdetect_voltage_science")
 
 leaks <- gliderdf %>%
-  select(c(m_present_time, any_of(LDvars))) %>%
+  select(c(m_present_time, any_of(LDvars)))
+
+if (ncol(leaks) > 1){
+leaks <- leaks %>%
   filter(m_leakdetect_voltage > 0) %>%
   filter(m_present_time >= endDateLive-14400) %>%
   pivot_longer(cols = any_of(LDvars))
@@ -428,6 +431,18 @@ leakLive <- ggplot(
         axis.title = element_text(size = 20),
         axis.text = element_text(size = 16),
         legend.position   =  "bottom")
+} else {
+  leakLive <- ggplot() +
+    theme_bw() +
+    labs(title = "LD last 4hrs",
+         y = "Voltage",
+         x = "Date") +
+    theme(plot.title = element_text(size = 32),
+          axis.title = element_text(size = 20),
+          axis.text = element_text(size = 16),
+          legend.position   =  "bottom")
+  LDmin <- NULL
+}
 
 #get daily roll averages
 roll <- gliderdf %>%
