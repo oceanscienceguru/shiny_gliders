@@ -551,7 +551,8 @@ fullData_server <- function(id, clientTZ) {
           lng = mapUp[nrow(mapUp), 2],
           label = "Ending point",
           icon = icon.end
-        )
+        ) %>%
+        addFullscreenControl()
     })
     
     missionNum <- reactiveValues()

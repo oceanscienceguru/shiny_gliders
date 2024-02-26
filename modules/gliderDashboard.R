@@ -270,7 +270,8 @@ gliderDashboard_server <- function(id, gliderName) {
       ) %>%
       addMeasure(primaryLengthUnit = "kilometers",
                  secondaryLengthUnit = "miles") %>%
-      addSimpleGraticule(interval = 2.5)
+      addSimpleGraticule(interval = 2.5) %>%
+      addFullscreenControl()
     
     if (nrow(cwpt > 0)) {
       liveMissionMap <- liveMissionMap %>%
