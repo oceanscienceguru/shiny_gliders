@@ -27,9 +27,11 @@
                  menuItem("Current Mission Data",
                           tabName = "currMissData",
                           icon = icon("plane")),
-                 menuItem("Full Mission Data",
+                 menuItem("Full Mission Data", startExpanded = TRUE,
                           icon = icon("calendar"),
-                          tabName = "fullMissData"),
+                          menuSubItem("Full Datasets", tabName = "fullMissData"),
+                          menuSubItem("Multiple Missions", tabName = "multi_miss_data")),
+                 
                           
                  menuItem("Data Import",
                           tabName = "dataImport",
@@ -51,6 +53,8 @@
                  tabItem(tabName = "fullMissData",
                          fullData_ui("gliding")
                  ),
+                 tabItem(tabName = 'multi_miss_data',
+                         multi_mission_ui("gliders")),
                  
                  tabItem(tabName = "dataImport",
                          box(

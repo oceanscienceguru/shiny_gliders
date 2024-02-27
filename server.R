@@ -47,6 +47,9 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
     if(input$tabs == "fullMissData"){
       fullData_server("gliding", clientTZ)
     }
+    if(input$tabs == "multi_miss_data"){
+      multi_mission_server("gliders")
+    }
 
   })
   
