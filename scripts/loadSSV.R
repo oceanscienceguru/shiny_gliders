@@ -256,6 +256,15 @@ if (is.function(updateProgress)) {
   updateProgress(detail = "Wrapping up")
 }
 
+message("Generating report")
+quarto_render("mission_report.qmd", 
+              output_file = paste0(missionNum, "_", gliderName, "_overview.html"), 
+              output_format = "html",
+              execute_params = list(mission = paste0(missionNum, "_", gliderName)))
+#rename because relative path not allowed in quarto render call
+file.rename(from = paste0(missionNum, "_", gliderName, "_overview.html"),
+            to = paste0("./www/", missionNum, "_", gliderName, "_overview.html"))
+
 if(isTRUE(mapGen)){
   message("Generating map")
   write.csv(gps, file = paste0("./KML/",missionNum,"_",gliderName,".csv"))
