@@ -1,0 +1,400 @@
+---
+format:
+  html:
+    toc: false
+    toc-location: left
+    toc-expand: true
+    standalone: true
+    embed-resources: true
+editor: visual
+params: 
+  mission: "M123_usf-jaialai"
+---
+
+```{r}
+#| label: data loading
+#| echo: false
+#| include: false
+
+library(dplyr)
+library(lubridate)
+library(leaflet)
+library(leaflet.extras)
+library(leaflet.extras2)
+library(htmlwidgets)
+library(osgUtils)
+library(terra)
+library(ggplot2)
+library(cmocean)
+library(viridis)
+library(patchwork)
+
+load(paste0("./Data/", params$mission, ".RData"))
+
+icon.start <- makeAwesomeIcon(
+  icon = "flag", markerColor = "green",
+  library = "fa",
+  iconColor = "black"
+)
+
+icon.end <- makeAwesomeIcon(
+  icon = "flag", markerColor = "red",
+  library = "fa",
+  iconColor = "black"
+)
+
+```
+
+```{r}
+#| label: data preprocessing
+#| echo: false
+#| include: false
+
+daysDep <- (min(gliderdf$m_present_time) %--% max(gliderdf$m_present_time))/days(1)
+
+pos <- gliderdf %>%
+  filter(!is.na(m_gps_lat)) %>%
+  arrange(m_present_time) %>%
+  select(c(i_lon, i_lat))
+  
+dist <- sum(distance(as.matrix(pos), lonlat = TRUE, sequential = TRUE))
+
+depthDF <- gliderdf %>%
+  group_by(yo_id) %>%
+  mutate(gDepth = max(osg_i_depth, na.rm = TRUE),
+         wDepth = max(m_water_depth, na.rm = TRUE),
+         # battDelta = max(m_battery_inst, na.rm = TRUE) - min(m_battery_inst, na.rm = TRUE)
+         ) %>%
+  filter(!is.na(gDepth)) %>%
+  ungroup() %>%
+  mutate(depthType = ifelse(wDepth <= 50, "shallow", "deep"))
+
+```
+
+## `r params$mission` Overview {#sec-mission-overview}
+
+|                   |                                           |
+|-------------------|-------------------------------------------|
+| Days deployed:    | `r round(daysDep, 2)`                     |
+| Start date (UTC): | `r format(min(gliderdf$m_present_time))`  |
+| End date (UTC):   | `r format(max(gliderdf$m_present_time))`  |
+| Distance covered: | `r round(dist/1000, 2)` km                |
+| Max dive depth:   | `r round(max(depthDF$gDepth))` m          |
+| Number of yos:    | `r round(length(unique(gliderdf$yo_id)))` |
+
+```{r}
+#| label: overview
+#| echo: FALSE
+#| message: FALSE
+#| eval: FALSE
+
+# tbl-cap: "Mission overview."
+
+# a <- c("Days deployed:", 
+#        "Start date (UTC):", 
+#        "End date (UTC):",
+#        "Distance covered:", 
+#        "Max dive depth:", 
+#        "Number of yos:")
+# b <- c(round(daysDep, 2),
+#  format(min(gliderdf$m_present_time)),
+#  format(max(gliderdf$m_present_time)),
+#  paste0(round(dist/1000, 2), " km"),
+#  paste0(round(max(depthDF$gDepth)), " m"),
+#  round(length(unique(gliderdf$yo_id))))
+# 
+# total <- data.frame(a,b) %>%
+#   flextable(.) %>%
+#   set_caption(caption = NULL) %>%
+#   delete_part(part = "header")
+# 
+# total
+```
+
+### Map {#sec-map}
+
+```{r}
+#| label: map
+#| echo: false
+#| message: false
+#| warn: false
+if(file.exists(paste0("./thebrewery/KML/", params$mission, ".kml"))){
+      #grab .kml per mission number
+      raw_sf <- st_read(paste0("./thebrewery/KML/", params$mission, ".kml"),
+                        layer = "Surfacings")
+      
+      # raw_sf <- st_read(paste0("./thebrewery/KML/", "M112", ".kml"),
+      #                   layer = "Surfacings")
+      
+      #pull out only relevant portion
+      KML_sf <- raw_sf %>%
+        select(Name) #timestamps
+      
+      #get map from sf
+      map_sf <- KML_sf[2:(nrow(KML_sf) - 1),]
+      
+      #convert to long form for start/end markers later
+      mapUp <- KML_sf %>%
+        mutate(long = st_coordinates(.)[,1],
+               lat = st_coordinates(.)[,2]) %>%
+        st_drop_geometry()
+      } else {
+        mapUp <- gliderdf %>%
+  select(m_present_time, m_gps_lat, m_gps_lon) %>%
+  filter(!is.na(m_gps_lat)) %>% #clean up input for conversion
+  mutate(latt = format(m_gps_lat, nsmall = 4),
+         longg = format(m_gps_lon, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
+  mutate(lat = gliderGPS_to_dd(latt),
+         long = gliderGPS_to_dd(longg)) %>%
+  # mutate(lat = gliderGPS_to_dd(m_gps_lat),
+  #        long = gliderGPS_to_dd(m_gps_lon)) %>%
+  select(m_present_time, lat, long) %>%
+  filter(lat >= -90 & lat <= 90) %>% #remove illegal values
+  filter(long >= -180 & long <= 180)
+        #mapUp2 <- read.csv(paste0("./thebrewery/KML/", "M103_usf-bass", ".csv"))
+        
+        map_sf <- mapUp %>%
+          mutate(Name = m_present_time)
+        
+        
+      }
+      
+      leaflet() %>%
+        #base provider layers
+        addWMSTiles("https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}.png",
+                    layers = "World_Ocean_Base",
+                    group = "Ocean Basemap",
+                    options = WMSTileOptions(format = "image/png", transparent = F)) %>%
+        addWMSTiles("https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Reference/MapServer/tile/{z}/{y}/{x}.png",
+                    layers = "World_Ocean_Reference",
+                    group = "Ocean Reference",
+                    options = WMSTileOptions(format = "image/png", transparent = T)) %>%
+        addWMSTiles("https://www.gebco.net/data_and_products/gebco_web_services/web_map_service/mapserv?",
+                    layers = "GEBCO_LATEST",
+                    group = "GEBCO",
+                    options = WMSTileOptions(format = "image/png", transparent = F)) %>%
+        addProviderTiles(providers$Esri.WorldImagery,
+                         group = "World Imagery") %>%
+        addLayersControl(baseGroups = c('Ocean Basemap', 'GEBCO', 'World Imagery'),
+                         overlayGroups = c('Ocean Reference')) %>%
+        addPolylines(
+          lat = mapUp$lat,
+          lng = mapUp$long,
+          color = "grey",
+          weight = 3,
+          opacity = 1,
+        ) %>%
+        #timestamps for surfacings
+        addCircles(data = map_sf,
+                   color = "gold",
+                   popup = map_sf$Name,
+                   weight = 3
+        ) %>%
+        #start marker
+        addAwesomeMarkers(
+          lat = mapUp[1, 2],
+          lng = mapUp[1, 3],
+          label = "Starting point",
+          icon = icon.start
+        ) %>%
+        #end marker
+        addAwesomeMarkers(
+          lat = mapUp[nrow(mapUp), 2],
+          lng = mapUp[nrow(mapUp), 3],
+          label = "Ending point",
+          icon = icon.end
+        ) %>%
+        setView(lng = mean(mapUp$long),
+                lat = mean(mapUp$lat),
+                zoom = 7) %>%
+      addFullscreenControl()
+```
+
+### Science Data
+
+```{r}
+#| label: science processing
+#| echo: false
+#| warn: false
+#| include: false
+sigma <- mean(gliderdf$osg_rho, na.rm = TRUE)
+
+```
+
+Mean density: `r round(sigma, 2)`
+
+Mean salinity: `r round(mean(gliderdf$osg_salinity, na.rm = TRUE), 2)`
+
+Mean water temperature: `r round(mean(gliderdf$sci_water_temp, na.rm = TRUE), 2)`
+
+```{r}
+#| label: temp plot
+#| echo: false
+
+# scidf <- gliderdf %>%
+#   select(starts_with(c("m_present_time", "sci", "osg"))) %>%
+#   filter(sci_water_temp > 0)
+# 
+# baseSci <- ggplot(data = 
+#                           scidf,
+#                         aes(x=m_present_time,
+#                             y=round(osg_i_depth, 2))) +
+#         geom_point(aes(color = sci_water_temp),
+#                    size = 2) 
+#       
+#       fullSci <- baseSci +
+#         scale_y_reverse() +
+#         geom_point(data = filter(gliderdf, m_water_depth > 0),
+#                    aes(x = m_present_time,
+#                        y = m_water_depth),
+#                    color = "black",
+#                    size = 0.3,
+#                    na.rm = TRUE
+#         ) +
+#         theme_bw() +
+#         labs(title = paste0(params$mission, " water temperature"),
+#              y = "Depth (m)",
+#              x = "Date") +
+#         scale_color_cmocean(name = "thermal")
+      
+      # if (input$display_var == "sci_water_temp") {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "thermal") 
+      #   } else if (input$display_var == "sci_water_pressure") {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "deep")
+      #   } else if (input$display_var == "sci_water_cond") {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "haline")
+      #   } else if (input$display_var == "sci_suna_nitrate_concentration") {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "tempo") 
+      #   } else if (input$display_var == "sci_flbbcd_chlor_units" |
+      #              input$display_var == "sci_bbfl2s_chlor_scaled" ) {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "algae") 
+      #   } else if (input$display_var == "sci_flbbcd_cdom_units" |
+      #              input$display_var == "sci_bbfl2s_cdom_scaled" ) {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "matter") 
+      #   } else if (input$display_var == "sci_flbbcd_bb_units" |
+      #              input$display_var == "sci_bbfl2s_bb_scaled" ) {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "turbid") 
+      #   } else if (input$display_var == "sci_oxy3835_oxygen" |
+      #              input$display_var == "sci_oxy4_oxygen" ) {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "oxy") 
+      #   } else if (startsWith(input$display_var, "sci_ocr")) {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "solar") 
+      #   } else if (input$display_var == "osg_soundvel1") {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "speed") 
+      #   } else if (input$display_var == "osg_rho") {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "dense") 
+      #   } else if (input$display_var == "osg_salinity") {
+      #     scale_color_cmocean(limits = c(input$min, input$max),
+      #                         name = "haline") 
+      #   } else {
+      #     scale_color_viridis_c(limits = c(input$min, input$max))
+      #   }
+        
+      # fullSci
+```
+
+### Engineering
+
+```{r}
+#| label: engineering processing
+#| echo: false
+#| include: false
+
+ballastDelta <- mean(gliderdf$m_ballast_pumped, na.rm = TRUE)
+battposDelta <- mean(gliderdf$m_battpos, na.rm = TRUE)
+
+# battDrop <- depthDF %>%
+#   distinct(battDelta, gDepth)
+
+  #calculate mean battery voltage daily
+  dailydf <- gliderdf %>%
+    mutate(ddate = date(m_present_time)) %>%
+    group_by(ddate) %>%
+    summarise_if(is.numeric, mean, na.rm = TRUE)
+  
+    # summarise(battAvg = mean(m_battery, na.rm = TRUE),
+    #           rollAvg = mean(m_roll, na.rm = TRUE),
+    #           densAvg = mean(osg_rho, na.rm = TRUE),
+    #           bpumAvg = mean(m_ballast_pumped, na.rm = TRUE),
+    #           bposAvg = mean(m_battpos, na.rm = TRUE),
+    #           vacAvg = mean(m_vacuum, na.rm = TRUE),
+    #           date = mean(m_present_time),
+    #           .groups = "keep")
+
+```
+
+Mean ballast: `r round(ballastDelta, 2)`
+
+Mean battpos: `r round(battposDelta, 2)`
+
+Mean roll: `r round(((mean(gliderdf$m_roll, na.rm = TRUE)*180)/pi), 2)` degrees
+
+```{r}
+#| label: powerPlot
+#| echo: false
+
+(batt <- ggplot() +
+  geom_point(data = dailydf, 
+             size = 2, aes(x = ddate, y = m_battery), color = "red") +
+  labs(title = "Daily Voltage",
+       x = "Date", 
+       y = "Battery (V)") +
+  theme_bw())
+
+# (battDepth <- ggplot() +
+#   geom_point(data = battDrop, 
+#              size = 2, aes(x = gDepth, y = battDelta), color = "red") +
+#   labs(title = "Voltage drop at depth",
+#        x = "Max glider depth", 
+#        y = "Voltage diff (V)") +
+#   theme_bw())
+
+
+(roll <- ggplot() +
+  geom_point(data = dailydf, 
+             size = 2, aes(x = ddate, y = ((m_roll*180)/pi)), color = "darkgreen") +
+  geom_hline(yintercept = 0, linetype = 2) +
+  labs(title = "Daily Roll",
+       x = "Date", 
+       y = "Roll (deg)") +
+  theme_bw())
+
+(bpump <- ggplot() +
+  geom_point(data = dailydf, 
+             size = 2, aes(x = osg_rho, y = m_ballast_pumped), color = "blue") +
+  geom_hline(yintercept = 0, linetype = 2) +
+  labs(title = "Daily ballast performance",
+       x = "Density", 
+       y = "Ballast pump center (cc)") +
+  theme_bw())
+
+(bpos <- ggplot() +
+  geom_point(data = dailydf, 
+             size = 2, aes(x = osg_rho, y = m_battpos), color = "navy") +
+  geom_hline(yintercept = 0, linetype = 2) +
+  labs(title = "Daily battpos performance",
+       x = "Density", 
+       y = "Battpos center (in)") +
+  theme_bw())
+
+# (vacta <- ggplot() +
+#   geom_point(data = dailydf, 
+#              size = 2, aes(x = m_vehicle_temp, y = m_vacuum, color = ddate)) +
+#   scale_color_viridis_c() +
+#   labs(title = "Temp/vacuum",
+#        x = "Temperature (C)", 
+#        y = "Vacuum (inHg)") +
+#   theme_bw())
+
+```
