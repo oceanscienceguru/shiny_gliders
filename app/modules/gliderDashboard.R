@@ -2,9 +2,9 @@
 library(shiny)
 
 gliderDashboard_ui <- function(id) {
-  
+
   ns <- NS(id)
-  
+
   tagList(
             fluidRow(
             box(
@@ -50,10 +50,10 @@ gliderDashboard_ui <- function(id) {
 }
 
 gliderDashboard_server <- function(id, gliderName) {
-  
+
   moduleServer(id, function(input, output, session) {
     # print(gliderName())
-    
+
     if (length(gliderName) > 0) {
     load(paste0(liveDir, "/", gliderName, "/glider_live.RData"))
 
@@ -74,7 +74,7 @@ gliderDashboard_server <- function(id, gliderName) {
         color = Mycolor
       )
     })
-    
+
     if (ahrCap > 0) {
     output$recoBox <- renderValueBox({
       recoDays <- ((ahrCap*.9)-ahrUsed)/ahr3day
@@ -133,7 +133,7 @@ gliderDashboard_server <- function(id, gliderName) {
         color = Mycolor
       )
     })
-    
+
     output$battBox <- renderValueBox({
       if(battLeft >= 25){
         Mycolor = "green"
@@ -147,7 +147,7 @@ gliderDashboard_server <- function(id, gliderName) {
         color = Mycolor
       )
     })
-    
+
     } else {
       output$battBox <- renderValueBox({
         if(battLeft >= 14){
@@ -165,7 +165,7 @@ gliderDashboard_server <- function(id, gliderName) {
     }
 
     output$img <- renderSlickR({
-      
+
       ## NOTE: requires non-CRAN for switching plots
       ## remotes::install_github("yonicd/slickR@1ab229e4c400e54187a406130610852b0300986c")
       plotItUp <- list()
@@ -195,7 +195,7 @@ gliderDashboard_server <- function(id, gliderName) {
 
    # if (nrow(toGliderList) > 0){
     gotoFiles <- toGliderList %>%
-      filter(str_ends(fileName, "goto_l10.ma")) %>%
+      filter(str_detect(fileName, "goto_l")) %>%
       arrange(fileName)
 
     #get commanded wpt
@@ -204,23 +204,23 @@ gliderDashboard_server <- function(id, gliderName) {
       filter(!is.na(c_wpt_lat)) %>%
       select(!c(m_present_time)) %>%
       format(., nsmall = 4) %>% #coerce to character keeping zeroes out to 4 decimals
-      tail(1)  %>% 
+      tail(1)  %>%
       mutate(lat = gliderGPS_to_dd(c_wpt_lat),
              long = gliderGPS_to_dd(c_wpt_lon))
-    
+
     gotoN <- as.integer(nrow(gotoFiles))
-    
+
     if (gotoN > 0){
     #build goto history
     gotoHistory <- list()
     for (i in 1:gotoN) {
       gotoHistory[[i]] <- gotoLoad(paste0(rawDir, "/gliders/", gliderName, "/archive/", gotoFiles[i,]))
     }
-    
+
     #get most recent goto file
     goto <- as.data.frame(tail(gotoHistory, 1))
     }
-    
+
     liveMissionMap <- leaflet() %>%
       #base provider layers
       addWMSTiles("https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}.png",
@@ -272,14 +272,14 @@ gliderDashboard_server <- function(id, gliderName) {
                  secondaryLengthUnit = "miles") %>%
       addSimpleGraticule(interval = 2.5) %>%
       addFullscreenControl()
-    
+
     if (nrow(cwpt > 0)) {
       liveMissionMap <- liveMissionMap %>%
         addMarkers(lat = cwpt$lat,
                    lng = cwpt$long,
                    label = "Commanded wpt")
     }
-    
+
     if (gotoN > 0) {
       liveMissionMap <- liveMissionMap %>%
       addCircles(lat = goto$lat,
@@ -302,8 +302,8 @@ gliderDashboard_server <- function(id, gliderName) {
 
     output$missionmapLive <- renderLeaflet({
       liveMissionMap})
-    
-    } 
+
+    }
     })
-  
+
 }

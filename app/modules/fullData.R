@@ -2,9 +2,9 @@
 library(shiny)
 
 fullData_ui <- function(id) {
-  
+
   ns <- NS(id)
-  
+
   tagList(
     useShinyjs(),
     fluidPage(
@@ -192,7 +192,7 @@ fullData_ui <- function(id) {
                                  br(),
                                  # Button
                                  downloadButton(
-                                   outputId = ns("yoDown"), 
+                                   outputId = ns("yoDown"),
                                    label = "Download plotted data"),
                                  br(),
                                  checkboxGroupInput(
@@ -273,7 +273,7 @@ fullData_ui <- function(id) {
                                                selected = NULL),
                                    selectInput(inputId = ns("exploreVar2"),
                                                label = "y-axis variable",
-                                               choices = NULL, 
+                                               choices = NULL,
                                                selected = NULL),
                                    # numericInput(inputId = ns("exploreMin"),
                                    #              label = "x-axis minimum",
@@ -464,49 +464,49 @@ fullData_ui <- function(id) {
 }
 
 fullData_server <- function(id, clientTZ) {
-  
+
   moduleServer(id, function(input, output, session) {
-    
-    fileList_archive <- list.files(path = paste0(fullDir, "Data/"),
+
+    fileList_archive <- list.files(path = paste0(fullDir, "/Data/"),
                                    pattern = "*.RData")
-    
+
     missionList_archive <- str_remove(fileList_archive, pattern = ".RData")
-    
+
     updateSelectInput(session, "mission", NULL, choices = c(missionList_archive), selected = tail(missionList_archive, 1))
-    
-    #mission map 
+
+    #mission map
     output$missionmap <- renderLeaflet({
       req(input$mission)
-      
-      if(file.exists(paste0(fullDir, "KML/", input$mission, ".kml"))){
+
+      if(file.exists(paste0(fullDir, "/KML/", input$mission, ".kml"))){
       #grab .kml per mission number
-      raw_sf <- st_read(paste0(fullDir, "KML/", input$mission, ".kml"),
+      raw_sf <- st_read(paste0(fullDir, "/KML/", input$mission, ".kml"),
                         layer = "Surfacings")
-      
+
       # raw_sf <- st_read(paste0("./thebrewery/KML/", "M112", ".kml"),
       #                   layer = "Surfacings")
-      
+
       #pull out only relevant portion
       KML_sf <- raw_sf %>%
         select(Name) #timestamps
-      
+
       #get map from sf
       map_sf <- KML_sf[2:(nrow(KML_sf) - 1),]
-      
+
       #convert to long form for start/end markers later
       mapUp <- KML_sf %>%
         mutate(long = st_coordinates(.)[,1],
                lat = st_coordinates(.)[,2]) %>%
         st_drop_geometry()
       } else {
-        mapUp <- read.csv(paste0(fullDir, "KML/", input$mission, ".csv")) %>%
+        mapUp <- read.csv(paste0(fullDir, "/KML/", input$mission, ".csv")) %>%
           select(m_present_time, long, lat)
         #mapUp2 <- read.csv(paste0("./thebrewery/KML/", "M103_usf-bass", ".csv"))
-        
+
         map_sf <- mapUp %>%
           mutate(Name = m_present_time)
       }
-      
+
       leaflet() %>%
         #base provider layers
         addWMSTiles("https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}.png",
@@ -554,93 +554,93 @@ fullData_server <- function(id, clientTZ) {
         ) %>%
         addFullscreenControl()
     })
-    
+
     missionNum <- reactiveValues()
-    
+
     glider <- reactiveValues()
-    
+
     gliderReactor <- reactiveValues(name = NULL)
-    
+
     selectPgram <- reactiveValues(seg = NULL, id = NULL)
-    
+
     observeEvent(input$load, {
-      load(paste0(fullDir, "Data/", isolate(input$mission), ".RData"))
-      
+      load(paste0(fullDir, "/Data/", isolate(input$mission), ".RData"))
+
       gliderReactor$name <- gliderName
-      
+
       df <- gliderdf
-      
+
       #yoList$ids <- sort(na.omit(unique(df$yo_id)))
 
       #possible add ... from masterdata
       #mutate(new_water_depth = m_water_depth * (1500/soundvel1))
-      
+
       allvars <- colnames(df)
-      
+
       yoNums <- sort(na.omit(unique(df$yo_id)))
 
       #pull out science variables
       scivars <- df %>%
         select(starts_with(c("sci","osg"))) %>%
         colnames()
-      
+
       #pull out flight variables
       flightvars <- df %>%
         select(!starts_with("sci")) %>%
         colnames()
-      
+
       #commit mission number to reactive val at load
       missionNum$id <- isolate(input$mission)
-      
+
       #mission date range variables
       startDate <- as_datetime(min(df$m_present_time))
       endDate <- as_datetime(max(df$m_present_time))
-      
+
       #get start/end days and update data filters
-      updateAirDateInput(session, "date1", NULL, value = startDate, 
+      updateAirDateInput(session, "date1", NULL, value = startDate,
                          options = list(minDate = startDate, maxDate = endDate))
-      updateAirDateInput(session, "date2", NULL, value = endDate, 
+      updateAirDateInput(session, "date2", NULL, value = endDate,
                          options = list(minDate = startDate, maxDate = endDate))
       updateSelectInput(session, "display_var", NULL, choices = c(scivars), selected = "sci_water_temp")
       updateSelectizeInput(session, "flight_var", NULL, choices = c(flightvars), selected = "m_roll")
-      
+
       updateSelectInput(session, "exploreVar1", NULL, choices = c(allvars), selected = "m_present_time")
       updateSelectInput(session, "exploreVar2", NULL, choices = c(allvars), selected = head(allvars, 1))
-      
-      updateAirDateInput(session, "yoDate", NULL, value = endDate, 
+
+      updateAirDateInput(session, "yoDate", NULL, value = endDate,
                          options = list(minDate = startDate, maxDate = endDate,
                                         timeFormat = "HH:mm"))
       updateNumericInput(session, "yo", NULL, min = 0, max = max(yoNums), value = max(yoNums))
       updateSelectInput(session, "yo_var", NULL, choices = c(scivars), selected = tail(scivars, 1))
-      
+
       showNotification("Data loaded", type = "message")
-      
+
       message(paste0(missionNum$id, " data loaded"))
-      
+
       glider$full <- df
-      
+
       if(gliderName == "usf-stella"){
-        updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1)) 
+        updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1))
         updateDateRangeInput(session, "echohistrange", label = NULL,
                              start = (max(fullehunk$m_present_time)-259200),
                              end = max(fullehunk$m_present_time),
                              min = min(fullehunk$m_present_time),
                              max = max(fullehunk$m_present_time))
-        
+
         updateDateRangeInput(session, "echohistrange2", label = NULL,
                              start = min(fullehunk$m_present_time),
                              end = max(fullehunk$m_present_time),
                              min = min(fullehunk$m_present_time),
                              max = max(fullehunk$m_present_time))
 
-        
+
         observeEvent(input$echo, {
           selectPgram$seg <- input$echo
           selectPgram$id <- match(input$echo, echoListraw$value)
         })
-        
+
         }
-      
+
       #### Buttons to scroll through pseudograms ####
       observeEvent(input$oldestPgram, {
         selectPgram$seg <- head(echoListraw$value, 1)
@@ -662,13 +662,13 @@ fullData_server <- function(id, clientTZ) {
         selectPgram$seg <- tail(echoListraw$value, 1)
         updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1))
       })
-      
+
       plotehunk <- reactive({
         validate(
           need(gliderReactor$name == "usf-stella", "These data require echosounder glider")
         )
         req(input$echohistrange)
-        
+
         pf <- filter(fullehunk, m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
           filter(hour >= input$echohour[1] & hour <= input$echohour[2]) %>%
           group_by(segment, r_depth) %>%
@@ -680,16 +680,16 @@ fullData_server <- function(id, clientTZ) {
           mutate(seg_hour = hour(seg_time)) %>%
           mutate(cycle = case_when(seg_hour %in% c(11:23) ~ 'day',
                                    seg_hour %in% c(1:10, 24) ~ 'night')) # add day/night filter
-        
+
         pf
       })
-      
+
       plotethunk <- reactive({
         validate(
           need(gliderReactor$name == "usf-stella", "These data require echosounder glider")
         )
         req(input$echohistrange2)
-        
+
         pf <- filter(fullehunk, m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
           filter(hour >= input$echohour2[1] & hour <= input$echohour2[2]) %>%
           group_by(segment) %>%
@@ -703,16 +703,16 @@ fullData_server <- function(id, clientTZ) {
           mutate(avgDb = exp(mean(log(abs(value))))*-1) %>%
           #mutate(avgDbOLD = mean(value)) %>%
           ungroup()
-        
-        
+
+
         pf
       })
-      
+
       #### frequency polygon ####
       gg5 <- reactive({
 
         req(input$echohistrange)
-        
+
         ggHist <- ggplot(data = plotehunk(),
                          aes(y = r_depth,
                          )) +
@@ -736,7 +736,7 @@ fullData_server <- function(id, clientTZ) {
                 plot.caption = element_markdown(),
           ) +
           guides(size="none")
-        
+
         # ggHist <-
         #   ggplot(data = plotehunk(),
         #          aes(x = as.factor(value),
@@ -760,14 +760,14 @@ fullData_server <- function(id, clientTZ) {
         #         plot.caption = element_markdown()) +
         #   guides(size="none")
         #scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
-        
+
         ggHist
-        
+
       })
-      
+
       output$echoHist <- renderPlot({gg5()})
-      
-      
+
+
       #### pseudotimegram ####
       gg6 <- reactive({
         # if(input$todTgram != "day/night") {
@@ -799,7 +799,7 @@ fullData_server <- function(id, clientTZ) {
                 legend.key = element_blank(),
                 plot.caption = element_markdown()) +
           guides(size="none")
-        
+
         if (input$echoColor2 == "EK") {
           ggEchoTime +
             scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
@@ -816,32 +816,32 @@ fullData_server <- function(id, clientTZ) {
             scale_colour_viridis_c(limits = c(-75, -30),
                                    option = "D")
         }
-        
+
       })
-      
+
       output$echoTime <- renderPlot({gg6()})
-      
-      
-      
+
+
+
     })
     #   print(isolate(gliderReactor$name))
     # if(isolate(input$mission) == "usf-stella"){
     #   updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1))
-    #   
-    
- 
-      
+    #
+
+
+
       #process the requested pseudogram
       ehunk <- reactive({
         validate(
           need(gliderReactor$name == "usf-stella", "These data require echosounder glider")
         )
         req(input$echo)
-        
+
         ehunk <- pseudogram(paste0("/echos/layers/", selectPgram$seg, ".ssv"),
                             paste0("/echos/depths/", selectPgram$seg, ".ssv"))
       })
-      
+
       ##### main pseudogram plot ####
       gg4 <- reactive({
         #plot
@@ -880,7 +880,7 @@ fullData_server <- function(id, clientTZ) {
                 plot.caption = element_markdown()) +
           guides(size="none") +
           scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
-        
+
         if (input$echoColor == "EK") {
           ggEcho +
             scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
@@ -897,15 +897,15 @@ fullData_server <- function(id, clientTZ) {
                                    option = "D"
             )
         }
-        
-        
-      })
-      
-      output$echoPlot <- renderPlot({gg4()})
-      
 
-      
-      
+
+      })
+
+      output$echoPlot <- renderPlot({gg4()})
+
+
+
+
       #### pseudotimegram main setup ####
       # fullehunk <- reactive({
       #   req(input$fullecho | input$fullecho2)
@@ -923,15 +923,15 @@ fullData_server <- function(id, clientTZ) {
       #   ef
       #
       # })
-      
-      
-      
 
- 
-      
+
+
+
+
+
     # }
-    
-    
+
+
     #dynamically filter for plotting
     chunk <- reactive({
       #potential workaround for airdate picker hijacking broswer tz
@@ -940,63 +940,63 @@ fullData_server <- function(id, clientTZ) {
       } else {
         soFar <- interval(input$date1, input$date2)
       }
-      
+
       #soFar <- interval(input$date1, input$date2)
-      
+
       df <- glider$full %>%
         filter(m_present_time %within% soFar) %>%
         #filter(status %in% c(input$status)) %>%
         #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
         filter(osg_i_depth >= input$min_depth & osg_i_depth <= input$max_depth)
-      
+
       df
-      
+
     })
-    
+
     ########## science plot #########
-    
+
     scienceChunk <- reactive({
       validate(
         need(gliderReactor$name != "", "Please click the Load Mission Data button")
       )
       #req(input$display_var)
-      
+
       qf <- chunk() %>%
         select(m_present_time, osg_i_depth, input$display_var) %>%
         filter(!is.na(across(!c(m_present_time:osg_i_depth))))
-      
+
       if(isTRUE(input$zeroFilter)){
-        
+
         zf <- qf %>%
           filter(.data[[input$display_var]] > 0)
-        
+
         zf
       } else {
         qf
       }
-      
+
     })
-    
+
     gg1 <- reactive({
             validate(
         need(gliderReactor$name != "", "Please click the Load Mission Data button")
       )
-      
+
       scf <- scienceChunk() %>%
         select(m_present_time, osg_i_depth, .data[[input$display_var]]) %>%
         filter(!is.na(.data[[input$display_var]]))
-      
+
       gcf <- chunk() %>%
         select(m_present_time, m_water_depth) %>%
         filter(!is.na(m_water_depth))
-      
-      baseSci <- ggplot(data = 
+
+      baseSci <- ggplot(data =
                           scf,
                         aes(x=m_present_time,
                             y=round(osg_i_depth, 2))) +
         geom_point(aes(color = .data[[input$display_var]]),
-                   size = 2) 
-      
+                   size = 2)
+
       fullSci <- baseSci +
         scale_y_reverse() +
         geom_point(data = filter(gcf, m_water_depth > 0),
@@ -1013,10 +1013,10 @@ fullData_server <- function(id, clientTZ) {
         theme(plot.title = element_text(size = 24)) +
         theme(axis.title = element_text(size = 16)) +
         theme(axis.text = element_text(size = 12)) +
-        
+
         if (input$display_var == "sci_water_temp") {
           scale_color_cmocean(limits = c(input$min, input$max),
-                              name = "thermal") 
+                              name = "thermal")
         } else if (input$display_var == "sci_water_pressure") {
           scale_color_cmocean(limits = c(input$min, input$max),
                               name = "deep")
@@ -1025,57 +1025,57 @@ fullData_server <- function(id, clientTZ) {
                               name = "haline")
         } else if (input$display_var == "sci_suna_nitrate_concentration") {
           scale_color_cmocean(limits = c(input$min, input$max),
-                              name = "tempo") 
+                              name = "tempo")
         } else if (input$display_var == "sci_flbbcd_chlor_units" |
                    input$display_var == "sci_bbfl2s_chlor_scaled" ) {
           scale_color_cmocean(limits = c(input$min, input$max),
-                              name = "algae") 
+                              name = "algae")
         } else if (input$display_var == "sci_flbbcd_cdom_units" |
                    input$display_var == "sci_bbfl2s_cdom_scaled" ) {
           scale_color_cmocean(limits = c(input$min, input$max),
-                              name = "matter") 
+                              name = "matter")
         } else if (input$display_var == "sci_flbbcd_bb_units" |
                    input$display_var == "sci_bbfl2s_bb_scaled" ) {
           scale_color_cmocean(limits = c(input$min, input$max),
-                              name = "turbid") 
+                              name = "turbid")
         } else if (input$display_var == "sci_oxy3835_oxygen" |
                    input$display_var == "sci_oxy4_oxygen" ) {
           scale_color_cmocean(limits = c(input$min, input$max),
-                              name = "oxy") 
+                              name = "oxy")
         } else if (startsWith(input$display_var, "sci_ocr")) {
           scale_color_cmocean(limits = c(input$min, input$max),
-                              name = "solar") 
+                              name = "solar")
         } else if (input$display_var == "osg_soundvel1") {
           scale_color_cmocean(limits = c(input$min, input$max),
-                              name = "speed") 
+                              name = "speed")
         } else if (input$display_var == "osg_rho") {
           scale_color_cmocean(limits = c(input$min, input$max),
-                              name = "dense") 
+                              name = "dense")
         } else if (input$display_var == "osg_salinity") {
           scale_color_cmocean(limits = c(input$min, input$max),
-                              name = "haline") 
+                              name = "haline")
         } else {
           scale_color_viridis_c(limits = c(input$min, input$max))
         }
-      
+
       fullSci
-      
-      
-    }) 
-    
+
+
+    })
+
     gg1ly <- reactive({
       validate(
         need(gliderReactor$name != "", "Please click the Load Mission Data button")
       )
-      
+
       scf <- scienceChunk() %>%
         select(m_present_time, osg_i_depth, .data[[input$display_var]]) %>%
         filter(!is.na(.data[[input$display_var]]))
-      
+
       gcf <- chunk() %>%
         select(m_present_time, m_water_depth) %>%
         filter(!is.na(m_water_depth))
-      
+
       #setup for interactivity if desired and warn if needed
       if (isTRUE(input$interactiveSci)) {
         if (nrow(scf) > 1000000) {
@@ -1095,16 +1095,16 @@ fullData_server <- function(id, clientTZ) {
         )
       }
       })
-    
-    output$sciPlot <- renderPlot({gg1()}) 
-    output$sciPlotly <- renderPlotly({gg1ly()}) 
+
+    output$sciPlot <- renderPlot({gg1()})
+    output$sciPlotly <- renderPlotly({gg1ly()})
      #bindCache(missionNum$id, input$display_var)
-    
+
     output$sciSummary <- renderTable({
       req(input$display_var)
       tibble::enframe(summary(scienceChunk()[[input$display_var]]))
     })
-    
+
     #switch for interactivitiy using shinyjs
     observeEvent(c(input$interactiveSci), {
       #req(input$group)
@@ -1120,16 +1120,16 @@ fullData_server <- function(id, clientTZ) {
         #showSpinner("sciPlot")
       }
     })
-  
-    
+
+
     ##### flight plot #####
-    
+
     flightChunk <- reactive({
       validate(
         need(gliderReactor$name != "", "Please click the Load Mission Data button")
       )
-      
-      select(chunk(), m_present_time, osg_i_depth, any_of(input$flight_var)) 
+
+      select(chunk(), m_present_time, osg_i_depth, any_of(input$flight_var))
       # %>%
       #   pivot_longer(
       #     cols = !m_present_time,
@@ -1137,20 +1137,20 @@ fullData_server <- function(id, clientTZ) {
       #     values_to = "count") %>%
       #   filter(!is.na(count))
     })
-    
+
     # output$summary <- renderPrint({
     #   head(flightChunk())
     # })
-    
+
     #flight plot
     gg2 <- reactive({
-      
+
       req(input$flight_var)
-      
+
       fliPlot(gliderName = missionNum$id,
               inGliderdf = flightChunk(),
               plotVar = input$flight_var)
-      
+
       # if (input$flight_var == "m_roll") {
       #   flightxlabel <- "roll"
       # } else if (input$flight_var == "m_heading") {
@@ -1172,7 +1172,7 @@ fullData_server <- function(id, clientTZ) {
       #   theme(plot.title = element_text(size = 32)) +
       #   theme(axis.title = element_text(size = 16)) +
       #   theme(axis.text = element_text(size = 12))
-      
+
       # plotup <- list()
       # for (i in input$flight_var){
       #   plotup[[i]] = ggplot(data = select(chunk(), m_present_time, all_of(i)) %>%
@@ -1191,12 +1191,12 @@ fullData_server <- function(id, clientTZ) {
       # }
       # wrap_plots(plotup, ncol = 1)
     })
-    
+
     output$fliPlot <- renderPlotly({gg2()})
-    
+
     output$fliSummary <- renderTable({
       req(input$flight_var)
-      
+
       summs <- flightChunk() %>%
         pivot_longer(cols = !c(m_present_time, osg_i_depth), names_to = "vars") %>%
         group_by(vars) %>%
@@ -1208,21 +1208,21 @@ fullData_server <- function(id, clientTZ) {
                max = max(value, na.rm = TRUE),
                sd = sd(value, na.rm = TRUE)) %>%
         pivot_longer(cols = min:sd, names_to = "stat")
-      
+
       summs
     })
-    
+
     ##### derived plots #########
     gg3 <- reactive({
       validate(
         need(gliderReactor$name != "", "Please click the Load Mission Data button")
       )
-      
+
       if (input$derivedType == "TS Plot"){
         df <- filter(chunk(), osg_salinity > 0)
         wf <- filter(chunk(), m_water_depth > 0)
-        
-        plot <- 
+
+        plot <-
           ggplot(
             data = df,
             aes(x = osg_salinity,
@@ -1250,14 +1250,14 @@ fullData_server <- function(id, clientTZ) {
                 plot.caption = element_text(size = 16),
                 legend.position ="none",
           )
-        
+
         plot <- ggplotly(plot)
       }
-      
+
       if (input$derivedType == "SV Plot"){
         df <- filter(chunk(), osg_soundvel1 > 0)
         wf <- filter(chunk(), m_water_depth > 0)
-        
+
        plot <- sciPlot(
           missionNum$id,
           df,
@@ -1266,81 +1266,81 @@ fullData_server <- function(id, clientTZ) {
         )
 
       }
-      
+
       if (input$derivedType == "Density"){
         df <- filter(chunk(), osg_rho > 0)
         wf <- filter(chunk(), m_water_depth > 0)
-        
+
        plot <- sciPlot(
           missionNum$id,
           df,
           wf,
           input$derivedType
         )
-        
-      
+
+
       }
-      
+
       if (input$derivedType == "Salinity"){
         df <- filter(chunk(), osg_salinity > 0)
         wf <- filter(chunk(), m_water_depth > 0)
-        
+
        plot <- sciPlot(
           missionNum$id,
           df,
           wf,
           input$derivedType
         )
-        
-  
+
+
       }
-      
+
       plot
-      
+
     })
-    
+
     output$tsPlot <- renderPlotly({gg3()})
-    
+
     #### yo by yo ####
-    
+
     #date matching to find yo in time
     observeEvent(input$yoDate, {
       yoFinder <- glider$full %>%
         slice(which.min(abs(m_present_time - input$yoDate)))
-      
+
       selectYo$id <- yoFinder$yo_id
       updateNumericInput(session, "yo", NULL, value = yoFinder$yo_id)
     })
-    
+
     yoChunk <- reactive({
       req(input$yo)
-      
+
       qf <- glider$full %>%
         filter(yo_id == input$yo) %>% #grab only yo of interest
         filter(cast %in% input$cast) %>% #grab cast as needed
-        select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, i_lat, i_lon, any_of(input$yo_var))) 
+        select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, i_lat, i_lon, any_of(input$yo_var)))
       #filter(!is.na(across(!c(m_present_time:osg_i_depth))))
-      
+
       # qf <- gliderdf %>%
       #   filter(yo_id == 98) %>% #grab only yo of interest
       #   filter(cast %in% "Downcast") %>% #grab cast as needed
-      #   select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, any_of(plotVar))) 
+      #   select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, any_of(plotVar)))
       #filter(!is.na(across(!c(m_present_time:osg_i_depth))))
-      
+
       if(isTRUE(input$zeroFilterYo)){
-        
+
         zf <- qf %>%
           pivot_longer(cols = !c(m_present_time:i_lon)) %>%
           filter(value > 0) %>%
           pivot_wider(names_from = name)
-        
+
         zf
       } else {
         qf
       }
-      
+
     })
-    
+
     yoList <- reactive({
       qf <- isolate(glider$full)
 
@@ -1348,17 +1348,17 @@ fullData_server <- function(id, clientTZ) {
         na.omit() %>%
         sort()
     })
-    
+
     yoPlot_live <- reactive({
-      
-      yoPlot(missionNum$id, 
-             yoChunk(), 
+
+      yoPlot(missionNum$id,
+             yoChunk(),
              input$yo_var)
-      
+
     })
-    
+
     output$yoPlot <- renderPlotly(yoPlot_live())
-    
+
     output$yoDown <- downloadHandler(
       filename = function() {
         paste0(missionNum$id, "_yo", input$yo, ".csv")
@@ -1367,16 +1367,16 @@ fullData_server <- function(id, clientTZ) {
         write.csv(yoChunk(), file, row.names = FALSE)
       }
     )
-    
+
     #### Buttons to scroll through yos ####
     #initialize reactive to track with same value as yo variable
     selectYo <- reactiveValues(id = tail(yoList(), 1))
-    
+
     #attach IDs to yo plot reactive
     observeEvent(input$yo, {
       selectYo$id <- as.numeric(input$yo)
     })
-    
+
     observeEvent(input$oldestYo, {
       selectYo$id <- head(yoList(), 1)
       updateNumericInput(session, "yo", NULL, value = head(yoList(), 1))
@@ -1409,23 +1409,23 @@ fullData_server <- function(id, clientTZ) {
       #                    options = list(minDate = startDateLive, maxDate = endDateLive,
       #                                   timeFormat = "HH:mm"))
     })
-    
+
     ########## explorer plot #########
-    
+
     exploreChunk <- reactive({
       validate(
         need(gliderReactor$name != "", "Please click the Load Mission Data button")
       )
       select(chunk(), input$exploreVar1, input$exploreVar2)
       #filter(input$exploreVar1 >= input$exploreMin & input$exploreVar1 <= input$exploreMax)
-      
-      
+
+
         # pivot_longer(
         #   cols = !input$exploreVar2,
         #   names_to = "variable",
         #   values_to = "count") %>%
         # filter(!is.na(count))
-        # 
+        #
       # if(!is.null(input$exploreFilter1)){
       #   filter()
       # }
@@ -1453,20 +1453,20 @@ fullData_server <- function(id, clientTZ) {
         theme(plot.title = element_text(size = 32)) +
         theme(axis.title = element_text(size = 16)) +
         theme(axis.text = element_text(size = 12))
-      
+
       if(input$exploreRevAxis == TRUE){
         explorePlot <- explorePlot + scale_y_reverse()
-          
+
       }
-      
+
       if(input$exploreSmooth == TRUE){
         explorePlot <- explorePlot + geom_smooth(method=NULL, se=TRUE)
       }
-      
+
       explorePlot
-      
+
     })
-    
+
     output$explorePlot <- renderPlot({ggExplore()})
 
   })

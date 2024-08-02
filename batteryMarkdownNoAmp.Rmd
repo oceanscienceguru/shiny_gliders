@@ -1,0 +1,113 @@
+---
+author: "Earle"
+date: "`r Sys.Date()`"
+output: html_document
+params:
+  gliderName: "usf-bass"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+knit_engines$set(asis = function(options) {
+  if (options$echo && options$eval) knit_child(text = options$code)
+})
+```
+
+```{r, include=FALSE}
+### battery publishing ###
+library(tidyverse)
+library(lubridate)
+library(terra)
+library(osgUtils)
+  
+#source("/srv/shiny-server/thebrewery/scripts/gliderGPS_to_dd.R")
+
+#i <- "usf-gansett"
+#load(paste0("/echos/", i, "/glider_live.RData"))
+
+load(paste0("/echos/", params$gliderName, "/glider_live.RData"))
+
+  if (ahrCap > 0){
+    recoDays <- format(round(((ahrCap*.9)-ahrUsed)/ahr3day, 2), nsmall = 2) #calculate days til 10% abort level
+  } else {
+    recoDays <- format(round(battLeft), nsmall = 2)
+  }
+
+currTime <- max(gliderdf$m_present_time, na.rm = TRUE)
+dayAgo <- interval(currTime, currTime + days(-1))
+day3Ago <- interval(currTime, currTime + days(-3))
+
+
+dailydf <- gliderdf %>%
+  filter(m_present_time %within% dayAgo) %>%
+      mutate(latt = format(m_gps_lat, nsmall = 4),
+             longg = format(m_gps_lon, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
+      mutate(lat = gliderGPS_to_dd(latt),
+             long = gliderGPS_to_dd(longg))
+
+rolldf <- dailydf %>%
+  select(c(m_present_time, m_roll, osg_i_depth)) %>%
+  filter(!is.na(m_roll)) %>%
+  filter(osg_i_depth > 2) %>%
+  mutate(lagRoll = lag(m_roll)) %>%
+  mutate(deltaRoll = (m_roll - lagRoll)*180/pi) %>%
+  mutate(deltaRoll = abs(deltaRoll)) %>%
+  filter(deltaRoll == max(deltaRoll, na.rm = TRUE)) %>%
+  tail(1)
+
+maxRoll <- as.logical(max(rolldf$deltaRoll > 10))
+
+    #get commanded wpt, might not have ^F within 24hrs
+    cwpt <- gliderdf %>%
+      select(m_present_time, c_wpt_lat, c_wpt_lon) %>%
+      filter(!is.na(c_wpt_lat)) %>%
+      select(!c(m_present_time)) %>%
+      format(., nsmall = 4) %>% #coerce to character keeping zeroes out to 4 decimals
+      tail(1)  %>% 
+      mutate(lat = gliderGPS_to_dd(c_wpt_lat),
+             long = gliderGPS_to_dd(c_wpt_lon)) %>%
+      select(c(long, lat))
+
+pos <- dailydf %>%
+  select(c(long, lat)) %>%
+  filter(!is.na(lat))
+
+posTime <- dailydf %>%
+  select(m_present_time, lat) %>%
+  filter(!is.na(lat)) %>%
+  tail(1)
+  
+dist <- sum(distance(as.matrix(pos), lonlat = TRUE, sequential = TRUE))
+toGo <- sum(distance(as.matrix(tail(pos, 1)), as.matrix(cwpt), lonlat = TRUE))
+
+daysDep <- (min(gliderdf$m_present_time) %--% max(gliderdf$m_present_time))/days(1)
+
+```
+
+##### **Power Usage**
+
+Days deployed: `r round(daysDep, 2)`
+
+Battery voltage last 24hrs: `r round(mean(dailydf$m_battery, na.rm = TRUE), 2)`
+
+Approximate time until 11V threshold: `r recoDays` days (calculated based on standard G1 voltage curve)
+
+------------------------------------------------------------------------
+```{asis, echo = maxRoll}
+##### **Flight Anomalies**
+
+There was a roll incident of `r round(rolldf$deltaRoll, 2)` degrees at `r round(rolldf$osg_i_depth, 2)` meters deep that occurred at `r rolldf$m_present_time`
+
+------------------------------------------------------------------------
+```
+
+##### **Progress**
+
+Distance covered in last 24hrs: `r round(dist/1000, 2)` km
+
+As of `r posTime$m_present_time` UTC, `r params$gliderName` is `r round(toGo/1000, 2)` km from the next waypoint.
+
+------------------------------------------------------------------------
+
+This is the daily summary for `r params$gliderName`. For full data, see <http://earle.marine.usf.edu:3838/thebrewery/>.

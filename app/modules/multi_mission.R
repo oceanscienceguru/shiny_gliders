@@ -2,9 +2,9 @@
 library(shiny)
 
 multi_mission_ui <- function(id) {
-  
+
   ns <- NS(id)
-  
+
   tagList(
     h2("Multi mission stuff"),
     p("Pick missions"),
@@ -46,7 +46,7 @@ multi_mission_ui <- function(id) {
       br(),
       # Button
       downloadButton(
-        outputId = ns("georef_down"), 
+        outputId = ns("georef_down"),
         label = "Download plotted data"),
       br()
     ),
@@ -54,19 +54,19 @@ multi_mission_ui <- function(id) {
 }
 
 multi_mission_server <- function(id) {
-  
+
   moduleServer(id, function(input, output, session) {
-    
-    fileList_archive <- list.files(path = paste0(fullDir, "Data/"),
+
+    fileList_archive <- list.files(path = paste0(fullDir, "/Data/"),
                                    pattern = "*.RData")
-    
+
     missionList_archive <- str_remove(fileList_archive, pattern = ".RData")
-    
+
     updateSelectizeInput(session, "mission", NULL, choices = c(missionList_archive), selected = head(missionList_archive, 1))
-    
+
     mission_list <- reactiveValues(id = NULL)
     depth_list   <- reactiveValues(isobath = NULL)
-    
+
     glider_map  <- reactiveValues()
     export_data <- reactiveValues()
 
@@ -74,7 +74,7 @@ multi_mission_server <- function(id) {
     mission_list$id    <- input$mission
     depth_list$isobath <- input$isobath
     })
-    
+
     output$test <- renderText({ -1*as.numeric(depth_list$isobath) })
 
     # bounding box setup
@@ -101,7 +101,7 @@ multi_mission_server <- function(id) {
     iso100 <- eyeso %>%
       filter(CONTOUR == -100) %>%
       st_intersection(eGOM)
-    
+
     odvVars <- c("sci_water_temp",
                  "osg_rho",
                  "sci_flbbcd_chlor_units",
@@ -114,7 +114,7 @@ multi_mission_server <- function(id) {
       print(i) #watch progress
       holding <- new.env() #clear environment each time
 
-      load(paste0("./Data/", i, ".RData"), envir = holding) #load in
+      load(paste0(fullDir, "/Data/", i, ".RData"), envir = holding) #load in
 
       #process
       depthDF <- holding$gliderdf %>%
@@ -230,12 +230,12 @@ multi_mission_server <- function(id) {
       group_by(missionNum, yo_id) %>%
       mutate(yo_lat = mean(i_lat, na.rm = TRUE),
              yo_lon = mean(i_lon, na.rm = TRUE))
-    
+
     export_data$full <- isobathDF %>%
       select(missionNum, isoMission, yo_id, isobath, transect, m_present_time, yo_lat, yo_lon, osg_i_depth, any_of(odvVars))
-    
+
     zz <- distinct(isobathDF, isoMission, yo_lat, yo_lon)
-    
+
     glider_map$map <- leaflet() %>%
       #base provider layers
       addWMSTiles("https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}.png",
@@ -269,12 +269,12 @@ multi_mission_server <- function(id) {
               lat = mean(zz$yo_lat),
               zoom = 7) %>%
       addFullscreenControl()
-    
+
     })
-    
+
     output$georef_map <- renderLeaflet({
       glider_map$map})
-    
+
     output$georef_down <- downloadHandler(
       filename = function() {
         paste0(length(mission_list$id), "_missions_isobaths", ".csv")
@@ -283,7 +283,7 @@ multi_mission_server <- function(id) {
         write.csv(export_data$full, file, row.names = FALSE)
       }
     )
-    
+
   })
 }
 

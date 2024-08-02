@@ -2,9 +2,9 @@
 library(shiny)
 
 routing_ui <- function(id) {
-  
+
   ns <- NS(id)
-  
+
   tagList(
     h2("Route Planning"),
     p("Red circles denote points in selected goto file. Radius of circle is considered as achieved."),
@@ -24,12 +24,12 @@ routing_ui <- function(id) {
 }
 
 routing_server <- function(id, gliderName) {
-  
+
   moduleServer(id, function(input, output, session) {
-    
+
     if (length(gliderName) > 0) {
-    load(paste0("/echos/", gliderName, "/glider_live.RData"))
-    
+      load(paste0(liveDir, "/", gliderName, "/glider_live.RData"))
+
     #massage gps data a lot
     map_sf <- gliderdf %>%
       select(m_present_time, m_gps_lon, m_gps_lat) %>%
@@ -38,43 +38,43 @@ routing_server <- function(id, gliderName) {
              longg = format(m_gps_lon, nsmall = 4)) %>% #coerce to character keeping zeroes out to 4 decimals
       mutate(lat = gliderGPS_to_dd(latt),
              long = gliderGPS_to_dd(longg))
-    
+
     gotoFiles <- toGliderList %>%
-      filter(str_ends(fileName, "goto_l10.ma")) %>%
+      filter(str_detect(fileName, "goto_l")) %>%
       arrange(fileName)
-    
+
     #get commanded wpt
     cwpt <- gliderdf %>%
       select(m_present_time, c_wpt_lat, c_wpt_lon) %>%
       filter(!is.na(c_wpt_lat)) %>%
       select(!c(m_present_time)) %>%
       format(., nsmall = 4) %>% #coerce to character keeping zeroes out to 4 decimals
-      tail(1)  %>% 
+      tail(1)  %>%
       mutate(lat = gliderGPS_to_dd(c_wpt_lat),
              long = gliderGPS_to_dd(c_wpt_lon))
-    
+
     gotoN <- as.integer(nrow(gotoFiles))
-    
+
     #build goto history
     gotoHistory <- list()
     for (i in 1:gotoN) {
-      gotoHistory[[i]] <- gotoLoad(paste0("/gliders/gliders/", gliderName, "/archive/", gotoFiles[i,]))
+      gotoHistory[[i]] <- gotoLoad(paste0(rawDir, "/gliders/", gliderName, "/archive/", gotoFiles[i,]))
     }
-    
+
     #get most recent goto file
     goto <- as.data.frame(tail(gotoHistory, 1))
-    
+
     routingMap <- reactive({
-      
+
       if(input$gotoFile == "user upload"){
-        
+
         file <- input$gotoTest
         req(file)
         # print(file)
         # print(file$datapath)
-        
+
         userGoto <- gotoLoad(file$datapath)
-        
+
         #print(userGoto)
         #base provider layers
         p <- leaflet() %>%
@@ -150,10 +150,10 @@ routing_server <- function(id, gliderName) {
                          proportionalToTotal = TRUE,
                          offsets = NULL,
                          perArrowheadOptions = NULL))
-        
+
         p
       } else {
-      
+
     p <- leaflet() %>%
       #base provider layers
       addWMSTiles("https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}.png",
@@ -230,14 +230,14 @@ routing_server <- function(id, gliderName) {
 
     }
     })
-    
+
     output$routingMap <- renderLeaflet({
       routingMap()})
-    
-    } 
+
+    }
 })
 }
-  
-  
-    
+
+
+
 
