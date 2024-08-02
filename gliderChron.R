@@ -6,9 +6,9 @@ library(tidyverse)
 # library(ggplot2)
 # library(scales)
 
-source("/srv/shiny-server/thebrewery/scripts/gliderLive.R")
+source("./gliderLive.R")
 
-deployedGliders <- read.csv("/echos/processGliders.txt", 
+deployedGliders <- read.csv("/echos/processGliders.txt",
                             sep = "",
                             header = FALSE)
 colnames(deployedGliders)[1] = "Name"
@@ -20,6 +20,6 @@ deployedGliders <- deployedGliders %>%
 gliders_live <- list()
 for (i in deployedGliders$Name){
   df <- filter(deployedGliders, Name == i)
-  
+
   gliderLive(df[1], df[2])
 }
