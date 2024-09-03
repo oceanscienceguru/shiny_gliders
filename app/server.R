@@ -24,7 +24,7 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
   if (nrow(deployedGliders) == 0) {
     showModal(modalDialog(
       title = "No deployed gliders",
-      "There are no deployed USF gliders at this time.",
+      "There are no deployed gliders at this time.",
       easyClose = TRUE
     ))
   }

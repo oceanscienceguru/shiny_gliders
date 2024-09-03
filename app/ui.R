@@ -12,7 +12,7 @@
   ),
   includeScript("./www/timezone.js"),
            dashboardPage(
-             dashboardHeader(title = "The Brewery"),
+             dashboardHeader(title = app_name),
              dashboardSidebar(
                sidebarMenu(id = "tabs",
                  menuItem("Piloting Dashboard", startExpanded = TRUE,

@@ -49,10 +49,27 @@ Sys.setenv(TZ="UTC")
 sensor_defs <- fromJSON(file = "https://github.com/kerfoot/gncutils/raw/master/resources/sensor-def-masters/slocum-sensor_defs.json"
 )
 
-servDir <- "/echos"
-liveDir <- "/echos"
-rawDir <- "/gliders"
-fullDir <- "/echos/brewdata"
+server_metadata <- read.csv("./server_metadata.txt",
+                            sep = "",
+                            header = FALSE)
+
+# EXAMPLE SERVER_METADATA.TXT FILE
+#
+# servDir "/echos"
+# liveDir "/echos"
+# rawDir  "/gliders"
+# fullDir "/echos/brewdata"
+#
+# servDir is where to find various metadata files (deployed and glider fleet)
+# liveDir is where to find the structure for incoming live data
+# rawDir  is where to look for the rsync'd copy of all raw data including flight files
+# fullDir is where to find the structure for full datasets post mission
+
+servDir <- server_metadata[which(server_metadata == "servDir"),2]
+liveDir <- server_metadata[which(server_metadata == "liveDir"),2]
+rawDir <- server_metadata[which(server_metadata == "rawDir"),2]
+fullDir <- server_metadata[which(server_metadata == "fullDir"),2]
+app_name <- server_metadata[which(server_metadata == "app_name"),2]
 
 deployedGliders <- read.csv(paste0(servDir, "/deployedGliders.txt"),
                             sep = "",
