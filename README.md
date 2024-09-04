@@ -29,7 +29,43 @@ Minimum tbdlist requirements:
     sci_water_temperature  #as often as desired
     sci_water_pressure     #as often as desired
 
-Able to process intermediate and full data \*bd and \*cd files.
+Able to process intermediate and full data \*bd and \*cd files after
+conversion into ASCII format using standard dbd2asc tool from Teledyne.
+
+# Setup/logic
+
+The original deployment of this app was on an Intel NUC on the same
+network as the primary Slocum glider dockserver. A cron job synchronizes
+the from-glider and archive folders from the primary server to the
+remote server for processing for the app using rsync. Each
+synchronization uses the default `dbd2asc` program for Linux from
+Teledyne to convert the binary glider data into ASCII format as a
+standard .ssv. The outputted .ssv files need to be arranged in a
+specific folder structure for the R conversion cron job to function as
+expected (see below). Each data type (flight/science) needs to end up in
+its respective folder (`/echos` is the top level).
+
+    -- echos
+       |__gliders
+          |__usf-bull
+             |__flight
+             |__science
+
+Next, the R conversion script requires a similar, separate folder
+structure (see below). Within each glider’s folder, two .csv files are
+maintained and a .RData containing all of the objects used for live data
+display.
+
+    -- echos
+       |__processed-gliders
+          |__usf-bull
+
+Similarly, a standard naming convention for full datasets is used to
+parse mission information. Example: M139_usf-bull.RData parses out the
+mission name/number “M139” and the glider name “usf-bull”. The source
+data for the full data import function is a .ssv of the entire mission
+containing both flight and science data after it has been merged into a
+single .ssv.
 
 Requires [osgUtils](https://github.com/oceanscienceguru/osgUtils) R
 package to function.
