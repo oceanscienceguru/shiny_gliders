@@ -28,27 +28,26 @@ library(rjson)
 library(shinyjs)
 library(quarto)
 
-#source("./scripts/ssv_to_df.R")
-source("./scripts/loadSSV.R")
-source("./scripts/pseudogram.R")
-#source("./scripts/gotoLoad.R")
-#source("./scripts/gliderGPS_to_dd.R")
-source("./modules/gliderDashboard.R")
-source("./modules/currentData.R")
-source("./modules/routing.R")
-source("./modules/fullData.R")
-source("./modules/multi_mission.R")
-source("./scripts/sciPlot.R")
-source("./scripts/fliPlot.R")
-source("./scripts/yoPlot.R")
+#source all modules and all scripts within the app structure
+file.sources = list.files(c("./modules", "./scripts"), 
+                          pattern="*.R$", full.names=TRUE, 
+                          ignore.case=TRUE)
+sapply(file.sources,source,.GlobalEnv)
 
+#cache testing
 shinyOptions(cache = cachem::cache_disk("/echos/temp", max_size = 500e6))
 
+#maximum file upload size of 3Gb
+options(shiny.maxRequestSize = 3000*1024^2)
+
+#make sure serve is UTC
 Sys.setenv(TZ="UTC")
 
+#pull sensors and units
 sensor_defs <- fromJSON(file = "https://github.com/kerfoot/gncutils/raw/master/resources/sensor-def-masters/slocum-sensor_defs.json"
 )
 
+#read server directory structure
 server_metadata <- read.csv("./server_metadata.txt",
                             sep = "",
                             header = FALSE)
@@ -71,6 +70,7 @@ rawDir <- server_metadata[which(server_metadata == "rawDir"),2]
 fullDir <- server_metadata[which(server_metadata == "fullDir"),2]
 app_name <- server_metadata[which(server_metadata == "app_name"),2]
 
+#read in which gliders to display as live data
 deployedGliders <- read.csv(paste0(servDir, "/deployedGliders.txt"),
                             sep = "",
                             header = FALSE)
@@ -78,14 +78,16 @@ deployedGliders <- read.csv(paste0(servDir, "/deployedGliders.txt"),
 colnames(deployedGliders)[1] = "Name"
 colnames(deployedGliders)[2] = "ahrCap"
 
+deployedGliders <- deployedGliders %>%
+  filter(!str_starts(Name,"#")) #remove any commented lines
+
+#all possible gliders in the fleet
 fleetGliders <- read.csv(paste0(servDir, "/fleetGliders.txt"),
                          sep = "",
                          header = FALSE) %>%
   arrange(V1)
 
-deployedGliders <- deployedGliders %>%
-  filter(!str_starts(Name,"#")) #remove any commented lines
-
+#if routes directory exists with example goto files, load them
 routesList_files <- file.info(list.files(path = paste0(servDir, "/routes"),
                                          pattern = "*.ma"))
 
@@ -97,9 +99,7 @@ for (i in routesList_files$names) {
   routesList[[i]] <- gotoLoad(paste0(servDir, "/routes/", i))
 }
 
-#maximum file upload size of 500mb
-options(shiny.maxRequestSize = 3000*1024^2)
-
+#make some icons for maps
 icon.start <- makeAwesomeIcon(
   icon = "flag", markerColor = "green",
   library = "fa",

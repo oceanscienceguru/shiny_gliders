@@ -30,17 +30,19 @@ Minimum tbdlist requirements:
     sci_water_pressure     #as often as desired
 
 Able to process intermediate and full data \*bd and \*cd files after
-conversion into ASCII format using standard dbd2asc tool from Teledyne.
+conversion into ASCII format using standard `dbd2asc` tool from
+Teledyne.
 
 # Setup/logic
 
-The original deployment of this app was on an Intel NUC on the same
-network as the primary Slocum glider dockserver. A cron job synchronizes
-the from-glider and archive folders from the primary server to the
-remote server for processing for the app using rsync. Each
-synchronization uses the default `dbd2asc` program for Linux from
-Teledyne to convert the binary glider data into ASCII format as a
-standard .ssv. The outputted .ssv files need to be arranged in a
+The original deployment of this app was on an Intel NUC running [Shiny
+Server](https://posit.co/products/open-source/shiny-server/ "Link to Posit's Shiny Server page").
+This machine is on the same network as the primary Slocum glider
+dockserver. A cron job synchronizes the from-glider and archive folders
+from the primary server to the remote server for processing for the app
+using rsync. Each synchronization uses the default `dbd2asc` program for
+Linux from Teledyne to convert the binary glider data into ASCII format
+as a standard .ssv. The outputted .ssv files need to be arranged in a
 specific folder structure for the R conversion cron job to function as
 expected (see below). Each data type (flight/science) needs to end up in
 its respective folder (`/echos` is the top level).
@@ -59,6 +61,10 @@ display.
     -- echos
        |__processed-gliders
           |__usf-bull
+
+Additionally, one may store example goto_l\*.ma files on the server in a
+folder named “routes under the top level directory. These can be used
+for quick checks our route planning using the routing module.
 
 Similarly, a standard naming convention for full datasets is used to
 parse mission information. Example: M139_usf-bull.RData parses out the
