@@ -45,7 +45,7 @@ Linux from Teledyne to convert the binary glider data into ASCII format
 as a standard .ssv. The outputted .ssv files need to be arranged in a
 specific folder structure for the R conversion cron job to function as
 expected (see below). Each data type (flight/science) needs to end up in
-its respective folder (`/echos` is the top level).
+its respective folder (`/echos` is the top level in this example).
 
     -- echos
        |__gliders
@@ -63,8 +63,8 @@ display.
           |__usf-bull
 
 Additionally, one may store example goto_l\*.ma files on the server in a
-folder named “routes under the top level directory. These can be used
-for quick checks our route planning using the routing module.
+folder named “routes” under the top level directory. These can be used
+for quick checks or route planning using the routing module.
 
 Similarly, a standard naming convention for full datasets is used to
 parse mission information. Example: M139_usf-bull.RData parses out the
