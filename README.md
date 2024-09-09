@@ -6,11 +6,11 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of this tool is to provide glider pilots with additional
-information about vehicle health and science data. As well, it is a
-shareable platform built on R Shiny that can be used to keep non-pilot
-collaborators informed of mission progress without having to grant
-access to the piloting server.
+This tool started as a means to view full datasets for Slocum glider
+vehicle troubleshooting and performance analysis. After creating a UI
+and handful of standardized means of plotting full missions, we extended
+the same framework to view and explore real-time decimated datasets as
+they come in from gliders currently in the water.
 
 Minimal sbdlist requirements for full features:
 
@@ -33,16 +33,17 @@ Able to process intermediate and full data \*bd and \*cd files after
 conversion into ASCII format using standard `dbd2asc` tool from
 Teledyne.
 
-# Setup/logic
+# Setup
 
 The original deployment of this app was on an Intel NUC running [Shiny
 Server](https://posit.co/products/open-source/shiny-server/ "Link to Posit's Shiny Server page").
 This machine is on the same network as the primary Slocum glider
-dockserver. A cron job synchronizes the from-glider and archive folders
-from the primary server to the remote server for processing for the app
-using rsync. Each synchronization uses the default `dbd2asc` program for
-Linux from Teledyne to convert the binary glider data into ASCII format
-as a standard .ssv. The outputted .ssv files need to be arranged in a
+dockserver. A cron job (see gliderCopy.sh file for example) synchronizes
+the from-glider and archive folders from the primary server to the
+remote server for processing for the app using rsync. Each
+synchronization uses the default `dbd2asc` program for Linux from
+Teledyne to convert the binary glider data into ASCII format as a
+standard .ssv. The outputted .ssv files need to be arranged in a
 specific folder structure for the R conversion cron job to function as
 expected (see below). Each data type (flight/science) needs to end up in
 its respective folder (`/echos` is the top level in this example).
@@ -53,10 +54,10 @@ its respective folder (`/echos` is the top level in this example).
              |__flight
              |__science
 
-Next, the R conversion script requires a similar, separate folder
-structure (see below). Within each glider’s folder, two .csv files are
-maintained and a .RData containing all of the objects used for live data
-display.
+Next, the R conversion script (gliderChron.R) requires a similar,
+separate folder structure (see below). Within each glider’s folder, two
+.csv files are maintained and a .RData containing all of the objects
+used for live data display.
 
     -- echos
        |__processed-gliders
