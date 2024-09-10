@@ -74,16 +74,6 @@ Additionally, one may store example goto_l\*.ma files on the server in a folder 
 
 Similarly, a standard naming convention for full datasets is used to parse mission information. Example: M139_usf-bull.RData parses out the mission name/number "M139" and the glider name "usf-bull". The source data for the full data import function is a .ssv of the entire mission containing both flight and science data after it has been merged into a single .ssv.
 
-# Example daily email
+# Daily email
 
-Generated using the batteryMarkdown.Rmd script in Documentation. A dedicated cron job runs this markdown script via batteryMarkdownGenerate.R for each glider listed under the controlling file called "processGliders.txt".
-
-------------------------------------------------------------------------
-
-```{r, echo=FALSE}
-htmltools::includeHTML("./Documentation/batteryMarkdown.html")
-```
-
-------------------------------------------------------------------------
-
-This is then saved as an html file and emailed out daily using a separate cron job to a given list of emails.
+Generated using the batteryMarkdown.Rmd script in Documentation. A dedicated cron job runs this markdown script via batteryMarkdownGenerate.R for each glider listed under the controlling file called "processGliders.txt". This is then saved as an html file and emailed out daily using a separate cron job to a given list of emails.
