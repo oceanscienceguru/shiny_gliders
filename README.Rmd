@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 
 <!-- badges: end -->
 
-This tool started as a means to view full datasets for Slocum glider vehicle troubleshooting and performance analysis. After creating a UI and handful of standardized means of plotting full missions, we extended the same framework to view and explore real-time decimated datasets as they come in from gliders currently in the water.
+This tool started as a means to view full datasets for Slocum glider vehicle troubleshooting and performance analysis. After creating a UI and handful of standardized means of plotting full missions, we extended the same framework to view and explore real-time decimated datasets as they come in from gliders currently in the water. Requires [osgUtils](https://github.com/oceanscienceguru/osgUtils) R package to function.
 
 Minimal sbdlist requirements for full features:
 
@@ -62,8 +62,28 @@ Next, the R conversion script (gliderChron.R) requires a similar, separate folde
       |__usf-bull
 ```
 
+This script reads a controlling file ("processGliders.txt") that contains a list of glider names and battery capacities that informs which glider data should be processed. Glider names can be commented out when not in use. Similarly, the "deployedGliders.txt" file controls which gliders are actively displayed on the dashboard and follows the same structure. In the example below, usf-bass is a G1 glider and does not have a coulomb amphr counter board, so capacity is marked as 000 and none of the amphr-specific calculations will be displayed. As well, usf-jaialai is commented out and will not be processed on the cron job.
+
+```         
+#usf-jaialai 550
+usf-bass     000
+usf-gansett  215
+```
+
 Additionally, one may store example goto_l\*.ma files on the server in a folder named "routes" under the top level directory. These can be used for quick checks or route planning using the routing module.
 
 Similarly, a standard naming convention for full datasets is used to parse mission information. Example: M139_usf-bull.RData parses out the mission name/number "M139" and the glider name "usf-bull". The source data for the full data import function is a .ssv of the entire mission containing both flight and science data after it has been merged into a single .ssv.
 
-Requires [osgUtils](https://github.com/oceanscienceguru/osgUtils) R package to function.
+# Example daily email
+
+Generated using the batteryMarkdown.Rmd script in Documentation. A dedicated cron job runs this markdown script via batteryMarkdownGenerate.R for each glider listed under the controlling file called "processGliders.txt".
+
+------------------------------------------------------------------------
+
+```{r, echo=FALSE}
+htmltools::includeHTML("./Documentation/batteryMarkdown.html")
+```
+
+------------------------------------------------------------------------
+
+This is then saved as an html file and emailed out daily using a separate cron job to a given list of emails.
