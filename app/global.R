@@ -32,10 +32,10 @@ library(quarto)
 file.sources = list.files(c("./modules", "./scripts"), 
                           pattern="*.R$", full.names=TRUE, 
                           ignore.case=TRUE)
-sapply(file.sources,source,.GlobalEnv)
+sapply(file.sources, source, .GlobalEnv)
 
 #cache testing
-shinyOptions(cache = cachem::cache_disk("/echos/temp", max_size = 500e6))
+#shinyOptions(cache = cachem::cache_disk("/echos/temp", max_size = 500e6))
 
 #maximum file upload size of 3Gb
 options(shiny.maxRequestSize = 3000*1024^2)
@@ -68,7 +68,11 @@ servDir <- server_metadata[which(server_metadata == "servDir"),2]
 liveDir <- server_metadata[which(server_metadata == "liveDir"),2]
 rawDir <- server_metadata[which(server_metadata == "rawDir"),2]
 fullDir <- server_metadata[which(server_metadata == "fullDir"),2]
-app_name <- server_metadata[which(server_metadata == "app_name"),2]
+app_name <- if(length(server_metadata[which(server_metadata == "app_name"),2]) > 0){
+  server_metadata[which(server_metadata == "app_name"),2]
+} else {
+  "Shiny Gliders"
+}
 
 #read in which gliders to display as live data
 deployedGliders <- read.csv(paste0(servDir, "/deployedGliders.txt"),
