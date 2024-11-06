@@ -73,6 +73,7 @@ app_name <- if(length(server_metadata[which(server_metadata == "app_name"),2]) >
 } else {
   "Shiny Gliders"
 }
+logo_source <- server_metadata[which(server_metadata == "logo_source"),2]
 
 #read in which gliders to display as live data
 deployedGliders <- read.csv(paste0(servDir, "/deployedGliders.txt"),

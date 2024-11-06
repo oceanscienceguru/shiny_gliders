@@ -390,7 +390,9 @@ currentData_server <- function(id, gliderName, session) {
               liveData = TRUE,
               colorMin = input$minLive,
               colorMax= input$maxLive,
-              logoFile = "./www/cms_horiz.png")
+              logoFile = switch(file.exists(paste0(logo_source, "/horiz.png")) + 1,
+                                NULL,
+                                paste0(logo_source, "/horiz.png")))
 
     })
 
@@ -405,7 +407,9 @@ currentData_server <- function(id, gliderName, session) {
               inGliderdf = flightChunk_live(),
               plotVar = input$flight_varLive,
               liveData = TRUE,
-              logoFile = "./www/cms_horiz.png")
+              logoFile = switch(file.exists(paste0(logo_source, "/horiz.png")) + 1,
+                                NULL,
+                                paste0(logo_source, "/horiz.png")))
 
     })
 
@@ -454,7 +458,7 @@ currentData_server <- function(id, gliderName, session) {
                y = "Potential Temperature",
                #color = "Time",
                #caption = "Red = older ... Blue = more recent",
-               caption = "<img src='./www/cms_horiz.png' width='200'/>"
+               #caption = "<img src='./www/cms_horiz.png' width='200'/>"
           ) +
           theme(plot.title = element_text(size = 32),
                 axis.title = element_text(size = 16),
@@ -478,7 +482,9 @@ currentData_server <- function(id, gliderName, session) {
                         liveData = TRUE,
                         colorMin = NULL,
                         colorMax= NULL,
-                        logoFile = "./www/cms_horiz.png")
+                        logoFile = switch(file.exists(paste0(logo_source, "/horiz.png")) + 1,
+                                          NULL,
+                                          paste0(logo_source, "/horiz.png")))
       }
 
       if (input$derivedTypeLive == "Density"){
@@ -492,7 +498,9 @@ currentData_server <- function(id, gliderName, session) {
                         liveData = TRUE,
                         colorMin = NULL,
                         colorMax= NULL,
-                        logoFile = "./www/cms_horiz.png")
+                        logoFile = switch(file.exists(paste0(logo_source, "/horiz.png")) + 1,
+                                          NULL,
+                                          paste0(logo_source, "/horiz.png")))
 
       }
 
@@ -507,7 +515,9 @@ currentData_server <- function(id, gliderName, session) {
                 liveData = TRUE,
                 colorMin = NULL,
                 colorMax= NULL,
-                logoFile = "./www/cms_horiz.png")
+                logoFile = switch(file.exists(paste0(logo_source, "/horiz.png")) + 1,
+                                  NULL,
+                                  paste0(logo_source, "/horiz.png")))
       }
 
       plot
@@ -561,7 +571,9 @@ currentData_server <- function(id, gliderName, session) {
       yoPlot(gliderName,
              yoChunk(),
              input$yo_var,
-             logoFile = "./www/cms_horiz.png")
+             logoFile = switch(file.exists(paste0(logo_source, "/horiz.png")) + 1,
+                               NULL,
+                               paste0(logo_source, "/horiz.png")))
 
     })
 
