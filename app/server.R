@@ -34,13 +34,14 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
 
     clientTZ <- input$clientTime$clientTimeZone
 
-    gliderDashboard_server("display", glider)
-
-    if(input$tabs == "currMissData"){
+    if(input$tabs == "dashboard" && length(glider > 0)){
+      gliderDashboard_server("display", glider)
+    }
+    if(input$tabs == "currMissData" && length(glider > 0)){
       #Code for current mission data on selected glider
       current_data_handler_server("curDisplay", glider, clientTZ)
     }
-    if(input$tabs == "routing"){
+    if(input$tabs == "routing" && length(glider > 0)){
       routing_server("curRoute", glider)
     }
     if(input$tabs == "fullMissData"){

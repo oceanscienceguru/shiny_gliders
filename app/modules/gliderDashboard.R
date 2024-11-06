@@ -52,12 +52,8 @@ gliderDashboard_ui <- function(id) {
 gliderDashboard_server <- function(id, gliderName) {
 
   moduleServer(id, function(input, output, session) {
-    # print(gliderName())
 
-    if (length(gliderName) > 0) {
     load(paste0(liveDir, "/", gliderName, "/glider_live.RData"))
-
-
 
     output$LDBox <- renderValueBox({
       if(is.null(LDmin)){
@@ -303,7 +299,7 @@ gliderDashboard_server <- function(id, gliderName) {
     output$missionmapLive <- renderLeaflet({
       liveMissionMap})
 
-    }
+
     })
 
 }
