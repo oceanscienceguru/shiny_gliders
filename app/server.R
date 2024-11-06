@@ -1,5 +1,5 @@
 server <- function(input, output, session) { options(shiny.usecairo = TRUE)
-  
+
   #client timezone function from https://stackoverflow.com/questions/24842229/how-to-retrieve-the-clients-current-time-and-time-zone-when-using-shiny/34221031#34221031
   triggerClientTime <- function(session=shiny::getDefaultReactiveDomain()){
     serverTime <- Sys.time()
@@ -13,14 +13,13 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
     )
   }
 
-  
   # Observe and print time from client and server
-  # observe({ 
+  # observe({
   #   print(input$clientTime$clientTimeZone)
   # })
   # Ask the client for current time and time zone (hours from UTC)
   triggerClientTime()
-  
+
   if (nrow(deployedGliders) == 0) {
     showModal(modalDialog(
       title = "No deployed gliders",
@@ -28,18 +27,18 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
       easyClose = TRUE
     ))
   }
-  
+
   ######### current mission data ########
   observe({
     glider <- input$gliderSelect
-    
+
     clientTZ <- input$clientTime$clientTimeZone
 
     gliderDashboard_server("display", glider)
-    
+
     if(input$tabs == "currMissData"){
       #Code for current mission data on selected glider
-    currentData_server("curDisplay", glider, clientTZ)
+      current_data_handler_server("curDisplay", glider, clientTZ)
     }
     if(input$tabs == "routing"){
       routing_server("curRoute", glider)
@@ -52,18 +51,18 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
     }
 
   })
-  
-  
+
+
   ####### archived flight data ########
   # observe({
-  # 
+  #
   #   clientTZ <- input$clientTime$clientTimeZone
   #   print(clientTZ)
   # fullData_server("gliding", clientTZ)
   # })
-  
+
   ###### download handlers #########
-  
+
   output$downloadSciPlot <- downloadHandler(
     filename = function(){paste(input$mission, "_sci.png")},
     content = function(file){
@@ -73,7 +72,7 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
              height = 9)
     }
   )
-  
+
   output$downloadFliPlot <- downloadHandler(
     filename = function(){paste(input$mission, "_fli.png")},
     content = function(file){
@@ -83,7 +82,7 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
              height = 9)
     }
   )
-  
+
   output$downloadSouPlot <- downloadHandler(
     filename = function(){paste(input$mission, "_SV.png")},
     content = function(file){
@@ -93,7 +92,7 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
              height = 9)
     }
   )
-  
+
   output$downloadEchoPlot <- downloadHandler(
     filename = function(){paste(input$echo, "_pseudo.png")},
     content = function(file){
@@ -103,7 +102,7 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
              height = 9)
     }
   )
-  
+
   output$downloadEchoHist <- downloadHandler(
     filename = function(){paste(input$echo, "_pseudo.png")},
     content = function(file){
@@ -113,7 +112,7 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
              height = 9)
     }
   )
-  
+
   output$downloadEchoHist2 <- downloadHandler(
     filename = function(){paste(input$echo, "_pseudo.png")},
     content = function(file){
@@ -123,12 +122,12 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
              height = 9)
     }
   )
-  
+
   ####### File Upload/Processing #########
   observeEvent(input$upload, {
     #get file extension
     ext <- tools::file_ext(input$upload$name)
-    
+
     #if SSV
     if (ext == "ssv") {
       message("SSV!")
@@ -137,7 +136,7 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
       progress$set(message = "Processing SSV", value = 0)
       # Close the progress when this reactive exits (even if there's an error)
       on.exit(progress$close())
-      
+
       # Create a callback function to update progress.
       # Each time this is called:
       # - If `value` is NULL, it will move the progress bar 1/5 of the remaining
@@ -173,17 +172,17 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
         easyClose = TRUE
       ))
     }
-    
+
     #topGlider <- head(newGlider)
-    
+
     #showNotification(paste0(outputName, " saved"))
   })
   # output$uploadTable <- renderTable({
   #   req(input$upload)
-  #   
+  #
   #   topGlider
   # })
-  
-  
-  
+
+
+
 }

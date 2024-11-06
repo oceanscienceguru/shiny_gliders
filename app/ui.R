@@ -27,12 +27,34 @@
                  menuItem("Current Mission Data",
                           tabName = "currMissData",
                           icon = icon("plane")),
-                 menuItem("Full Mission Data", startExpanded = TRUE,
-                          icon = icon("calendar"),
-                          menuSubItem("Full Datasets", tabName = "fullMissData"),
-                          menuSubItem("Multiple Missions", tabName = "multi_miss_data")),
-                 
-                          
+                 menuItem("Full Datasets", tabName = "fullMissData"),
+                 # actionButton(
+                 #   inputId = "load",
+                 #   label = "Load Mission Data",
+                 #   icon("plane"),
+                 #   style = "color: #fff; background-color: #963ab7; border-color: #2e6da4"
+                 #            ),
+                 # selectInput(inputId = "mission",
+                 #   label = "Which mission data to display?",
+                 #   choices = c(missionList_archive),
+                 #              selected = tail(missionList_archive, 1)),
+                menuItem("Multiple Missions", tabName = "multi_miss_data"),
+
+                 # actionButton(
+                 #   inputId = ns("load"),
+                 #   label = "Load Mission Data",
+                 #   icon("plane"),
+                 #   style =
+                 #     "color: #fff; background-color: #963ab7; border-color: #2e6da4"
+                 # ),
+                 # br(),
+                 # selectInput(
+                 #   inputId = ns("mission"),
+                 #   label = "Which mission data to display",
+                 #   choices = NULL,
+                 #   selected =  NULL
+                 # ),
+
                  menuItem("Data Import",
                           tabName = "dataImport",
                           icon = icon("th"))
@@ -45,7 +67,7 @@
                          gliderDashboard_ui("display")
                  ),
                  tabItem(tabName = "currMissData",
-                         currentData_ui("curDisplay"),
+                         current_data_handler_ui("curDisplay"),
                          ),
                  tabItem(tabName = "routing",
                          routing_ui("curRoute")
@@ -55,7 +77,7 @@
                  ),
                  tabItem(tabName = 'multi_miss_data',
                          multi_mission_ui("gliders")),
-                 
+
                  tabItem(tabName = "dataImport",
                          box(
                          glide(
@@ -95,7 +117,7 @@
                            )
                            ))
                          # fluidPage(
-                         # 
+                         #
                          #   #file upload row
                          #   wellPanel(
                          #     fileInput(
@@ -127,7 +149,7 @@
 
 
                          )
-                 
+
                  ))
            )
 )

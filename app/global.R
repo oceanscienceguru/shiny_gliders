@@ -29,8 +29,8 @@ library(shinyjs)
 library(quarto)
 
 #source all modules and all scripts within the app structure
-file.sources = list.files(c("./modules", "./scripts"), 
-                          pattern="*.R$", full.names=TRUE, 
+file.sources = list.files(c("./modules", "./scripts"),
+                          pattern="*.R$", full.names=TRUE,
                           ignore.case=TRUE)
 sapply(file.sources, source, .GlobalEnv)
 
@@ -162,3 +162,8 @@ ec2pss <-
     ifelse(S >= 2, S, S - a[1]/(1 + 1.5 * x + x^2) - b[1] * ft/(1 +
                                                                   y^0.5 + y + y^1.5))
   }
+
+# Helper function to convert hyphens to underscores in the gliderName
+sanitizeGliderName <- function(gliderName) {
+  gsub("-", "_", gliderName)
+}

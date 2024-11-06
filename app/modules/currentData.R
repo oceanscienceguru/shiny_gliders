@@ -2,9 +2,9 @@
 library(shiny)
 
 currentData_ui <- function(id) {
-  
+
   ns <- NS(id)
-  
+
   tagList(
     fluidPage(
       fluidRow(
@@ -38,7 +38,7 @@ currentData_ui <- function(id) {
                                   numericInput(
                                     inputId = ns("min_depth"),
                                     label = "Depth Minimum (m)",
-                                    value = 0,
+                                    value = 1,
                                     min = 0,
                                     max = 1000
                                   ),
@@ -265,316 +265,155 @@ currentData_ui <- function(id) {
   )
 }
 
-currentData_server <- function(id, gliderName, clientTZ) {
-  
+currentData_server <- function(id, gliderName, clientTZ, session) {
+
   moduleServer(id, function(input, output, session) {
-    
+
     ns <- NS(id)
-    
-    if (length(gliderName) > 0) {
+
     load(paste0(liveDir, "/", gliderName, "/glider_live.RData"))
-    
+
     # startDateLive <- as_datetime(min(gliderdf$m_present_time), tz = "UTC")
     # endDateLive <- as_datetime(max(gliderdf$m_present_time), tz = "UTC")
-    
-    startDateLive <- min(gliderdf$m_present_time)
-    endDateLive <- max(gliderdf$m_present_time)
-    
+
+    startDateLive <- as.POSIXct(min(gliderdf$m_present_time))
+    endDateLive <- as.POSIXct(max(gliderdf$m_present_time))
+
+    #print(startDateLive)
+    #print(endDateLive)
+
     yoList <- reactive({
       unique(gliderdf$yo_id) %>%
         na.omit() %>%
         sort()
     })
-    
+
     # yoList <- unique(gliderdf$yo_id) %>%
     #   na.omit() %>%
     #   sort()
-    
+
     #get start/end days and update data filters
     #default to last 3 weeks of data
     updateAirDateInput(session, "date1Live", NULL, value = as.POSIXct(ifelse(interval(startDateLive, endDateLive)/days(1) > 21,
                                                                              endDateLive-days(21),
-                                                                             startDateLive), tz = "UTC"), 
+                                                                             startDateLive)),
                        options = list(minDate = startDateLive, maxDate = endDateLive,
                                       timeFormat = "HH:mm"))
-    updateAirDateInput(session, "date2Live", NULL, value = endDateLive, 
+    updateAirDateInput(session, "date2Live", NULL, value = endDateLive,
                        options = list(minDate = startDateLive, maxDate = endDateLive,
                                       timeFormat = "HH:mm"))
-    updateAirDateInput(session, "yoDate", NULL, value = endDateLive, 
+    updateAirDateInput(session, "yoDate", NULL, value = endDateLive,
                        options = list(minDate = startDateLive, maxDate = endDateLive,
                                       timeFormat = "HH:mm"))
-    
+
     updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
     updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
-    
+
     updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = tail(yoList(), 1))
     updateSelectInput(session, "yo_var", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
-    
+
     updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
-    
-    #check if echosounder glider and update tabs if so
-    if(gliderName == "usf-stella"){
-      
-      appendTab(inputId = "x",
-                select = F,
-                tabPanel(title = "Pseudograms",
-                                          column(2,
-                                                 wellPanel(
-                                                   selectInput(
-                                                     inputId = ns("echo"),
-                                                     label = "Which pseudogram to display",
-                                                     choices = NULL,
-                                                     selected =  NULL
-                                                   ),
-                                                   selectInput(
-                                                     inputId = ns("echoColor"),
-                                                     label = "Color scheme",
-                                                     choices = c("EK", "magma", "viridis"),
-                                                     selected =  "EK"
-                                                   ),
-                                                   #downloadButton('downloadEchoPlot')
-                                                 )),
-                                          column(10,
-                                                 plotOutput(
-                                                   outputId = ns("echoPlot"),
-                                                   #dblclick = "fliPlot_dblclick",
-                                                   #brush = brushOpts(id = "fliPlot_brush",
-                                                   #                  resetOnNew = TRUE),
-                                                   #height = "600px"
-                                                 ),
-                                                 hr(),
-                                                 column(3,
-                                                        actionButton(
-                                                          inputId = ns("oldestPgram"),
-                                                          label = "Oldest",
-                                                          #icon("boat"),
-                                                          style =
-                                                            "color: #fff; background-color: #000000; border-color: #2e6da4"
-                                                        ), align = "center"),
-                                                 column(3,
-                                                        actionButton(
-                                                          inputId = ns("prevPgram"),
-                                                          label = "Previous",
-                                                          #icon("boat"),
-                                                          style =
-                                                            "color: #fff; background-color: #000000; border-color: #2e6da4"
-                                                        ), align = "center"),
-                                                 column(3,
-                                                        actionButton(
-                                                          inputId = ns("nextPgram"),
-                                                          label = "Next",
-                                                          #icon("boat"),
-                                                          style =
-                                                            "color: #fff; background-color: #000000; border-color: #2e6da4"
-                                                        ), align = "center"),
-                                                 column(3,
-                                                        actionButton(
-                                                          inputId = ns("latestPgram"),
-                                                          label = "Latest",
-                                                          #icon("boat"),
-                                                          style =
-                                                            "color: #fff; background-color: #000000; border-color: #2e6da4"
-                                                        ), align = "center"),
-                                          ),
 
-                )
-      )
-      appendTab(inputId = "x",
-                select = F,
-                tabPanel(title = "Pseudotimegram",
-                         column(2,
-                                wellPanel(
-                                  actionButton(
-                                    inputId = ns("fullecho2"),
-                                    label = "Plot!",
-                                    #icon("boat"),
-                                    style =
-                                      "color: #fff; background-color: #963ab7; border-color: #2e6da4"
-                                  ),
-                                  dateRangeInput(ns("echohistrange2"), "Date range:",
-                                                 start  = NULL,
-                                                 end    = NULL,
-                                                 min    = NULL,
-                                                 max    = NULL,
-                                                 format = "mm/dd/yy",
-                                                 separator = " - "),
-                                  sliderInput(ns("echohour2"),
-                                              "Hour:",
-                                              min = 0,  max = 24, value = c(0, 24)),
-                                  selectInput(
-                                    inputId = ns("echoColor2"),
-                                    label = "Color scheme",
-                                    choices = c("EK", "magma", "viridis"),
-                                    selected =  "EK"
-                                  ),
-                                  checkboxGroupInput(
-                                    inputId = ns("todTgram"),
-                                    label = "Time of day",
-                                    choices = c("day", "night"),
-                                    selected = c("day", "night")
-                                  ),
-                                  #downloadButton('downloadEchoHist2')
-                                )),
-                         column(10,
-                                plotOutput(
-                                  outputId = ns("echoTime"),
-                                  #dblclick = "fliPlot_dblclick",
-                                  #brush = brushOpts(id = "fliPlot_brush",
-                                  #                  resetOnNew = TRUE),
-                                  #height = "600px"
-                                ) %>% withSpinner(color="#0dc5c1")
-                         ))
-      )
-      appendTab(inputId = "x",
-                select = F,
-                tabPanel(title = "Frequency Polygon",
-                         column(2,
-                                wellPanel(
-                                  actionButton(
-                                    inputId = ns("fullecho"),
-                                    label = "Plot!",
-                                    #icon("boat"),
-                                    style =
-                                      "color: #fff; background-color: #963ab7; border-color: #2e6da4"
-                                  ),
-                                  dateRangeInput(ns("echohistrange"), "Date range:",
-                                                 start  = NULL,
-                                                 end    = NULL,
-                                                 min    = NULL,
-                                                 max    = NULL,
-                                                 format = "mm/dd/yy",
-                                                 separator = " - "),
-                                  numericInput(
-                                    inputId = ns("depthbin"),
-                                    label = "Depth Bin Size",
-                                    value = 3,
-                                    min = 1,
-                                    max = 1000
-                                  ),
-                                  sliderInput(ns("echohour"),
-                                              "Hour:",
-                                              min = 0,  max = 24, value = c(0, 24)),
-                                  #downloadButton('downloadEchoHist')
-                                )),
-                         column(10,
-                                plotOutput(
-                                  outputId = ns("echoHist"),
-                                  #dblclick = "fliPlot_dblclick",
-                                  #brush = brushOpts(id = "fliPlot_brush",
-                                  #                  resetOnNew = TRUE),
-                                  #height = "600px"
-                                ) %>% withSpinner(color="#0dc5c1")
-                         ))
-      )
-
-      
-    } else {
-      
-      removeTab(inputId = "x", target="Pseudograms")
-      removeTab(inputId = "x", target="Pseudotimegram")
-      removeTab(inputId = "x", target="Frequency Polygon")
-      
-    }
-    
     gliderChunk_live <- reactive({
-      
+
       #potential workaround for airdate picker hijacking broswer tz
-      if(clientTZ != 0){
-        # print("local time adjustment")
-        # print(input$date1Live)
-        # print(input$date2Live)
-        # print(clientTZ)
-        soFar <- interval(force_tz(input$date1Live - hours(clientTZ)), force_tz(input$date2Live - hours(clientTZ), "UTC"))
-      } else {
-        # print("no local time adjustment")
-        # print(input$date1Live)
-        # print(input$date2Live)
-        # print(clientTZ)
-        soFar <- interval(input$date1Live, input$date2Live)
-      }
-      
+      # if(clientTZ != 0){
+      #   # print("local time adjustment")
+      #   # print(input$date1Live)
+      #   # print(input$date2Live)
+      #   # print(clientTZ)
+      #   soFar <- interval(force_tz(input$date1Live - hours(clientTZ)), force_tz(input$date2Live - hours(clientTZ), "UTC"))
+      # } else {
+      #   # print("no local time adjustment")
+      #   # print(input$date1Live)
+      #   # print(input$date2Live)
+      #   # print(clientTZ)
+      #   soFar <- interval(input$date1Live, input$date2Live)
+      # }
+
+      soFar <- interval(input$date1Live, input$date2Live)
       #print(soFar)
-      
+
       df <- gliderdf %>%
         filter(m_present_time %within% soFar) %>%
         #filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
       #filter(status %in% c(input$status)) %>%
       #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
         filter(osg_i_depth >= input$min_depth & osg_i_depth <= input$max_depth)
-      
+
       df
     })
-    
+
     scienceChunk_live <- reactive({
       req(input$display_varLive)
-      
+
       qf <- gliderChunk_live() %>%
         select(c(m_present_time, osg_i_depth, any_of(input$display_varLive))) %>%
         filter(!is.na(across(!c(m_present_time:osg_i_depth))))
-      
+
       if(isTRUE(input$zeroFilter)){
-        
+
         zf <- qf %>%
           filter(.data[[input$display_varLive]] > 0)
-        
+
         zf
       } else {
       qf
       }
-      
+
     })
-    
+
     output$sciSummary <- renderTable({
-      req(input$display_varLive)
+      #req(input$display_varLive)
       tibble::enframe(summary(scienceChunk_live()[[input$display_varLive]]))
     })
-    
+
     flightChunk_live <- reactive({
-      req(input$date1Live)
-      
+      #req(input$date1Live)
+
       df <- gliderChunk_live() %>%
         dplyr::select(c(m_present_time, osg_i_depth, any_of(input$flight_varLive))) %>%
         filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
-      
+
       df
-      
+
     })
-    
+
     gg1Live <- reactive({
-      
-      req(input$display_varLive)
-      
-      sciPlot(gliderName, 
-              inGliderdf = scienceChunk_live(), 
-              gliderFlightdf = gliderChunk_live(), 
+
+      #req(input$display_varLive)
+
+      sciPlot(gliderName,
+              inGliderdf = scienceChunk_live(),
+              gliderFlightdf = gliderChunk_live(),
               plotVar = input$display_varLive,
               liveData = TRUE,
               colorMin = input$minLive,
               colorMax= input$maxLive,
               logoFile = "./www/cms_horiz.png")
-      
+
     })
-    
+
     output$sciPlotLive <- renderPlotly(gg1Live())
-    
+
     #flight plot
     gg2Live <- reactive({
-      
-      req(input$flight_varLive)
-      
+
+      #req(input$flight_varLive)
+
       fliPlot(gliderName,
               inGliderdf = flightChunk_live(),
               plotVar = input$flight_varLive,
               liveData = TRUE,
               logoFile = "./www/cms_horiz.png")
-      
+
     })
-    
+
     output$fliPlotLive <- renderPlotly(gg2Live())
-    
+
     output$fliSummary <- renderTable({
-      req(input$flight_varLive)
-      
+      #req(input$flight_varLive)
+
       summs <- flightChunk_live() %>%
         pivot_longer(cols = !c(m_present_time, osg_i_depth), names_to = "vars") %>%
         group_by(vars) %>%
@@ -586,20 +425,20 @@ currentData_server <- function(id, gliderName, clientTZ) {
                   max = max(value, na.rm = TRUE),
                   sd = sd(value, na.rm = TRUE)) %>%
         pivot_longer(cols = min:sd, names_to = "stat")
-      
+
       summs
     })
-      
+
     ##### derived Live plots #########
     gg3Live <- reactive({
-      
-      req(input$derivedTypeLive)
-      
+
+      #req(input$derivedTypeLive)
+
       if (input$derivedTypeLive == "TS Plot"){
         df <- filter(gliderChunk_live(), osg_salinity > 0)
         wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
-        
-        plot <- 
+
+        plot <-
           ggplot(
             data = df,
             aes(x = osg_salinity,
@@ -623,32 +462,32 @@ currentData_server <- function(id, gliderName, clientTZ) {
                 plot.caption = element_markdown(),
                 legend.position ="none",
           )
-        
+
         plot <- ggplotly(plot) %>%
           toWebGL()
       }
-      
+
       if (input$derivedTypeLive == "SV Plot"){
         df <- filter(gliderChunk_live(), osg_soundvel1 > 0)
         wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
-        
-        plot <- sciPlot(gliderName, 
-                        inGliderdf = df, 
-                        gliderFlightdf = wf, 
+
+        plot <- sciPlot(gliderName,
+                        inGliderdf = df,
+                        gliderFlightdf = wf,
                         plotVar = input$derivedTypeLive,
                         liveData = TRUE,
                         colorMin = NULL,
                         colorMax= NULL,
                         logoFile = "./www/cms_horiz.png")
       }
-      
+
       if (input$derivedTypeLive == "Density"){
         df <- filter(gliderChunk_live(), osg_rho > 0)
         wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
-        
-        plot <- sciPlot(gliderName, 
-                        inGliderdf = df, 
-                        gliderFlightdf = wf, 
+
+        plot <- sciPlot(gliderName,
+                        inGliderdf = df,
+                        gliderFlightdf = wf,
                         plotVar = input$derivedTypeLive,
                         liveData = TRUE,
                         colorMin = NULL,
@@ -656,87 +495,87 @@ currentData_server <- function(id, gliderName, clientTZ) {
                         logoFile = "./www/cms_horiz.png")
 
       }
-      
+
       if (input$derivedTypeLive == "Salinity"){
         df <- filter(gliderChunk_live(), osg_salinity > 0)
         wf <- filter(gliderChunk_live(), m_water_depth > 0 & m_water_depth >= input$min_depth & m_water_depth <= input$max_depth)
-        
-        plot <- sciPlot(gliderName, 
-                inGliderdf = df, 
-                gliderFlightdf = wf, 
+
+        plot <- sciPlot(gliderName,
+                inGliderdf = df,
+                gliderFlightdf = wf,
                 plotVar = input$derivedTypeLive,
                 liveData = TRUE,
                 colorMin = NULL,
                 colorMax= NULL,
                 logoFile = "./www/cms_horiz.png")
       }
-      
+
       plot
-      
+
     })
-    
+
     output$tsPlotLive <- renderPlotly(gg3Live())
-      
+
     #### yo by yo ####
-    
+
     #date matching to find yo in time
     observeEvent(input$yoDate, {
       yoFinder <- gliderdf %>%
         slice(which.min(abs(m_present_time - input$yoDate)))
-      
+
       selectYo$id <- yoFinder$yo_id
       updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = yoFinder$yo_id)
     })
-    
+
     yoChunk <- reactive({
-      req(input$yo)
+      #req(input$yo)
 
       qf <- gliderdf %>%
         filter(yo_id == input$yo) %>% #grab only yo of interest
         filter(cast %in% input$cast) %>% #grab cast as needed
-        select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, i_lat, i_lon, any_of(input$yo_var))) 
+        select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, i_lat, i_lon, any_of(input$yo_var)))
         #filter(!is.na(across(!c(m_present_time:osg_i_depth))))
-      
+
       # qf <- gliderdf %>%
       #   filter(yo_id == 98) %>% #grab only yo of interest
       #   filter(cast %in% "Downcast") %>% #grab cast as needed
-      #   select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, any_of(plotVar))) 
+      #   select(c(m_present_time, m_water_depth, osg_i_depth, yo_id, any_of(plotVar)))
       #filter(!is.na(across(!c(m_present_time:osg_i_depth))))
-      
+
       if(isTRUE(input$zeroFilterYo)){
-        
+
         zf <- qf %>%
           pivot_longer(cols = !c(m_present_time:i_lon)) %>%
           filter(value > 0) %>%
           pivot_wider(names_from = name)
-        
+
         zf
       } else {
         qf
       }
-      
+
     })
-    
+
     yoPlot_live <- reactive({
-      
-      yoPlot(gliderName, 
-             yoChunk(), 
+
+      yoPlot(gliderName,
+             yoChunk(),
              input$yo_var,
              logoFile = "./www/cms_horiz.png")
-      
+
     })
-    
+
     output$yoPlot <- renderPlotly(yoPlot_live())
-      
+
     #### Buttons to scroll through yos ####
     #initialize reactive to track with same value as yo variable
     selectYo <- reactiveValues(id = tail(yoList(), 1))
-    
+
     #attach IDs to yo plot reactive
     observeEvent(input$yo, {
       selectYo$id <- as.numeric(input$yo)
     })
-    
+
     observeEvent(input$oldestYo, {
       selectYo$id <- head(yoList(), 1)
       updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = head(yoList(), 1))
@@ -769,331 +608,13 @@ currentData_server <- function(id, gliderName, clientTZ) {
       #                    options = list(minDate = startDateLive, maxDate = endDateLive,
       #                                   timeFormat = "HH:mm"))
     })
-    
-    #### pseudograms ########
-    
-    #color palette source:
-    #https://rdrr.io/github/hvillalo/echogram/src/R/palette.echogram.R
-    # velInfo <- file.info(list.files(path = "/echos/layers/",
-    #                                 full.names = TRUE)) %>%
-    #   filter(size > 0)
-    # 
-    # velList <- rownames(velInfo) %>%
-    #   basename()
-    # 
-    # depthInfo <- file.info(list.files(path = "/echos/depths/",
-    #                                   full.names = TRUE))
-    # 
-    # depthList <- rownames(depthInfo) %>%
-    #   basename()
-    # 
-    # echoListraw <- intersect(velList, depthList) %>%
-    #   str_remove(pattern = ".ssv") %>%
-    #   enframe() %>%
-    #   mutate(ID = str_extract(value, "(?<=-)[0-9]*$")) %>%
-    #   mutate(ID = as.numeric(ID)) %>%
-    #   arrange(ID)
-    # 
-    # echoList <- echoListraw$value
-    # 
-    #reactive pseudogram plot identifier for scrolling
-    
-    selectPgram <- reactiveValues(seg = NULL, id = NULL)
-    if(gliderName == "usf-stella"){
-      updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1))
-      
-      #attach IDs to pseudogram plot reactives
-      observeEvent(input$echo, {
-        selectPgram$seg <- input$echo
-        selectPgram$id <- match(input$echo, echoListraw$value)
-      })
-      
-      #process the requested pseudogram
-      ehunk <- reactive({
-        req(input$echo)
-        
-        ehunk <- pseudogram(paste0("/echos/layers/", selectPgram$seg, ".ssv"),
-                            paste0("/echos/depths/", selectPgram$seg, ".ssv"))
-      })
-      
-      ##### main pseudogram plot ####
-      gg4 <- reactive({
-        #plot
-        ggEcho <-
-          ggplot(data = 
-                   ehunk(),
-                 aes(x=m_present_time,
-                     y=p_depth,
-                     z=value)) +
-          # geom_tile(aes(
-          #   color = value,
-          #   size = 10
-          #   )
-          # ) +
-          # coord_fixed(ratio = 3.6) +
-          geom_point(
-            aes(color = value),
-            size = 6,
-            pch = 15,
-            na.rm = TRUE
-          ) +
-          #coord_cartesian(xlim = rangesci$x, ylim = rangesci$y, expand = FALSE) +
-          # scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
-          #                                    "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
-          #                        limits = c(-75, -35)) +
-          scale_y_reverse() +
-          theme_bw() +
-          labs(title = paste0(selectPgram$seg, " Pseudogram"),
-               y = "Depth (m)",
-               x = "Date/Time (UTC)",
-               colour = "dB",
-               caption = "<img src='./www/cms_horiz.png' width='200'/>") +
-          theme(plot.title = element_text(size = 32),
-                axis.title = element_text(size = 16),
-                axis.text = element_text(size = 12),
-                legend.key = element_blank(),
-                plot.caption = element_markdown()) +
-          guides(size="none") +
-          scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
-        
-        if (input$echoColor == "EK") {
-          ggEcho +
-            scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
-                                               "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
-                                   limits = c(-75, -30))
-        } else if (input$echoColor == "magma") {
-          ggEcho +
-            scale_colour_viridis_c(limits = c(-75, -30),
-                                   option = "C"
-            )
-        } else {
-          ggEcho +
-            scale_colour_viridis_c(limits = c(-75, -30),
-                                   option = "D"
-            )
-        }
-        
-        
-      })
-      
-      output$echoPlot <- renderPlot({gg4()})
-      
-      #### Buttons to scroll through pseudograms ####
-      observeEvent(input$oldestPgram, {
-        selectPgram$seg <- head(echoListraw$value, 1)
-        updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = head(echoListraw$value, 1))
-      })
-      observeEvent(input$prevPgram, {
-        if (selectPgram$id > 1) {
-          selectPgram$id <- selectPgram$id - 1
-          updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = echoListraw$value[selectPgram$id])
-        }
-      })
-      observeEvent(input$nextPgram, {
-        if (selectPgram$id < nrow(echoListraw)) {
-          selectPgram$id <- selectPgram$id + 1
-          updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = echoListraw$value[selectPgram$id])
-        }
-      })
-      observeEvent(input$latestPgram, {
-        selectPgram$seg <- tail(echoListraw$value, 1)
-        updateSelectInput(session, "echo", NULL, choices = c(echoListraw$value), selected = tail(echoListraw$value, 1))
-      })
-      
-      
-      #### pseudotimegram main setup ####
-      # fullehunk <- reactive({
-      #   req(input$fullecho | input$fullecho2)
-      #   
-      #   elist <- list()
-      #   for (i in echoListraw$value) {
-      #     elist[[i]] <- pseudogram(paste0("/echos/layers/", i, ".ssv"),
-      #                              paste0("/echos/depths/", i, ".ssv"))
-      #   }
-      #   ef <- bind_rows(elist, .id = "segment") %>%
-      #     mutate(r_depth = round(q_depth, 0)) %>%
-      #     mutate(day = day(m_present_time)) %>%
-      #     mutate(hour = hour(m_present_time))
-      #   
-      #   ef
-      #   
-      # })
-      
-      
-      #### updater for pseudotimegram inputs ####
-      observeEvent(input$fullecho | input$fullecho2, {
-        
-        updateDateRangeInput(session, "echohistrange", label = NULL, 
-                             start = (max(fullehunk$m_present_time)-259200),
-                             end = max(fullehunk$m_present_time), 
-                             min = min(fullehunk$m_present_time), 
-                             max = max(fullehunk$m_present_time))
-        
-        updateDateRangeInput(session, "echohistrange2", label = NULL, 
-                             start = min(fullehunk$m_present_time),
-                             end = max(fullehunk$m_present_time), 
-                             min = min(fullehunk$m_present_time), 
-                             max = max(fullehunk$m_present_time))
-      })
-      
-      plotehunk <- reactive({
-        req(input$echohistrange)
-        
-        pf <- filter(fullehunk, m_present_time >= input$echohistrange[1] & m_present_time <= input$echohistrange[2]) %>%
-          filter(hour >= input$echohour[1] & hour <= input$echohour[2]) %>%
-          group_by(segment, r_depth) %>%
-          mutate(avgDb = exp(mean(log(abs(value))))*-1) %>%
-          ungroup() %>%
-          group_by(segment) %>%
-          mutate(seg_time = mean(m_present_time)) %>%
-          ungroup() %>%
-          mutate(seg_hour = hour(seg_time)) %>%
-          mutate(cycle = case_when(seg_hour %in% c(11:23) ~ 'day',
-                                   seg_hour %in% c(1:10, 24) ~ 'night')) # add day/night filter
-        
-        pf
-      })
-      
-      plotethunk <- reactive({
-        req(input$echohistrange2)
-        
-        pf <- filter(fullehunk, m_present_time >= input$echohistrange2[1] & m_present_time <= input$echohistrange2[2]) %>%
-          filter(hour >= input$echohour2[1] & hour <= input$echohour2[2]) %>%
-          group_by(segment) %>%
-          mutate(seg_time = mean(m_present_time)) %>%
-          ungroup() %>%
-          mutate(seg_hour = hour(seg_time)) %>%
-          mutate(cycle = case_when(seg_hour %in% c(11:23) ~ 'day',
-                                   seg_hour %in% c(1:10, 24) ~ 'night')) %>% # add day/night filter
-          filter(cycle %in% input$todTgram) %>%
-          group_by(segment, r_depth, cycle) %>%
-          mutate(avgDb = exp(mean(log(abs(value))))*-1) %>%
-          #mutate(avgDbOLD = mean(value)) %>%
-          ungroup()
 
-        
-        pf
-      })
-      
-      #### frequency polygon ####
-      gg5 <- reactive({
-        req(input$echohistrange)
-        
-        ggHist <- ggplot(data = plotehunk(),
-                         aes(y = r_depth,
-                         )) +
-          geom_freqpoly(aes(colour = as.factor(cycle)),
-                        binwidth = input$depthbin
-          ) +
-          scale_y_reverse() +
-          facet_wrap(as.factor(plotehunk()$value),
-                     scales = "free_x",
-                     ncol = 4) + 
-          theme_bw() +
-          labs(title = "Counts of Return Strength at Depth by Period",
-               y = "Depth (m)",
-               x = "Counts",
-               color = "Period",
-               caption = "Day = 1100-2300 UTC") +
-          theme(plot.title = element_text(size = 24),
-                axis.title = element_text(size = 16),
-                axis.text = element_text(size = 12),
-                legend.key = element_blank(),
-                plot.caption = element_markdown(),
-          ) +
-          guides(size="none")
-        
-        # ggHist <-
-        #   ggplot(data = plotehunk(),
-        #          aes(x = as.factor(value),
-        #              y = r_depth,
-        #              fill = hour,
-        #          )) +
-        #   geom_tile() +
-        #   #coord_equal() +
-        #   scale_fill_viridis_c() +
-        #   scale_y_reverse() +
-        #   theme_bw() +
-        #   labs(title = paste0("Frequency of Returns at Depth from ", input$echohistrange[1], " to ", input$echohistrange[2]),
-        #        y = "Depth (m)",
-        #        #x = "Date/Time (UTC)",
-        #        x = "dB",
-        #        fill = "Hour (UTC)") +
-        #   theme(plot.title = element_text(size = 32),
-        #         axis.title = element_text(size = 16),
-        #         axis.text = element_text(size = 12),
-        #         legend.key = element_blank(),
-        #         plot.caption = element_markdown()) +
-        #   guides(size="none")
-        #scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
-        
-        ggHist
-        
-      })
-      
-      output$echoHist <- renderPlot({gg5()})
-      
-      
-      #### pseudotimegram ####
-      gg6 <- reactive({
-        # if(input$todTgram != "day/night") {
-        #   filter(plotethunk(), cycle %in% input$todTgram)
-        # } else { plotethunk()
-        # },
-        
-        ggEchoTime <- 
-          ggplot(data = plotethunk(),
-                 aes(x = seg_time,
-                     y = r_depth,
-                     colour = avgDb,
-                 )) +
-          geom_point(size = 4,
-                     pch = 15
-          ) +
-          #coord_equal() +
-          #scale_color_viridis_c() +
-          scale_y_reverse() +
-          theme_bw() +
-          labs(title = paste0("Avg dB returns (per meter) at depth from ", input$echohistrange2[1], " to ", input$echohistrange2[2]),
-               y = "Depth (m)",
-               #x = "Date/Time (UTC)",
-               x = "Date",
-               colour = "average dB") +
-          theme(plot.title = element_text(size = 32),
-                axis.title = element_text(size = 16),
-                axis.text = element_text(size = 12),
-                legend.key = element_blank(),
-                plot.caption = element_markdown()) +
-          guides(size="none")
-        
-        if (input$echoColor2 == "EK") {
-          ggEchoTime +
-            scale_colour_gradientn(colours = c("#9F9F9F", "#5F5F5F", "#0000FF", "#00007F", "#00BF00", "#007F00",
-                                               "#FF1900", "#FF7F00","#FF00BF", "#FF0000", "#A65300", "#783C28"),
-                                   limits = c(-75, -30)
-            )
-        } else if (input$echoColor2 == "magma") {
-          ggEchoTime +
-            scale_colour_viridis_c(limits = c(-75, -30),
-                                   option = "C"
-            )
-        } else {
-          ggEchoTime +
-            scale_colour_viridis_c(limits = c(-75, -30),
-                                   option = "D")
-        }
-        
-      })
-      
-      output$echoTime <- renderPlot({gg6()})
-      
-    }
-    
-  } 
+    #### pseudograms ########
+
   })
-  
+
 }
-  
-  
-    
+
+
+
 
