@@ -10,7 +10,7 @@
              "
     )
   ),
-  includeScript("./www/timezone.js"),
+  #includeScript("./www/timezone.js"),
            dashboardPage(
              dashboardHeader(title = app_name),
              dashboardSidebar(
