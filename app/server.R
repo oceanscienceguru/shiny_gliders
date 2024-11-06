@@ -32,7 +32,7 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
   observe({
     glider <- input$gliderSelect
 
-    clientTZ <- input$clientTime$clientTimeZone
+    #clientTZ <- input$clientTime$clientTimeZone
 
     if(input$tabs == "dashboard" && length(glider > 0)){
       gliderDashboard_server("display", glider)
