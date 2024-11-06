@@ -86,10 +86,13 @@ currentData_ui <- function(id) {
                                             numericInput(inputId = ns("maxLive"),
                                                          label = "Sci Axis Maximum",
                                                          NULL),
+                                            hr(),
+                                            h4("Variable Summary"),
+                                            tableOutput(outputId = ns("sciSummary"))
                                             #downloadButton('downloadSciPlot')
                                           )),
                                    column(
-                                     9,
+                                     10,
                                      # h4("Brush and double-click to zoom (double-click again to reset)"),
                                      # girafeOutput(
                                      #   outputId = ns("sciPlotLive"),
@@ -103,13 +106,8 @@ currentData_ui <- function(id) {
                                        # dblclick = "sciPlot_dblclick",
                                        # brush = brushOpts(id = "sciPlot_brush",
                                        #                   resetOnNew = TRUE),
-                                       # height = "600px"
-                                     ) %>% withSpinner(color="#0dc5c1")),
-                                   column(
-                                     1,
-                                     h4("Summary"),
-                                     tableOutput(outputId = ns("sciSummary"))
-                                   )
+                                       height = "75vh"
+                                     ) %>% withSpinner(color="#0dc5c1"))
                           ),
                           #flight variable settings
                           tabPanel(title = "Flight Data",
@@ -130,30 +128,28 @@ currentData_ui <- function(id) {
                                                 multiple = TRUE,
                                                 options = list(plugins = list('remove_button'))
                                               ),
+                                              hr(),
+                                              h4("Variable Summary"),
+                                              tableOutput(outputId = ns("fliSummary"))
                                               # downloadButton('downloadFliPlot'),
                                               # verbatimTextOutput("summary")
                                             )),
                                      column(
-                                       8,
+                                       10,
                                        # h4("Brush and double-click to zoom (double-click again to reset)"),
                                        plotlyOutput(
                                          outputId = ns("fliPlotLive"),
                                          # dblclick = "fliPlot_dblclick",
                                          # brush = brushOpts(id = "fliPlot_brush",
                                          #                   resetOnNew = TRUE),
-                                         # height = "600px"
+                                         height = "75vh"
                                        ) %>% withSpinner(color="#0dc5c1")
-                                     ),
-                                     column(
-                                       2,
-                                       h4("Summary"),
-                                       tableOutput(outputId = ns("fliSummary"))
                                      )
                                    )),
                           #sound velocity tab
                           tabPanel(title = "Derived Data",
                                    fluidRow(
-                                     column(3,
+                                     column(2,
                                             wellPanel(
                                               selectInput(inputId = ns("derivedTypeLive"),
                                                           label = "Which type of plot?",
@@ -163,9 +159,9 @@ currentData_ui <- function(id) {
                                               #              NULL),
                                               #downloadButton('downloadSouPlot')
                                             )),
-                                     column(9,
+                                     column(10,
                                             plotlyOutput(outputId = ns("tsPlotLive"),
-                                                       #height = "600px"
+                                                         height = "75vh"
                                             )
                                      )
                                    ),),
@@ -222,7 +218,7 @@ currentData_ui <- function(id) {
                                             #dblclick = "fliPlot_dblclick",
                                             #brush = brushOpts(id = "fliPlot_brush",
                                             #                  resetOnNew = TRUE),
-                                            #height = "600px"
+                                            height = "60vh"
                                           ),
                                           hr(),
                                           column(3,
