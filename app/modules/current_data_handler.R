@@ -7,7 +7,7 @@ current_data_handler_ui <- function(id) {
   )
 }
 
-current_data_handler_server <- function(id, gliderName, clientTZ) {
+current_data_handler_server <- function(id, gliderName) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -30,7 +30,7 @@ current_data_handler_server <- function(id, gliderName, clientTZ) {
     })
 
     #Call the selected server function with namespace
-    server_func("squid", gliderName, clientTZ, session = session)
+    server_func("squid", gliderName, session = session)
   })
 }
 

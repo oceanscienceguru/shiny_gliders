@@ -265,7 +265,7 @@ currentData_ui <- function(id) {
   )
 }
 
-currentData_server <- function(id, gliderName, clientTZ, session) {
+currentData_server <- function(id, gliderName, session) {
 
   moduleServer(id, function(input, output, session) {
 

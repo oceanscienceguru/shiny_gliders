@@ -1,24 +1,24 @@
 server <- function(input, output, session) { options(shiny.usecairo = TRUE)
 
   #client timezone function from https://stackoverflow.com/questions/24842229/how-to-retrieve-the-clients-current-time-and-time-zone-when-using-shiny/34221031#34221031
-  triggerClientTime <- function(session=shiny::getDefaultReactiveDomain()){
-    serverTime <- Sys.time()
-    serverTimeZone <- as.integer(strftime(serverTime,"%z"))/100
-    session$sendCustomMessage(
-      type="getClientTime",
-      message=list(
-        serverPosix = as.numeric(serverTime),
-        serverTimeZone = serverTimeZone
-      )
-    )
-  }
+  # triggerClientTime <- function(session=shiny::getDefaultReactiveDomain()){
+  #   serverTime <- Sys.time()
+  #   serverTimeZone <- as.integer(strftime(serverTime,"%z"))/100
+  #   session$sendCustomMessage(
+  #     type="getClientTime",
+  #     message=list(
+  #       serverPosix = as.numeric(serverTime),
+  #       serverTimeZone = serverTimeZone
+  #     )
+  #   )
+  # }
 
   # Observe and print time from client and server
   # observe({
   #   print(input$clientTime$clientTimeZone)
   # })
   # Ask the client for current time and time zone (hours from UTC)
-  triggerClientTime()
+  #triggerClientTime()
 
   if (nrow(deployedGliders) == 0) {
     showModal(modalDialog(
@@ -39,13 +39,13 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
     }
     if(input$tabs == "currMissData" && length(glider > 0)){
       #Code for current mission data on selected glider
-      current_data_handler_server("curDisplay", glider, clientTZ)
+      current_data_handler_server("curDisplay", glider)
     }
     if(input$tabs == "routing" && length(glider > 0)){
       routing_server("curRoute", glider)
     }
     if(input$tabs == "fullMissData"){
-      fullData_server("gliding", clientTZ)
+      fullData_server("gliding")
     }
     if(input$tabs == "multi_miss_data"){
       multi_mission_server("gliders")
