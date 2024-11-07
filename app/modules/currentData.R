@@ -6,6 +6,19 @@ currentData_ui <- function(id) {
   ns <- NS(id)
 
   tagList(
+    #initialize airdatepicker as UTC
+    tags$script(HTML(sprintf("
+      Shiny.addCustomMessageHandler('getOffset', function(message) {
+        var timezoneOffset = new Date().getTimezoneOffset(); // Get the timezone offset in minutes
+        console.log('Timezone offset:', timezoneOffset); // Log the value to verify it's correct
+        Shiny.setInputValue('%s', timezoneOffset); // Send the offset to Shiny
+      });
+
+      $(document).ready(function() {
+        console.log('Sending timezone offset...');
+        Shiny.setInputValue('%s', new Date().getTimezoneOffset()); // Send the timezone offset when the document is ready
+      });
+    ", ns("clientOffset"), ns("clientOffset")))),
     fluidPage(
       fluidRow(
         box(title = "Data Filtering",
@@ -267,16 +280,21 @@ currentData_server <- function(id, gliderName, session) {
 
     ns <- NS(id)
 
-    load(paste0(liveDir, "/", gliderName, "/glider_live.RData"))
+    observe({
+      # Trigger the custom message manually from the server side to ensure the message is sent
+      session$sendCustomMessage('getOffset', list())
+    })
 
-    # startDateLive <- as_datetime(min(gliderdf$m_present_time), tz = "UTC")
-    # endDateLive <- as_datetime(max(gliderdf$m_present_time), tz = "UTC")
+    # Reactive value to wait for clientOffset to be set
+    clientOffsetReactive <- reactive({
+      req(input$clientOffset)  # Ensure the offset is set
+      input$clientOffset
+    })
+
+    load(paste0(liveDir, "/", gliderName, "/glider_live.RData"))
 
     startDateLive <- as.POSIXct(min(gliderdf$m_present_time))
     endDateLive <- as.POSIXct(max(gliderdf$m_present_time))
-
-    #print(startDateLive)
-    #print(endDateLive)
 
     yoList <- reactive({
       unique(gliderdf$yo_id) %>%
@@ -288,19 +306,42 @@ currentData_server <- function(id, gliderName, session) {
     #   na.omit() %>%
     #   sort()
 
-    #get start/end days and update data filters
-    #default to last 3 weeks of data
-    updateAirDateInput(session, "date1Live", NULL, value = as.POSIXct(ifelse(interval(startDateLive, endDateLive)/days(1) > 21,
-                                                                             endDateLive-days(21),
-                                                                             startDateLive)),
-                       options = list(minDate = startDateLive, maxDate = endDateLive,
-                                      timeFormat = "HH:mm"))
-    updateAirDateInput(session, "date2Live", NULL, value = endDateLive,
-                       options = list(minDate = startDateLive, maxDate = endDateLive,
-                                      timeFormat = "HH:mm"))
-    updateAirDateInput(session, "yoDate", NULL, value = endDateLive,
-                       options = list(minDate = startDateLive, maxDate = endDateLive,
-                                      timeFormat = "HH:mm"))
+    # Once we receive the client offset, adjust the date ranges
+    observeEvent(input$clientOffset, {
+      offset_hours <- clientOffsetReactive() / 60  # Convert offset to hours
+
+      # Calculate adjusted start and end dates for both inputs
+      adjusted_startDate <- as.POSIXct(startDateLive, tz = "UTC") + hours(offset_hours)
+      adjusted_endDate <- as.POSIXct(endDateLive, tz = "UTC") + hours(offset_hours)
+
+      # get start/end days and update data filters
+      # default to last 3 weeks of data
+      # Update date1Live input
+      updateAirDateInput(session, "date1Live", NULL,
+                         value = as.POSIXct(ifelse(interval(startDateLive, endDateLive) / days(1) > 21,
+                                                   adjusted_endDate - days(21),
+                                                   adjusted_startDate)),
+                         options = list(
+                           minDate = as.character(adjusted_startDate),
+                           maxDate = as.character(adjusted_endDate),
+                           timeFormat = "HH:mm"
+                         ))
+
+      # Update date2Live input
+      updateAirDateInput(session, "date2Live", NULL,
+                         value = adjusted_endDate,
+                         options = list(
+                           minDate = as.character(adjusted_startDate),
+                           maxDate = as.character(adjusted_endDate),
+                           timeFormat = "HH:mm"
+                         ))
+
+      updateAirDateInput(session, "yoDate", NULL, value = adjusted_endDate,
+                         options = list(
+                           minDate = as.character(adjusted_startDate),
+                           maxDate = as.character(adjusted_endDate),
+                           timeFormat = "HH:mm"))
+    })
 
     updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
     updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
@@ -311,37 +352,21 @@ currentData_server <- function(id, gliderName, session) {
     updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
 
     gliderChunk_live <- reactive({
-
-      #potential workaround for airdate picker hijacking broswer tz
-      # if(clientTZ != 0){
-      #   # print("local time adjustment")
-      #   # print(input$date1Live)
-      #   # print(input$date2Live)
-      #   # print(clientTZ)
-      #   soFar <- interval(force_tz(input$date1Live - hours(clientTZ)), force_tz(input$date2Live - hours(clientTZ), "UTC"))
-      # } else {
-      #   # print("no local time adjustment")
-      #   # print(input$date1Live)
-      #   # print(input$date2Live)
-      #   # print(clientTZ)
-      #   soFar <- interval(input$date1Live, input$date2Live)
-      # }
+      req(!is.null(input$clientOffset))
 
       soFar <- interval(input$date1Live, input$date2Live)
-      #print(soFar)
+      print(soFar)
 
       df <- gliderdf %>%
         filter(m_present_time %within% soFar) %>%
-        #filter(m_present_time >= input$date1Live & m_present_time <= input$date2Live)
-      #filter(status %in% c(input$status)) %>%
-      #filter(!(is.na(input$display_var) | is.na(m_depth))) %>%
+        #filter(status %in% c(input$status)) %>%
         filter(osg_i_depth >= input$min_depth & osg_i_depth <= input$max_depth)
 
       df
     })
 
     scienceChunk_live <- reactive({
-      req(input$display_varLive)
+      req(!is.null(input$clientOffset))
 
       qf <- gliderChunk_live() %>%
         select(c(m_present_time, osg_i_depth, any_of(input$display_varLive))) %>%
@@ -360,12 +385,12 @@ currentData_server <- function(id, gliderName, session) {
     })
 
     output$sciSummary <- renderTable({
-      #req(input$display_varLive)
+      req(!is.null(input$clientOffset))
       tibble::enframe(summary(scienceChunk_live()[[input$display_varLive]]))
     })
 
     flightChunk_live <- reactive({
-      #req(input$date1Live)
+      req(input$date1Live)
 
       df <- gliderChunk_live() %>%
         dplyr::select(c(m_present_time, osg_i_depth, any_of(input$flight_varLive))) %>%
@@ -377,7 +402,7 @@ currentData_server <- function(id, gliderName, session) {
 
     gg1Live <- reactive({
 
-      #req(input$display_varLive)
+      req(input$display_varLive)
 
       sciPlot(gliderName,
               inGliderdf = scienceChunk_live(),
@@ -397,7 +422,7 @@ currentData_server <- function(id, gliderName, session) {
     #flight plot
     gg2Live <- reactive({
 
-      #req(input$flight_varLive)
+      req(input$flight_varLive)
 
       fliPlot(gliderName,
               inGliderdf = flightChunk_live(),
@@ -412,7 +437,7 @@ currentData_server <- function(id, gliderName, session) {
     output$fliPlotLive <- renderPlotly(gg2Live())
 
     output$fliSummary <- renderTable({
-      #req(input$flight_varLive)
+      req(input$flight_varLive)
 
       summs <- flightChunk_live() %>%
         pivot_longer(cols = !c(m_present_time, osg_i_depth), names_to = "vars") %>%
@@ -432,7 +457,7 @@ currentData_server <- function(id, gliderName, session) {
     ##### derived Live plots #########
     gg3Live <- reactive({
 
-      #req(input$derivedTypeLive)
+      req(input$derivedTypeLive)
 
       if (input$derivedTypeLive == "TS Plot"){
         df <- filter(gliderChunk_live(), osg_salinity > 0)
@@ -534,7 +559,7 @@ currentData_server <- function(id, gliderName, session) {
     })
 
     yoChunk <- reactive({
-      #req(input$yo)
+      req(input$yo)
 
       qf <- gliderdf %>%
         filter(yo_id == input$yo) %>% #grab only yo of interest
