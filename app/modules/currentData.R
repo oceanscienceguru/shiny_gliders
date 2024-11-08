@@ -352,10 +352,10 @@ currentData_server <- function(id, gliderName, session) {
     updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
 
     gliderChunk_live <- reactive({
-      req(!is.null(input$clientOffset))
+      req(!is.null(input$date1Live))
 
       soFar <- interval(input$date1Live, input$date2Live)
-      print(soFar)
+      #print(soFar)
 
       df <- gliderdf %>%
         filter(m_present_time %within% soFar) %>%
@@ -366,7 +366,7 @@ currentData_server <- function(id, gliderName, session) {
     })
 
     scienceChunk_live <- reactive({
-      req(!is.null(input$clientOffset))
+      req(!is.null(input$date1Live))
 
       qf <- gliderChunk_live() %>%
         select(c(m_present_time, osg_i_depth, any_of(input$display_varLive))) %>%
@@ -385,7 +385,7 @@ currentData_server <- function(id, gliderName, session) {
     })
 
     output$sciSummary <- renderTable({
-      req(!is.null(input$clientOffset))
+      req(!is.null(input$date1Live))
       tibble::enframe(summary(scienceChunk_live()[[input$display_varLive]]))
     })
 
