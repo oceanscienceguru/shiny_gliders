@@ -45,11 +45,11 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
       routing_server("curRoute", glider)
     }
     if(input$tabs == "fullMissData"){
-      fullData_server("gliding")
+      data_viewer_server("gliding")
     }
-    if(input$tabs == "multi_miss_data"){
-      multi_mission_server("gliders")
-    }
+    # if(input$tabs == "multi_miss_data"){
+    #   multi_mission_server("gliders")
+    # }
 
   })
 

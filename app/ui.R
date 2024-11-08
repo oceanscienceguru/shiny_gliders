@@ -27,7 +27,9 @@
                  menuItem("Current Mission Data",
                           tabName = "currMissData",
                           icon = icon("plane")),
-                 menuItem("Full Datasets", tabName = "fullMissData"),
+                 menuItem("Full Datasets",
+                          tabName = "fullMissData",
+                          icon = icon("database")),
                  # actionButton(
                  #   inputId = "load",
                  #   label = "Load Mission Data",
@@ -38,7 +40,7 @@
                  #   label = "Which mission data to display?",
                  #   choices = c(missionList_archive),
                  #              selected = tail(missionList_archive, 1)),
-                menuItem("Multiple Missions", tabName = "multi_miss_data"),
+                 #menuItem("Multiple Missions", tabName = "multi_miss_data"),
 
                  # actionButton(
                  #   inputId = ns("load"),
@@ -57,7 +59,10 @@
 
                  menuItem("Data Import",
                           tabName = "dataImport",
-                          icon = icon("th"))
+                          icon = icon("file-import")),
+                menuItem("Utilities",
+                         tabName = "data_utilities",
+                         icon = icon("wrench"))
                )
              ),
              dashboardBody(
@@ -73,10 +78,10 @@
                          routing_ui("curRoute")
                          ),
                  tabItem(tabName = "fullMissData",
-                         fullData_ui("gliding")
+                         data_viewer_ui("gliding")
                  ),
-                 tabItem(tabName = 'multi_miss_data',
-                         multi_mission_ui("gliders")),
+                 # tabItem(tabName = 'multi_miss_data',
+                 #         multi_mission_ui("gliders")),
 
                  tabItem(tabName = "dataImport",
                          box(
