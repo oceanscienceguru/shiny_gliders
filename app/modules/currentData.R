@@ -194,11 +194,12 @@ currentData_ui <- function(id) {
                                               timepicker = TRUE,
                                               clearButton = TRUE
                                             ),
-                                            selectInput(
+                                            selectizeInput(
                                               inputId = ns("yo"),
                                               label = "Which yo to display",
                                               choices = NULL,
-                                              selected =  NULL
+                                              selected =  NULL,
+                                              multiple = FALSE
                                             ),
                                             br(),
                                             checkboxGroupInput(
@@ -346,7 +347,7 @@ currentData_server <- function(id, gliderName, session) {
     updateSelectInput(session, "display_varLive", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
     updateSelectizeInput(session, "flight_varLive", NULL, choices = c(flightvarsLive), selected = "m_roll")
 
-    updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = tail(yoList(), 1))
+    updateSelectizeInput(session, "yo", NULL, choices = c(yoList()), selected = tail(yoList(), 1), server = TRUE)
     updateSelectInput(session, "yo_var", NULL, choices = c(scivarsLive), selected = tail(scivarsLive, 1))
 
     updateSelectInput(session, "derivedTypeLive", NULL, choices = c("Salinity", "Density", "SV Plot", "TS Plot"), selected = "Salinity")
@@ -551,11 +552,12 @@ currentData_server <- function(id, gliderName, session) {
 
     #date matching to find yo in time
     observeEvent(input$yoDate, {
+      req(input$yoDate)
       yoFinder <- gliderdf %>%
         slice(which.min(abs(m_present_time - input$yoDate)))
 
       selectYo$id <- yoFinder$yo_id
-      updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = yoFinder$yo_id)
+      updateSelectizeInput(session, "yo", NULL, choices = c(yoList()), selected = yoFinder$yo_id, server = TRUE)
     })
 
     yoChunk <- reactive({
@@ -611,7 +613,7 @@ currentData_server <- function(id, gliderName, session) {
 
     observeEvent(input$oldestYo, {
       selectYo$id <- head(yoList(), 1)
-      updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = head(yoList(), 1))
+      updateSelectizeInput(session, "yo", NULL, choices = c(yoList()), selected = head(yoList(), 1), server = TRUE)
       # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
       #                    options = list(minDate = startDateLive, maxDate = endDateLive,
       #                                   timeFormat = "HH:mm"))
@@ -619,7 +621,7 @@ currentData_server <- function(id, gliderName, session) {
     observeEvent(input$prevYo, {
       if (selectYo$id > 1) {
         selectYo$id <- as.numeric(input$yo) - 1
-        updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = yoList()[selectYo$id])
+        updateSelectizeInput(session, "yo", NULL, choices = c(yoList()), selected = yoList()[selectYo$id], server = TRUE)
         # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
         #                    options = list(minDate = startDateLive, maxDate = endDateLive,
         #                                   timeFormat = "HH:mm"))
@@ -628,7 +630,7 @@ currentData_server <- function(id, gliderName, session) {
     observeEvent(input$nextYo, {
       if (selectYo$id < length(yoList())) {
         selectYo$id <- as.numeric(input$yo) + 1
-        updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = yoList()[selectYo$id])
+        updateSelectizeInput(session, "yo", NULL, choices = c(yoList()), selected = yoList()[selectYo$id], server = TRUE)
         # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
         #                    options = list(minDate = startDateLive, maxDate = endDateLive,
         #                                   timeFormat = "HH:mm"))
@@ -636,7 +638,7 @@ currentData_server <- function(id, gliderName, session) {
     })
     observeEvent(input$latestYo, {
       selectYo$id <- tail(yoList(), 1)
-      updateSelectInput(session, "yo", NULL, choices = c(yoList()), selected = tail(yoList(), 1))
+      updateSelectizeInput(session, "yo", NULL, choices = c(yoList()), selected = tail(yoList(), 1), server = TRUE)
       # updateAirDateInput(session, "yoDate", NULL, value = mean(yoChunk()$m_present_time),
       #                    options = list(minDate = startDateLive, maxDate = endDateLive,
       #                                   timeFormat = "HH:mm"))
