@@ -2,13 +2,12 @@
 format:
   html:
     toc: false
-    toc-location: left
-    toc-expand: true
     standalone: true
     embed-resources: true
 editor: visual
 params: 
-  mission: "M123_usf-jaialai"
+  mission: "M148_usf-sam"
+  datadir: "/echos/brewdata/"
 ---
 
 ```{r}
@@ -28,8 +27,19 @@ library(ggplot2)
 library(cmocean)
 library(viridis)
 library(patchwork)
+#library(webshot2)
+# library(rjson)
+# library(plotly)
+# 
 
-load(paste0("./Data/", params$mission, ".RData"))
+# 
+# #pull sensors and units
+# sensor_defs <- fromJSON(file = "https://github.com/kerfoot/gncutils/raw/master/resources/sensor-def-masters/slocum-sensor_defs.json"
+# )
+
+knitr::opts_chunk$set(echo = TRUE, fig.width = 8, fig.height = 4.5)
+
+load(paste0(params$datadir, "data/", params$mission, ".RData"))
 
 icon.start <- makeAwesomeIcon(
   icon = "flag", markerColor = "green",
@@ -73,14 +83,11 @@ depthDF <- gliderdf %>%
 
 ## `r params$mission` Overview {#sec-mission-overview}
 
-|                   |                                           |
-|-------------------|-------------------------------------------|
-| Days deployed:    | `r round(daysDep, 2)`                     |
-| Start date (UTC): | `r format(min(gliderdf$m_present_time))`  |
-| End date (UTC):   | `r format(max(gliderdf$m_present_time))`  |
-| Distance covered: | `r round(dist/1000, 2)` km                |
-| Max dive depth:   | `r round(max(depthDF$gDepth))` m          |
-| Number of yos:    | `r round(length(unique(gliderdf$yo_id)))` |
+|  |  |  |  |
+|------------------|------------------|------------------|------------------|
+| Days deployed: | `r round(daysDep, 2)` | Distance covered: | `r round(dist/1000, 2)` km |
+| Start date (UTC): | `r format(min(gliderdf$m_present_time))` | Max dive depth: | `r round(max(depthDF$gDepth))` m |
+| End date (UTC): | `r format(max(gliderdf$m_present_time))` | Number of yos: | `r round(length(unique(gliderdf$yo_id)))` |
 
 ```{r}
 #| label: overview
@@ -118,9 +125,11 @@ depthDF <- gliderdf %>%
 #| echo: false
 #| message: false
 #| warn: false
-if(file.exists(paste0("./thebrewery/KML/", params$mission, ".kml"))){
+#| include: false
+
+if(file.exists(paste0(params$datadir, "KML/", params$mission, ".kml"))){
       #grab .kml per mission number
-      raw_sf <- st_read(paste0("./thebrewery/KML/", params$mission, ".kml"),
+      raw_sf <- st_read(paste0(params$datadir, "KML/", params$mission, ".kml"),
                         layer = "Surfacings")
       
       # raw_sf <- st_read(paste0("./thebrewery/KML/", "M112", ".kml"),
@@ -159,7 +168,7 @@ if(file.exists(paste0("./thebrewery/KML/", params$mission, ".kml"))){
         
       }
       
-      leaflet() %>%
+      missionMap <- leaflet() %>%
         #base provider layers
         addWMSTiles("https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}.png",
                     layers = "World_Ocean_Base",
@@ -208,6 +217,29 @@ if(file.exists(paste0("./thebrewery/KML/", params$mission, ".kml"))){
                 lat = mean(mapUp$lat),
                 zoom = 7) %>%
       addFullscreenControl()
+      
+      
+      # Save map as HTML file (only needed if snapshot is required)
+# map_path <- "missionMap.html"
+# saveWidget(missionMap, map_path, selfcontained = TRUE)
+# 
+# # Take a snapshot of the map for PDF output
+# map_image_path <- "missionMap.png"
+# webshot(map_path, file = map_image_path, delay = 0.5)
+      
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warn: false
+
+#if (knitr::is_html_output()) {
+  missionMap  # Display the interactive map in HTML
+#} else {
+#  knitr::include_graphics("missionMap.png")  # Show snapshot in PDF
+#}
+
 ```
 
 ### Science Data
@@ -218,6 +250,39 @@ if(file.exists(paste0("./thebrewery/KML/", params$mission, ".kml"))){
 #| warn: false
 #| include: false
 sigma <- mean(gliderdf$osg_rho, na.rm = TRUE)
+
+      
+#       
+#       ggsave(filename = paste0(params$datadir, "reports/", params$mission, "temp.png"),
+#              plot = fullSci,
+#              device = "png",
+#              width = 16,
+#              height = 9
+#       )
+      
+      # ggsave(filename = "svOverTime.png",
+#        plot = profilePlot,
+#        device = "png",
+#        path = "./COMIT",
+#        width = 16,
+#        height = 9)
+      
+      # scf <- gliderdf %>%
+      #   select(m_present_time, osg_i_depth, sci_water_temp) %>%
+      #   filter(!is.na(sci_water_temp))
+      # 
+      # gcf <- gliderdf %>%
+      #   select(m_present_time, m_water_depth) %>%
+      #   filter(!is.na(m_water_depth))
+      # 
+      # fullSci <- sciPlot(
+      #     gliderName = params$mission,
+      #     inGliderdf = scf,
+      #     gliderFlightdf = gcf,
+      #     plotVar = "sci_water_temp"
+      #   )
+
+
 
 ```
 
@@ -230,78 +295,39 @@ Mean water temperature: `r round(mean(gliderdf$sci_water_temp, na.rm = TRUE), 2)
 ```{r}
 #| label: temp plot
 #| echo: false
+#| warn: false
 
-# scidf <- gliderdf %>%
-#   select(starts_with(c("m_present_time", "sci", "osg"))) %>%
-#   filter(sci_water_temp > 0)
-# 
-# baseSci <- ggplot(data = 
-#                           scidf,
-#                         aes(x=m_present_time,
-#                             y=round(osg_i_depth, 2))) +
-#         geom_point(aes(color = sci_water_temp),
-#                    size = 2) 
-#       
-#       fullSci <- baseSci +
-#         scale_y_reverse() +
-#         geom_point(data = filter(gliderdf, m_water_depth > 0),
-#                    aes(x = m_present_time,
-#                        y = m_water_depth),
-#                    color = "black",
-#                    size = 0.3,
-#                    na.rm = TRUE
-#         ) +
-#         theme_bw() +
-#         labs(title = paste0(params$mission, " water temperature"),
-#              y = "Depth (m)",
-#              x = "Date") +
-#         scale_color_cmocean(name = "thermal")
+testo <- gliderdf %>%
+  filter(row_number() %% 50 == 1) %>%
+  filter(osg_i_depth > 0)
+
+scivars <- c("sci_water_temp", 
+             #"sci_water_pressure",
+             "sci_water_cond",
+             "osg_salinity",
+             "osg_rho",
+             "osg_soundvel1",
+             "sci_oxy4_oxygen",
+             "sci_flbbcd_chlor_units",
+             #"sci_flbbcd_bb_units",
+             #"sci_flbbcd_cdom_units",
+             "sci_suna_nitrate_concentration")
+
+available_vars <- scivars[scivars %in% names(gliderdf)]
+
+stuff <- list()
+for (i in available_vars){
+stuff[[i]] <- reportPlot(mission = params$mission,
+                         inGliderdf = testo,
+                         plotVar = i)
+}
+
+# Dynamically render each plot individually
+for (plot_name in names(stuff)) {
+  # Render each plot as a new block
+  print(stuff[[plot_name]])
+}
       
-      # if (input$display_var == "sci_water_temp") {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "thermal") 
-      #   } else if (input$display_var == "sci_water_pressure") {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "deep")
-      #   } else if (input$display_var == "sci_water_cond") {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "haline")
-      #   } else if (input$display_var == "sci_suna_nitrate_concentration") {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "tempo") 
-      #   } else if (input$display_var == "sci_flbbcd_chlor_units" |
-      #              input$display_var == "sci_bbfl2s_chlor_scaled" ) {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "algae") 
-      #   } else if (input$display_var == "sci_flbbcd_cdom_units" |
-      #              input$display_var == "sci_bbfl2s_cdom_scaled" ) {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "matter") 
-      #   } else if (input$display_var == "sci_flbbcd_bb_units" |
-      #              input$display_var == "sci_bbfl2s_bb_scaled" ) {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "turbid") 
-      #   } else if (input$display_var == "sci_oxy3835_oxygen" |
-      #              input$display_var == "sci_oxy4_oxygen" ) {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "oxy") 
-      #   } else if (startsWith(input$display_var, "sci_ocr")) {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "solar") 
-      #   } else if (input$display_var == "osg_soundvel1") {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "speed") 
-      #   } else if (input$display_var == "osg_rho") {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "dense") 
-      #   } else if (input$display_var == "osg_salinity") {
-      #     scale_color_cmocean(limits = c(input$min, input$max),
-      #                         name = "haline") 
-      #   } else {
-      #     scale_color_viridis_c(limits = c(input$min, input$max))
-      #   }
-        
-      # fullSci
 ```
 
 ### Engineering
@@ -344,13 +370,13 @@ Mean roll: `r round(((mean(gliderdf$m_roll, na.rm = TRUE)*180)/pi), 2)` degrees
 #| label: powerPlot
 #| echo: false
 
-(batt <- ggplot() +
+batt <- ggplot() +
   geom_point(data = dailydf, 
              size = 2, aes(x = ddate, y = m_battery), color = "red") +
   labs(title = "Daily Voltage",
        x = "Date", 
        y = "Battery (V)") +
-  theme_bw())
+  theme_bw()
 
 # (battDepth <- ggplot() +
 #   geom_point(data = battDrop, 
@@ -361,32 +387,32 @@ Mean roll: `r round(((mean(gliderdf$m_roll, na.rm = TRUE)*180)/pi), 2)` degrees
 #   theme_bw())
 
 
-(roll <- ggplot() +
+roll <- ggplot() +
   geom_point(data = dailydf, 
              size = 2, aes(x = ddate, y = ((m_roll*180)/pi)), color = "darkgreen") +
   geom_hline(yintercept = 0, linetype = 2) +
   labs(title = "Daily Roll",
        x = "Date", 
        y = "Roll (deg)") +
-  theme_bw())
+  theme_bw()
 
-(bpump <- ggplot() +
+bpump <- ggplot() +
   geom_point(data = dailydf, 
              size = 2, aes(x = osg_rho, y = m_ballast_pumped), color = "blue") +
   geom_hline(yintercept = 0, linetype = 2) +
   labs(title = "Daily ballast performance",
        x = "Density", 
        y = "Ballast pump center (cc)") +
-  theme_bw())
+  theme_bw()
 
-(bpos <- ggplot() +
+bpos <- ggplot() +
   geom_point(data = dailydf, 
              size = 2, aes(x = osg_rho, y = m_battpos), color = "navy") +
   geom_hline(yintercept = 0, linetype = 2) +
   labs(title = "Daily battpos performance",
        x = "Density", 
        y = "Battpos center (in)") +
-  theme_bw())
+  theme_bw()
 
 # (vacta <- ggplot() +
 #   geom_point(data = dailydf, 
@@ -396,5 +422,7 @@ Mean roll: `r round(((mean(gliderdf$m_roll, na.rm = TRUE)*180)/pi), 2)` degrees
 #        x = "Temperature (C)", 
 #        y = "Vacuum (inHg)") +
 #   theme_bw())
+
+wrap_plots(batt, roll, bpump, bpos)
 
 ```
