@@ -10,7 +10,6 @@
              "
     )
   ),
-  #includeScript("./www/timezone.js"),
            dashboardPage(
              dashboardHeader(title = app_name),
              dashboardSidebar(
@@ -38,33 +37,6 @@
                             icon = icon("file")
                           )
                  ),
-                 # actionButton(
-                 #   inputId = "load",
-                 #   label = "Load Mission Data",
-                 #   icon("plane"),
-                 #   style = "color: #fff; background-color: #963ab7; border-color: #2e6da4"
-                 #            ),
-                 # selectInput(inputId = "mission",
-                 #   label = "Which mission data to display?",
-                 #   choices = c(missionList_archive),
-                 #              selected = tail(missionList_archive, 1)),
-                 #menuItem("Multiple Missions", tabName = "multi_miss_data"),
-
-                 # actionButton(
-                 #   inputId = ns("load"),
-                 #   label = "Load Mission Data",
-                 #   icon("plane"),
-                 #   style =
-                 #     "color: #fff; background-color: #963ab7; border-color: #2e6da4"
-                 # ),
-                 # br(),
-                 # selectInput(
-                 #   inputId = ns("mission"),
-                 #   label = "Which mission data to display",
-                 #   choices = NULL,
-                 #   selected =  NULL
-                 # ),
-
                  menuItem("Data Import",
                           tabName = "dataImport",
                           icon = icon("file-import")),
@@ -130,40 +102,7 @@
                              )
                            )
                            ))
-                         # fluidPage(
-                         #
-                         #   #file upload row
-                         #   wellPanel(
-                         #     fileInput(
-                         #       inputId = "upload",
-                         #       label = "Upload New Mission Data",
-                         #       multiple = FALSE,
-                         #       accept = c("text/SSV",
-                         #                  ".ssv",
-                         #                  ".rds",
-                         #                  ".Rdata",
-                         #                  ".*bd",
-                         #                  ".kml")
-                         #     ),
-                         #     selectInput(
-                         #       inputId = "uploadGliderName",
-                         #       label = "Which glider?",
-                         #       choices = c("usf-bass",
-                         #                   "usf-stella"),
-                         #       selected = NULL
-                         #     ),
-                         #     tableOutput('uploadTable')
-                         #     # selectInput(
-                         #     #   inputId = "mission",
-                         #     #   label = "Which mission data to display",
-                         #     #   choices = c(missionList),
-                         #     #   selected =  NULL
-                         #     #
-                         #   ))
-
-
                          )
-
                  ))
            )
 )
