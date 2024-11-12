@@ -15,7 +15,8 @@
              dashboardHeader(title = app_name),
              dashboardSidebar(
                sidebarMenu(id = "tabs",
-                 menuItem("Piloting Dashboard", startExpanded = TRUE,
+                 menuItem("Piloting Dashboard", 
+                          startExpanded = TRUE,
                           icon = icon("dashboard"),
                           radioButtons(inputId = "gliderSelect",
                                        label = "Pick Your Glider",
@@ -27,9 +28,16 @@
                  menuItem("Current Mission Data",
                           tabName = "currMissData",
                           icon = icon("plane")),
-                 menuItem("Full Datasets",
+                 menuItem("Full Datasets", 
+                          startExpanded = TRUE,
+                          menuSubItem("Full Data Viewer",
                           tabName = "fullMissData",
                           icon = icon("database")),
+                          menuSubItem("Mission Reports",
+                            tabName = "fullReports",
+                            icon = icon("file")
+                          )
+                 ),
                  # actionButton(
                  #   inputId = "load",
                  #   label = "Load Mission Data",
@@ -82,7 +90,8 @@
                  ),
                  # tabItem(tabName = 'multi_miss_data',
                  #         multi_mission_ui("gliders")),
-
+                 tabItem(tabName = "fullReports",
+                         mission_overview_ui("glideReport")),
                  tabItem(tabName = "dataImport",
                          box(
                          glide(
