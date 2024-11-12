@@ -21,6 +21,9 @@ data_viewer_ui <- function(id) {
     ", ns("clientOffset"), ns("clientOffset")))),
     useShinyjs(),
     fluidPage(
+      box(title = "Mission Selection and Filters",
+          width = 12,
+          collapsible = TRUE,
       box(
         actionButton(
           inputId = ns("load"),
@@ -73,7 +76,9 @@ data_viewer_ui <- function(id) {
         value = 1000,
         min = 0,
         max = 1000
-      ),),
+      ),
+      ),
+      ),
       column(12,
              #mainPanel(#science variable settings
              tabsetPanel(id = ns("tabs"),
