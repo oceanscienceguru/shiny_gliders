@@ -1,13 +1,46 @@
 server <- function(input, output, session) { options(shiny.usecairo = TRUE)
 
-  if (nrow(deployedGliders) == 0) {
-    showModal(modalDialog(
-      title = "No deployed gliders",
-      "There are no deployed gliders at this time.",
-      easyClose = TRUE
-    ))
-  }
+  # Check if deployedGliders is empty and show modal if necessary
+  observe({
+    req(deployed_gliders_df())  # Wait for deployed_gliders_df to be available
+    
+    if (nrow(deployed_gliders_df()) == 0) {
+      showModal(modalDialog(
+        title = "No deployed gliders",
+        "There are no deployed gliders at this time.",
+        easyClose = TRUE
+      ))
+    }
+  })
 
+  # Create deployed_gliders_df in server.R
+  deployed_gliders_df <- reactive({
+    yaml_data <- read_yaml("config.yaml")  # Update with actual file path
+    gliders_data <- yaml_data$gliders
+    
+    # Filter gliders where 'deployed' is TRUE
+    deployed_gliders <- gliders_data %>%
+      purrr::keep(~ .x$deployed == TRUE) %>%
+      names()  # Get names of gliders
+
+    # Convert to a dataframe
+    deployed_gliders_df <- data.frame(glider = deployed_gliders)
+    
+    return(deployed_gliders_df)
+  })
+  
+  # Render radioButtons based on deployed_gliders_df
+  output$gliderSelector <- renderUI({
+
+    gliders <- deployed_gliders_df()$glider  # Get the glider names
+
+    # Render the radioButtons dynamically
+    radioButtons(inputId = "gliderSelect",
+                 label = "Pick Your Glider",
+                 choices = gliders,
+                 selected = tail(gliders, 1))  # Default to the last deployed glider
+  })
+  
   ######### current mission data ########
   observe({
     glider <- input$gliderSelect
@@ -29,6 +62,9 @@ server <- function(input, output, session) { options(shiny.usecairo = TRUE)
     }
     if(input$tabs == "fullReports"){
       mission_overview_server("glideReport")
+    }
+    if(input$tabs == "data_utilities"){
+      util_gliders_server("glidemod")
     }
     # if(input$tabs == "multi_miss_data"){
     #   multi_mission_server("gliders")

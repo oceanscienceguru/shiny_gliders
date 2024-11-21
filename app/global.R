@@ -28,6 +28,22 @@ library(rjson)
 library(shinyjs)
 library(quarto)
 
+require(purrr)
+require(yaml)
+library(shinyAce)
+library(shinyauthr)
+library(sodium)
+
+users <- tibble::tibble(
+  user = c("user1", "user2"),
+  password = c("pass1", "pass2"),
+  permissions = c("admin", "standard"),
+  name = c("User One", "User Two")
+)
+
+# Hash passwords using sodium::password_store()
+users$password_hashed <- sapply(users$password, sodium::password_store)
+
 #source all modules and all scripts within the app structure
 file.sources = list.files(c("./modules", "./scripts"),
                           pattern="*.R$", full.names=TRUE,
@@ -76,21 +92,14 @@ app_name <- if(length(server_metadata[which(server_metadata == "app_name"),2]) >
 logo_source <- server_metadata[which(server_metadata == "logo_source"),2]
 
 #read in which gliders to display as live data
-deployedGliders <- read.csv(paste0(servDir, "/deployedGliders.txt"),
-                            sep = "",
-                            header = FALSE)
-
-colnames(deployedGliders)[1] = "Name"
-colnames(deployedGliders)[2] = "ahrCap"
-
-deployedGliders <- deployedGliders %>%
-  filter(!str_starts(Name,"#")) #remove any commented lines
 
 #all possible gliders in the fleet
 fleetGliders <- read.csv(paste0(servDir, "/fleetGliders.txt"),
                          sep = "",
                          header = FALSE) %>%
   arrange(V1)
+
+colnames(fleetGliders)[1] = "Name"
 
 #if routes directory exists with example goto files, load them
 routesList_files <- file.info(list.files(path = paste0(servDir, "/routes"),

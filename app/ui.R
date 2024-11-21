@@ -17,10 +17,7 @@
                  menuItem("Piloting Dashboard", 
                           startExpanded = TRUE,
                           icon = icon("dashboard"),
-                          radioButtons(inputId = "gliderSelect",
-                                       label = "Pick Your Glider",
-                                       choices = deployedGliders$Name,
-                                       selected = tail(deployedGliders$Name,1)),
+                          uiOutput("gliderSelector"),
                           hr(),
                           menuSubItem("Dashboard", tabName = "dashboard"),
                           menuSubItem("Routing", tabName = "routing")),
@@ -64,6 +61,8 @@
                  #         multi_mission_ui("gliders")),
                  tabItem(tabName = "fullReports",
                          mission_overview_ui("glideReport")),
+                 tabItem(tabName = "data_utilities",
+                         util_gliders_ui("glidemod")),
                  tabItem(tabName = "dataImport",
                          box(
                          glide(
@@ -77,7 +76,8 @@
                                choices = c("",
                                            fleetGliders$V1),
                                selected = NULL
-                             )),
+                             )
+                             ),
                            screen(
                              h3("Upload whole-mission .ssv"),
                              p("SSV must have: ", code("m_present_time, m_gps_lat,
