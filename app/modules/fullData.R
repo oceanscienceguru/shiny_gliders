@@ -8,7 +8,8 @@ fullData_ui <- function(id) {
   tagList(
     useShinyjs(),
     fluidPage(
-      box(  actionButton(
+      box(
+        box(actionButton(
         inputId = ns("load"),
         label = "Load Mission Data",
         icon("plane"),
@@ -21,6 +22,7 @@ fullData_ui <- function(id) {
         label = "Which mission data to display",
         choices = NULL,
         selected =  NULL
+      ),
       ),
       ),
       box(
