@@ -1,25 +1,44 @@
 library(tidyverse)
 library(emayili)
+library(yaml)
+library(purrr)
+library(dplyr)
 
-#get deployed gliders
-deployedGliders <- read.csv("/echos/processGliders.txt",
-                            sep = "",
-                            header = FALSE)
-colnames(deployedGliders)[1] = "Name"
-colnames(deployedGliders)[2] = "ahrCap"
+# Read and process YAML data to create a dataframe of gliders where 'process' is TRUE
+get_process_gliders <- function(config_path = "./app/config.yaml") {
+  # Load YAML data
+  yaml_data <- read_yaml(config_path)
+  gliders_data <- yaml_data$gliders
+  
+  # Ensure gliders_data is a list
+  if (!is.null(gliders_data) && is.list(gliders_data)) {
+    # Filter gliders where 'process' is TRUE
+    process_gliders <- gliders_data %>%
+      keep(~ isTRUE(.x$process)) %>%
+      imap_dfr(~ {
+        # Combine the glider name with the rest of the data
+        tibble(glider = .y, !!!.x)
+      })
+    
+    return(process_gliders)
+  } else {
+    warning("No valid glider data found in the YAML file.")
+    return(tibble())  # Return empty tibble instead of data.frame
+  }
+}
 
-#only process "real" ones
-deployedGliders <- deployedGliders %>%
-  filter(!str_starts(Name,"#")) #remove any commented lines
+# Example usage
+process_gliders_df <- get_process_gliders("/srv/shiny-server/thebrewery/config.yaml")
+#process_gliders_df <- get_process_gliders("./app/config.yaml")
 
-for (i in deployedGliders$Name){
+for (i in process_gliders_df$glider){
 
   #extract battery capacity as listed
-  amps <- deployedGliders %>%
-    filter(Name == i)
+  amps <- process_gliders_df %>%
+    filter(glider == i)
 
   #pass glidername as parameter from i to each render block
-  if (amps$ahrCap > 0){
+  if (amps$ahr_capacity > 0){
     msg <- envelope() %>%
       emayili::render("./Documentation/batteryMarkdown.Rmd", params = list(gliderName = paste0(i))) %>%
       subject(paste0("Daily summary for ", as.character(i)))
