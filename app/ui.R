@@ -74,7 +74,7 @@
                                inputId = "uploadGliderName",
                                label = "Select glider name:",
                                choices = c("",
-                                           fleetGliders$V1),
+                                           fleetGliders$Name),
                                selected = NULL
                              )
                              ),
