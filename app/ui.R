@@ -1,6 +1,14 @@
 
   #force notifications to center of page
-  tags$head(tags$style(
+  tags$head(tags$style("
+       .left-side, .main-sidebar {
+          padding-top: 80px;
+       }
+       .skin-blue .main-header .logo {
+          height: 80px; 
+          display: inline-flex;
+          align-items: center;
+       }",
     HTML(
       ".shiny-notification {
              position:fixed;
@@ -11,7 +19,17 @@
     )
   ),
            dashboardPage(
-             dashboardHeader(title = app_name),
+             dashboardHeader(title = app_name,
+                             tags$li(class = "dropdown",
+                                     tags$a(
+                                       href = '', 
+                                       target="_blank",
+                                       tags$img(
+                                         src = 'logo.png',
+                                         height = "50px"
+                                       ),
+                                       style = "padding: 1;"
+                                     ))),
              dashboardSidebar(
                sidebarMenu(id = "tabs",
                  menuItem("Piloting Dashboard", 
