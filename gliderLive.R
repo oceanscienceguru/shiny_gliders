@@ -12,7 +12,7 @@ library(osgUtils)
   load("/echos/G1AlkalineCurve.RData")
 
 # source("/srv/shiny-server/thebrewery/scripts/ssv_to_df.R")
-# source("/srv/shiny-server/thebrewery/scripts/pseudogram.R")
+source("./app/scripts/pseudogram.R")
 # source("/srv/shiny-server/thebrewery/scripts/depthInt.R")
 # source("/srv/shiny-server/thebrewery/scripts/gliderGPS_to_dd.R")
 # source("/srv/shiny-server/thebrewery/scripts/identify_casts.R")
